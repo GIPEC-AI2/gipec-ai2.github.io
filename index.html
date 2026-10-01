@@ -5876,10 +5876,8 @@ if('serviceWorker' in navigator){window.addEventListener('load',function(){navig
   // separately, so a device's key and case queue are carried over once, by the owner's click:
   // the old address hands them over only to this exact address (export.html checks it).
   var OLD='https://ndpennie.github.io';
-  window.addEventListener('message',function(e){
-    if(e.origin!==OLD||!e.data||e.data.type!=='spear-move')return;
+  function applyMove(d){
     try{
-      var d=e.data;
       if(d.key)localStorage.setItem('spear_key',d.key);
       var mine=[];try{mine=JSON.parse(localStorage.getItem('spear_items')||'[]')}catch(_){}
       var theirs=[];try{theirs=JSON.parse(d.items||'[]')}catch(_){}
@@ -5891,7 +5889,14 @@ if('serviceWorker' in navigator){window.addEventListener('load',function(){navig
       say('<b>Moved.</b> '+theirs.length+' case(s) and this device’s setup came over. Opening the dashboard…');
       setTimeout(function(){location.reload()},1200);
     }catch(err){say('<b>Could not move the data:</b> '+String(err).slice(0,120))}
-  });
+  }
+  window.addEventListener('message',function(e){if(e.origin===OLD&&e.data&&e.data.type==='spear-move')applyMove(e.data)});
+  // Redirect fallback (popup blocked): the old address sends the data back in the URL fragment,
+  // which never leaves the browser.
+  if(/^#spearmove=/.test(location.hash)){
+    try{var raw=decodeURIComponent(escape(atob(location.hash.slice(11).replace(/-/g,'+').replace(/_/g,'/'))));
+      history.replaceState(null,'',location.pathname+location.search);applyMove(JSON.parse(raw));return}catch(err){say('<b>Could not move the data:</b> '+String(err).slice(0,120))}
+  }
   function say(h){if(msg)msg.innerHTML=h}
   window.__tpl=function(k,v){var n=Object.keys(v||{});return Function.apply(null,n.concat('return `'+window.__B.T[k]+'`')).apply(null,n.map(function(x){return v[x]}))};
   function start(B){
@@ -5903,7 +5908,8 @@ if('serviceWorker' in navigator){window.addEventListener('load',function(){navig
   if(!key){say('<b>This dashboard is private.</b><br>Open your Project Spear setup link once on this device. After that it opens on its own.'
       +'<div style="margin-top:18px"><button id="spearMove" style="font:700 14px system-ui,sans-serif;background:#fff;color:#0f2a5c;border:0;border-radius:9px;padding:11px 16px;cursor:pointer">Used Project Spear before on this device? Move my setup &amp; cases</button></div>');
     var mv=document.getElementById('spearMove');
-    if(mv)mv.onclick=function(){window.open(OLD+'/gipec-ai2/export.html','spearmove','width=480,height=300')};
+    if(mv)mv.onclick=function(){var w=null;try{w=window.open(OLD+'/gipec-ai2/export.html','spearmove','width=480,height=300')}catch(e){}
+      if(!w){location.href=OLD+'/gipec-ai2/export.html?return=1'}};
     return}
   var cached=null;try{cached=JSON.parse(localStorage.getItem('spear_bundle')||'null')}catch(e){}
   if(cached&&cached.C&&cached.C.CODEBOOK)start(cached);
