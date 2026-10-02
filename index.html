@@ -4598,11 +4598,11 @@ async function checkSweep(manual){
   const panel=document.getElementById('pushPanel'); if(!panel)return;
   let data=null;
   try{
-    const r=await fetch('./sweep.json?t='+Date.now(),{cache:'no-store'});
+    const r=await fetch(((typeof API_BASE!=='undefined'&&API_BASE)||localStorage.getItem('spear_api')||'').replace(/\/$/,'')+'/api/sweep',{cache:'no-store',headers:{'X-Spear-Key':localStorage.getItem('spear_key')||''}});
     if(r.ok)data=await r.json();
   }catch(e){}
   if(!data||!Array.isArray(data.results)){
-    if(manual)panel.innerHTML='<div class="newbox"><h4>No sweep results yet</h4><div class="sub">The scheduled sweep has not written <code>sweep.json</code> yet. Once the scheduled job is switched on it runs on its own and anything new shows up here.</div></div>';
+    if(manual)panel.innerHTML='<div class="newbox"><h4>No sweep results yet</h4><div class="sub">The server runs the sweep every 6 hours on its own. Nothing new has come back yet; anything new shows up here.</div></div>';
     return;
   }
   const seen=_seenSet();
