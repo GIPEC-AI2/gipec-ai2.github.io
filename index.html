@@ -5930,5 +5930,86 @@ if('serviceWorker' in navigator){window.addEventListener('load',function(){navig
   })();
 })();
 </script>
+<script id="spear-case-sync">
+/* Case sync: keeps the review queue in the server database (Postgres) as well as this browser.
+   - Every case gets a permanent uid; changed cases are saved to the server a few seconds later.
+   - On load and every minute, cases saved from other devices or reviewers are pulled in.
+   - Works quietly in the background; if the server is unreachable the dashboard keeps working
+     from this browser and catches up later. */
+(function () {
+  var TENANT = 'gipec', SENT_KEY = 'spear_synced_v1', MAX_THUMB = 1500000;
+  var sent = {}; try { sent = JSON.parse(localStorage.getItem(SENT_KEY) || '{}') || {}; } catch (e) { sent = {}; }
+  var since = null, timer = null, busy = false, hooked = false;
+  function api() { var b = (typeof API_BASE !== 'undefined' && API_BASE) || localStorage.getItem('spear_api') || ''; return String(b).replace(/\/$/, ''); }
+  function hdr() { return { 'X-Spear-Key': localStorage.getItem('spear_key') || '', 'Content-Type': 'application/json' }; }
+  function uid() { return (crypto.randomUUID ? crypto.randomUUID() : (Date.now().toString(36) + Math.random().toString(36).slice(2))); }
+  function doc(it) { var o = {}; for (var k in it) { if (k === 'thumb' && it.thumb && String(it.thumb).length > MAX_THUMB) continue; o[k] = it[k]; } return o; }
+  function sig(it) { var o = {}; for (var k in it) { if (k !== 'thumb' && k !== 'id') o[k] = it[k]; } try { return JSON.stringify(o).length + ':' + hash(JSON.stringify(o)); } catch (e) { return String(Math.random()); } }
+  function hash(s) { var h = 0; for (var i = 0; i < s.length; i++) { h = (h * 31 + s.charCodeAt(i)) | 0; } return h; }
+  function saveSent() { try { localStorage.setItem(SENT_KEY, JSON.stringify(sent)); } catch (e) {} }
+  function ready() { return typeof items !== 'undefined' && Array.isArray(items) && typeof itemsSave === 'function' && api() && localStorage.getItem('spear_key'); }
+
+  async function push() {
+    if (busy || !ready()) return; busy = true;
+    try {
+      var changed = [], live = {};
+      items.forEach(function (it) { if (!it.uid) it.uid = uid(); live[it.uid] = 1; var s = sig(it); if (sent[it.uid] !== s) changed.push([it, s]); });
+      for (var i = 0; i < changed.length; i += 20) {
+        var batch = changed.slice(i, i + 20);
+        var body = { tenant: TENANT, cases: batch.map(function (p) { var d = doc(p[0]); d.id = p[0].uid; d.local_id = p[0].id; return d; }) };
+        var r = await fetch(api() + '/api/cases', { method: 'POST', headers: hdr(), body: JSON.stringify(body) });
+        if (!r.ok) throw new Error('save ' + r.status);
+        batch.forEach(function (p) { sent[p[0].uid] = p[1]; });
+      }
+      var gone = Object.keys(sent).filter(function (u) { return !live[u]; });
+      for (var j = 0; j < gone.length; j++) {
+        var rr = await fetch(api() + '/api/cases/' + encodeURIComponent(gone[j]) + '/delete', { method: 'POST', headers: hdr() });
+        if (rr.ok) delete sent[gone[j]];
+      }
+      saveSent();
+      if (changed.length || gone.length) console.log('[case-sync] saved', changed.length, 'removed', gone.length);
+    } catch (e) { console.warn('[case-sync] save deferred:', e.message); }
+    finally { busy = false; }
+  }
+
+  async function pull() {
+    if (!ready()) return;
+    try {
+      var url = api() + '/api/cases?tenant=' + TENANT + (since ? '&since=' + encodeURIComponent(since) : '');
+      var r = await fetch(url, { headers: hdr() }); if (!r.ok) return;
+      var j = await r.json(); since = j.now;
+      var byUid = {}; items.forEach(function (it) { if (it.uid) byUid[it.uid] = it; });
+      var changed = 0;
+      (j.cases || []).forEach(function (c) {
+        var d = c.data || {}, u = c.id, local = byUid[u];
+        var untouched = local && sent[u] === sig(local);       // no unsaved edits here
+        if (c.deleted) {
+          if (local && untouched) { items.splice(items.indexOf(local), 1); delete sent[u]; changed++; }
+          return;
+        }
+        if (local && !untouched) return;                       // local edits win; they will be pushed
+        var copy = {}; for (var k in d) { if (k !== 'local_id') copy[k] = d[k]; }
+        copy.uid = u;
+        if (local) { copy.id = local.id; Object.keys(local).forEach(function (k) { if (!(k in copy)) delete local[k]; }); Object.assign(local, copy); }
+        else { copy.id = (typeof idc !== 'undefined') ? idc++ : (Date.now()); items.unshift(copy); }
+        sent[u] = sig(local || copy); changed++;
+      });
+      saveSent();
+      if (changed) { try { itemsSave(); } catch (e) {} try { render(); } catch (e) {} console.log('[case-sync] pulled', changed); }
+    } catch (e) { console.warn('[case-sync] load deferred:', e.message); }
+  }
+
+  function hook() {
+    if (hooked || !ready()) return false; hooked = true;
+    var orig = itemsSave;
+    itemsSave = function () { var out = orig.apply(this, arguments); clearTimeout(timer); timer = setTimeout(push, 3000); return out; };
+    pull().then(push);
+    setInterval(function () { pull(); }, 60000);
+    window.spearCaseSync = { push: push, pull: pull, state: function () { return { tracked: Object.keys(sent).length, since: since }; } };
+    return true;
+  }
+  var tries = 0, t = setInterval(function () { if (hook() || ++tries > 120) clearInterval(t); }, 1000);
+})();
+</script>
 </body>
 </html>
