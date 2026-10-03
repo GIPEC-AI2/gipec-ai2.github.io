@@ -1105,5 +1105,71 @@ const h=(location.hash||'').slice(1);if(['takedown','cost'].includes(h))go(h);el
 renderAll();
 })();
 </script>
+<style id="ops-color">
+/* ---------- Clean, color-coded look (Oct 2026) ---------- */
+:root{--c-terror:#C8102E;--c-hate:#C2185B;--c-hate2:#E06C9F;--c-extrem:#0F8A7E;--c-dorg:#E8871E;--c-other:#94A3B8;
+  --c-ok:#1F9D55;--c-warn:#D97706;--c-info:#2A6FF0;--c-navy:#0F2A5C;--c-purple:#6D28D9}
+/* KPI cards: one color per meaning, shown as a top stripe and the number's color */
+.kpi{border-top:4px solid var(--line)}
+.kpi:has(#k-q),.kpi:has(#t-up),.kpi:has(#co-cap){border-top-color:var(--c-warn)}.kpi:has(#k-q) .v,.kpi:has(#t-up) .v{color:var(--c-warn)}
+.kpi:has(#k-t),.kpi:has(#x-rate),.kpi:has(#t-rep),.kpi:has(#co-ai){border-top-color:var(--c-info)}.kpi:has(#x-rate) .v,.kpi:has(#co-ai) .v{color:var(--c-info)}
+.kpi:has(#k-r),.kpi:has(#x-appr),.kpi:has(#t-rem){border-top-color:var(--c-ok)}.kpi:has(#x-appr) .v,.kpi:has(#t-rem) .v,.kpi:has(#k-r) .v{color:var(--c-ok)}
+.kpi:has(#k-e){border-top-color:var(--c-dorg)}.kpi:has(#k-e) .v{color:var(--c-dorg)}
+.kpi:has(#x-tot),.kpi:has(#co-calls),.kpi:has(#t-med){border-top-color:var(--c-navy)}
+.kpi:has(#x-field),.kpi:has(#co-fix){border-top-color:var(--c-purple)}.kpi:has(#x-field) .v{color:var(--c-purple)}
+.kpi:has(#m-cb),.kpi:has(#m-th),.kpi:has(#m-pr),.kpi:has(#m-docs){border-top-color:var(--c-purple)}
+.kpi.alert{border-top-color:var(--c-terror)!important}.kpi.alert .v{color:var(--c-terror)!important}
+/* bars take their row's color */
+.bar .fil{background:var(--bc,linear-gradient(90deg,#2a6ff0,#1a4fb8))!important}
+.bar .lab i.sw{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:7px;background:var(--bc);vertical-align:0}
+/* quieter screen: explanations folded away until asked for */
+body:not(.show-notes) .note,body:not(.show-notes) .netfx,body:not(.show-notes) .side .foot{display:none!important}
+.chip.notes{cursor:pointer;user-select:none}
+.chip.notes.on{background:#fff;color:var(--navy)}
+#lastchip{display:none}
+/* fold the analyst-workspace shortcuts */
+.grp.fold{cursor:pointer;user-select:none}.grp.fold:after{content:' ▸';font-size:10px}.grp.fold.open:after{content:' ▾'}
+.nav.ext{display:none}.grp.fold.open~.nav.ext{display:flex}
+/* column chart: one calm color */
+.cb{background:linear-gradient(180deg,#3b6fe0,#1f4fb8)!important}
+</style>
+<script id="ops-color-js">
+(function(){
+/* One palette for the whole page: the same color always means the same thing. */
+const C={
+  'Terrorism':'#C8102E','Hate Speech':'#C2185B','Hate':'#E06C9F','Extremism':'#0F8A7E','Dangerous Orgs':'#E8871E',
+  'Narcotics':'#7C3AED','Counterfeit meds':'#9333EA','Public safety':'#CA8A04','Child safety':'#1D4ED8','Self-harm':'#0891B2',
+  'Inauthentic':'#64748B','Situational':'#64748B','Review':'#94A3B8','Unlabelled':'#94A3B8',
+  'Instagram':'#E0457B','Facebook':'#1F5FD6','Telegram':'#2AA3E0','Bluesky':'#1D9BF0','Mastodon':'#6364FF','Web':'#9AA3B2','Upload':'#475569',
+  'CRITICAL':'#B42318','HIGH':'#D9480F','MEDIUM':'#B7791F','LOW':'#2F855A','MINIMAL':'#5A6472',
+  'Scored by the AI':'#64748B','Flagged (score 5+)':'#D9480F','Reviewed by an analyst':'#B7791F','Confirmed violation':'#C8102E',
+  'Reported to the platform':'#1F5FD6','Taken down':'#1F9D55',
+  'Image analysis':'#2A6FF0','Post / link analysis':'#7C3AED','Searches (hunt + sweep)':'#0F8A7E','Reports & briefs':'#E8871E'
+};
+function paint(root){
+  (root||document).querySelectorAll('.bar').forEach(b=>{
+    if(b.dataset.painted)return;const lab=b.querySelector('.lab');if(!lab)return;
+    const name=lab.textContent.trim(),col=C[name];
+    if(col){b.style.setProperty('--bc',col);if(!lab.querySelector('i.sw'))lab.insertAdjacentHTML('afterbegin','<i class="sw"></i>')}
+    b.dataset.painted='1';
+  });
+  // red stripe when something needs attention
+  const due=document.getElementById('t-upd');const up=due&&due.closest('.kpi');if(up)up.classList.toggle('alert',/due/.test(due.textContent)&&!/none/.test(due.textContent));
+  const cap=document.getElementById('co-cap');if(cap){const m=cap.textContent.match(/(\d+)\s*\/\s*(\d+)/);cap.closest('.kpi').classList.toggle('alert',!!m&&+m[1]>=0.8*+m[2])}
+}
+new MutationObserver(()=>paint()).observe(document.querySelector('main')||document.body,{childList:true,subtree:true});
+paint();
+/* explanations on demand */
+const ban=document.querySelector('.banner');
+const last=[...document.querySelectorAll('.banner .chip')].find(c=>/Last 24 hours/.test(c.textContent));if(last)last.id='lastchip';
+if(ban){const t=document.createElement('span');t.className='chip notes';t.title='Show or hide the explanations under each panel';
+  const on=()=>{let v=false;try{v=localStorage.getItem('spear_ops_notes')==='1'}catch(e){}return v};
+  const set=v=>{document.body.classList.toggle('show-notes',v);t.classList.toggle('on',v);t.textContent=v?'ⓘ Hide notes':'ⓘ Notes';try{localStorage.setItem('spear_ops_notes',v?'1':'0')}catch(e){}};
+  t.onclick=()=>set(!document.body.classList.contains('show-notes'));ban.appendChild(t);set(on())}
+/* fold the analyst-workspace shortcuts */
+const g=[...document.querySelectorAll('.side .grp')].find(x=>/Analyst workspace/i.test(x.textContent));
+if(g){g.classList.add('fold');g.title='Show the analyst workspace shortcuts';g.onclick=()=>g.classList.toggle('open')}
+})();
+</script>
 </body>
 </html>
