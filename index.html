@@ -6047,6 +6047,14 @@ if('serviceWorker' in navigator){window.addEventListener('load',function(){navig
     if (/facebook|fb\.com|fb\.me|(^|[^a-z])fb([^a-z]|$)|katana/.test(s)) return 'Facebook';
     return '';
   }
+  async function shaOf(dataUrl) {
+    try {
+      var m = /^data:image\/[\w.+-]+;base64,(.*)$/.exec(dataUrl || ''); if (!m || !crypto.subtle) return '';
+      var bin = atob(m[1]), u = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+      var h = await crypto.subtle.digest('SHA-256', u);
+      return Array.from(new Uint8Array(h)).map(function (x) { return x.toString(16).padStart(2, '0'); }).join('');
+    } catch (e) { return ''; }
+  }
   function nowIso() { return new Date().toISOString().slice(0, 16); }
   function month() { return new Date().toISOString().slice(0, 7); }
   function isUpload(it) { return /upload/i.test(it.platform || '') || /^photo:/.test(it.url || ''); }
@@ -6103,8 +6111,13 @@ if('serviceWorker' in navigator){window.addEventListener('load',function(){navig
       addPhoto = function (dataUrl, o) {
         o = o || {};
         if (o.platform === 'upload') { var a = appFromText(o.name) || getApp(); if (APPS.indexOf(a) >= 0) o.platform = a; }
+        var shaP = shaOf(dataUrl);                         // same fingerprint the server files the original under
         var p = origAdd.apply(this, arguments);
-        return Promise.resolve(p).then(function (it) { if (it) { stamp(it, o.name); try { itemsSave(); } catch (e) {} paint(); } return it; });
+        return Promise.resolve(p).then(function (it) {
+          if (!it) return it;
+          stamp(it, o.name);
+          return shaP.then(function (h) { if (h && !it.image_sha) it.image_sha = h; try { itemsSave(); } catch (e) {} paint(); return it; });
+        });
       };
       addPhoto._intake = true;
     }
@@ -6132,14 +6145,26 @@ if('serviceWorker' in navigator){window.addEventListener('load',function(){navig
     if (typeof f === 'string' && /^data:image\//.test(f)) return { data: f, kind: 'video-frame' };
     return null;
   }
-  var evBusy = false, evWait = 0;
+  var evBusy = false, evWait = 0, evIdx = {}, evIdxAt = 0, evFirst = {};
   async function sendEvidence() {
     if (evBusy || Date.now() < evWait || !api() || !key() || typeof items === 'undefined') return;
     var synced = {}; try { synced = JSON.parse(localStorage.getItem('spear_synced_v1') || '{}') || {}; } catch (e) {}
-    var todo = items.filter(function (it) { return it.uid && synced[it.uid] && !evSent[it.uid] && fileOf(it); });
+    var now = Date.now();
+    var todo = items.filter(function (it) {
+      if (!(it.uid && synced[it.uid] && !evSent[it.uid] && fileOf(it))) return false;
+      if (!evFirst[it.uid]) evFirst[it.uid] = now;
+      return now - evFirst[it.uid] > 30000;               // give the server's own copy time to show up first
+    });
     if (!todo.length) return;
     evBusy = true;
     try {
+      if (Date.now() - evIdxAt > 20000) {             // the server already keeps every analysed image; only send what it lacks
+        evIdxAt = Date.now();
+        var ri = await fetch(api() + '/api/evidence-index', { headers: { 'X-Spear-Key': key() } });
+        if (ri.ok) evIdx = (await ri.json()).files || {};
+      }
+      todo = todo.filter(function (it) { if (evIdx[it.uid]) { evSent[it.uid] = 1; return false; } return true; });
+      try { localStorage.setItem(KEY_EV, JSON.stringify(evSent)); } catch (e) {}
       for (var i = 0; i < todo.length && i < 1; i++) {      // one file per pass: the server allows 40 calls a minute per address
         var it = todo[i], f = fileOf(it);
         var r = await fetch(api() + '/api/evidence/' + encodeURIComponent(it.uid), { method: 'POST',
