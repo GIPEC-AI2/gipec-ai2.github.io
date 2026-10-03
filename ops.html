@@ -183,6 +183,18 @@ tbody tr.x-CRITICAL:hover{background:#ffeeec}tbody tr.x-HIGH:hover{background:#f
   .grid2{grid-template-columns:1fr}
   .bar .lab{width:120px;flex-basis:120px}
 }
+
+.ck{width:28px;text-align:center}
+.grid2>*{min-width:0}
+.tblwrap{overflow-x:auto}
+.bulkbar{display:flex;gap:8px;align-items:center;padding:8px 14px;background:#eef3ff;border-bottom:1px solid var(--line);font:600 12px Inter,sans-serif;color:var(--navy)}
+.tmform{grid-template-columns:1fr 1fr;gap:10px 14px;background:#f7f8fb;border:1px solid var(--line);border-radius:10px;padding:12px;margin:10px 0}
+.tmform label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);font-weight:600}
+.tmform label.chk{flex-direction:row;align-items:center;gap:8px;color:var(--ink);font-weight:500}
+.tmform .wide{grid-column:1/-1}
+tr.retired td{opacity:.55}
+table.mini{width:100%;border-collapse:collapse}table.mini th{position:static;font-size:10.5px;padding:6px 8px}table.mini td{padding:7px 8px;font-size:12px}
+@media (max-width:720px){.tmform{grid-template-columns:1fr}.banner{flex-wrap:wrap}.banner .sp{display:none}}
 @media print{
   .side,.banner,.kpis,.card,.netfx,.foot2,.sagebtn,.sage,.df,.dh .x,.warn,.view{display:none!important}
   .shade{display:none!important}
@@ -204,7 +216,9 @@ tbody tr.x-CRITICAL:hover{background:#ffeeec}tbody tr.x-HIGH:hover{background:#f
     <a class="nav" data-v="approved"><span class="ic">✓</span>Human approved<span class="ct" id="c-appr"></span></a>
     <a class="nav" data-v="specialist"><span class="ic">◷</span>Specialist queue<span class="ct" id="c-esc"></span></a>
     <a class="nav" data-v="reported"><span class="ic">▤</span>Reported to Meta<span class="ct" id="c-rep"></span></a>
+    <a class="nav" data-v="takedown"><span class="ic">⤓</span>Takedowns<span class="ct" id="c-tk"></span></a>
     <div class="grp">Agent management</div>
+    <a class="nav" data-v="cost"><span class="ic">$</span>Cost analysis</a>
     <a class="nav" data-v="console"><span class="ic">⌘</span>Agent console</a>
     <a class="nav" data-v="memory"><span class="ic">◈</span>Agent memory</a>
     <div class="grp">Analyst workspace</div>
@@ -253,6 +267,7 @@ tbody tr.x-CRITICAL:hover{background:#ffeeec}tbody tr.x-HIGH:hover{background:#f
           <button class="btn pri" id="bcsv">⭳ Export CSV</button>
           <button class="btn pri" id="ball">☰ View all open cases</button>
         </div>
+        <div class="bulkbar" id="bulkbar" style="display:none"><span id="bulkn"></span><button class="btn b-sm b-ok" id="bk-ok">Bulk approve</button><button class="btn b-sm b-no" id="bk-no">Bulk reject</button><button class="btn b-sm b-esc" id="bk-esc">Bulk escalate</button><button class="btn b-sm lnk" id="bk-clr">Clear</button></div>
         <div class="tw"><table>
           <thead><tr><th>Case ID</th><th>Date</th><th>Type</th><th>Platform</th><th style="text-align:center">Agent recommendation</th><th>Risk</th><th>Status</th><th>Decision</th><th>View details</th></tr></thead>
           <tbody id="qbody"></tbody>
@@ -276,6 +291,14 @@ tbody tr.x-CRITICAL:hover{background:#ffeeec}tbody tr.x-HIGH:hover{background:#f
         <div class="panel"><h3>Senior analyst's confirmed Meta submissions, by month</h3><div id="x-month"></div><div class="note" id="x-monthn"></div></div>
         <div class="panel"><h3>Senior analyst's submissions, by type</h3><div id="x-ftype"></div><div class="note">The analyst's own record, distilled on the backend. No usernames or links leave the private repository.</div></div>
       </div>
+      <div class="grid2" style="margin-top:14px">
+        <div class="panel"><h3>Detection funnel</h3><div id="x-funnel"></div><div class="note" id="x-funneln"></div></div>
+        <div class="panel"><h3>Repeat-offender accounts</h3><div id="x-repeat"></div><div class="note">Accounts behind two or more cases in this workspace, worst first.</div></div>
+        <div class="panel"><h3>Monthly volume vs. the 250 goal</h3><div id="x-goal"></div></div>
+        <div class="panel"><h3>Daily digest</h3><pre id="x-digest" class="box" style="white-space:pre-wrap;font:12px/1.5 'JetBrains Mono',monospace;max-height:260px;overflow:auto;margin:0">Loading…</pre>
+          <div style="display:flex;gap:8px;margin-top:10px"><button class="btn pri" id="x-dcopy">Copy digest</button><button class="btn ghost" id="x-drefresh">Refresh</button></div>
+          <div class="note">Paste into an email or text to the team. Built from the shared case database, not just this browser.</div></div>
+      </div>
     </section>
 
     <!-- ===== Agent console ===== -->
@@ -292,10 +315,61 @@ tbody tr.x-CRITICAL:hover{background:#ffeeec}tbody tr.x-HIGH:hover{background:#f
         </div>
         <div class="prog" id="prog" style="display:none"></div>
       </div>
+      <div class="grid2" style="margin-top:14px">
+        <div class="panel">
+          <h3>Scheduled sweep — runs on the server every 6 hours</h3>
+          <div class="kv" id="sw-stat"><div>Status</div><div>loading…</div></div>
+          <div class="note" style="margin-top:0">Hashtags the server watches on its own, even when no one has the dashboard open:</div>
+          <div class="tags" id="sw-tags"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <input type="text" id="sw-new" placeholder="Add a hashtag to the server watchlist" style="flex:1;min-width:200px">
+            <button class="btn ghost" id="sw-add">Add</button>
+            <button class="btn pri" id="sw-run">Run sweep now</button>
+          </div>
+          <div class="note">Click a hashtag to remove it. Facebook and Instagram are never swept; new leads appear under Watch in Agent analysis.</div>
+        </div>
+        <div class="panel">
+          <h3>Agent log</h3>
+          <div id="ag-log" style="max-height:380px;overflow:auto"></div>
+          <div class="note">Every analysis, memory change and takedown check on the server, newest first. Kept in the permanent database.</div>
+        </div>
+      </div>
     </section>
 
     <!-- ===== Agent memory ===== -->
     <section class="view" id="v-memory">
+      <div class="panel" style="margin-top:18px" id="tm">
+        <div class="qhead" style="padding:0 0 10px;border:0">
+          <h3 style="margin:0">Team memory</h3><span class="n" id="tm-count"></span>
+          <div class="sp"></div>
+          <select id="tm-f"><option value="active">Active only</option><option value="all">All entries</option><option value="retired">Retired only</option></select>
+          <button class="btn pri" id="tm-new">+ Add memory entry</button>
+        </div>
+        <div class="note" style="margin-top:0">How the team teaches the agent without waiting on a retrain. <b>Coded terms</b> are checked against the text in every image and post. <b>Known exceptions</b> hold a flag back for review. <b>Patterns</b> and <b>seasonal notes</b> go into the AI's instructions. <b>Deprecated</b> entries switch an old codebook term off. Retiring an entry keeps it for audit but stops the agent using it. Changes apply to the very next item.</div>
+        <form id="tm-form" class="tmform" style="display:none">
+          <input type="hidden" id="tm-id">
+          <label>Category<select id="tm-cat">
+            <option value="coded_term">Hashtag / coded term</option>
+            <option value="pattern">Pattern / visual MO</option>
+            <option value="seasonal">Seasonal pattern</option>
+            <option value="exception">Known exception (not harmful)</option>
+            <option value="deprecated">Deprecated / remove old pattern</option>
+          </select></label>
+          <label>Entry (short label)<input type="text" id="tm-label" maxlength="120" placeholder="e.g. goyslop · Second Sons Brewing · sun-cross watermark"></label>
+          <label class="wide">Detail — what should the agent do with this?<textarea id="tm-detail" rows="2" maxlength="1000"></textarea></label>
+          <label class="tm-ct">Other spellings (comma-separated)<input type="text" id="tm-var" placeholder="optional"></label>
+          <label class="tm-ct">Severity<select id="tm-sev"><option value="2">2 — low</option><option value="3">3</option><option value="4" selected>4</option><option value="5">5</option><option value="6">6 — highest</option></select></label>
+          <label class="tm-ct chk"><input type="checkbox" id="tm-ctx"> Needs context (send to review instead of flagging)</label>
+          <label>Your name<input type="text" id="tm-by" maxlength="60" placeholder="who is adding this"></label>
+          <div class="wide" style="display:flex;gap:8px"><button class="btn pri" type="submit" id="tm-save">Save to agent memory</button><button class="btn ghost" type="button" id="tm-cancel">Cancel</button></div>
+        </form>
+        <div class="tw"><table>
+          <thead><tr><th>Category</th><th>Entry</th><th>Detail</th><th>Status</th><th>Added by</th><th>Updated</th><th>Action</th></tr></thead>
+          <tbody id="tm-body"></tbody>
+        </table></div>
+        <div class="empty" id="tm-empty" style="display:none"></div>
+        <details style="margin-top:12px"><summary style="cursor:pointer;font-weight:600;font-size:13px">Audit trail — every add, edit, retire and restore</summary><div id="tm-audit" style="max-height:280px;overflow:auto;margin-top:8px"></div></details>
+      </div>
       <div class="kpis">
         <div class="kpi"><div class="l">Codebook entries (approved)</div><div class="v" id="m-cb">–</div><div class="d">coded terms, symbols, numbers</div></div>
         <div class="kpi"><div class="l">Analyst indicator themes</div><div class="v" id="m-th">–</div><div class="d" id="m-thd"></div></div>
@@ -305,6 +379,47 @@ tbody tr.x-CRITICAL:hover{background:#ffeeec}tbody tr.x-HIGH:hover{background:#f
       <div class="grid2">
         <div class="panel"><h3>What the agent learned from the senior analyst</h3><div id="m-themes"></div></div>
         <div class="panel"><h3>Codebook</h3><input type="text" id="cbq" placeholder="Search terms…" style="width:100%;margin-bottom:10px"><div id="m-cbl" style="max-height:520px;overflow:auto"></div></div>
+      </div>
+    </section>
+
+    <!-- ===== Takedowns ===== -->
+    <section class="view" id="v-takedown">
+      <div class="kpis">
+        <div class="kpi"><div class="l">Reported to the platform</div><div class="v" id="t-rep">–</div><div class="d">cases marked reported</div></div>
+        <div class="kpi"><div class="l">Taken down</div><div class="v" id="t-rem">–</div><div class="d" id="t-remd"></div></div>
+        <div class="kpi"><div class="l">Still up</div><div class="v" id="t-up">–</div><div class="d" id="t-upd"></div></div>
+        <div class="kpi"><div class="l">Median days to removal</div><div class="v" id="t-med">–</div><div class="d">reported → taken down</div></div>
+      </div>
+      <div class="card">
+        <div class="qhead">
+          <h2>Takedown tracking</h2><span class="n" id="t-count"></span>
+          <div class="sp"></div>
+          <select id="t-f"><option value="">All reported</option><option value="due">Recheck due</option><option value="up">Still up</option><option value="removed">Taken down</option></select>
+          <button class="btn ghost" id="t-check">Check non-Meta links now</button>
+          <button class="btn pri" id="t-csv">⭳ Export CSV</button>
+        </div>
+        <div class="tw"><table>
+          <thead><tr><th>Case ID</th><th>Platform</th><th>Account</th><th>Reported</th><th>Days</th><th>Status</th><th>Last check</th><th>Mark</th><th>Link</th></tr></thead>
+          <tbody id="t-body"></tbody>
+        </table></div>
+        <div class="empty" id="t-empty" style="display:none"></div>
+      </div>
+      <div class="note">Recheck schedule after a report: 1, 3, 7, 14 and 30 days. Facebook and Instagram links are checked by a person — open the link and mark it. For other platforms the server also checks the public link twice a day; a “page not found” marks the case taken down automatically. Every check is kept with the case.</div>
+    </section>
+
+    <!-- ===== Cost analysis ===== -->
+    <section class="view" id="v-cost">
+      <div class="kpis">
+        <div class="kpi"><div class="l">AI spend this month (est.)</div><div class="v" id="co-ai">–</div><div class="d" id="co-aid"></div></div>
+        <div class="kpi"><div class="l">Hosting (fixed)</div><div class="v" id="co-fix">–</div><div class="d">server + database, per month</div></div>
+        <div class="kpi"><div class="l">AI and search calls this month</div><div class="v" id="co-calls">–</div><div class="d" id="co-callsd"></div></div>
+        <div class="kpi"><div class="l">Today vs. daily cap</div><div class="v" id="co-cap">–</div><div class="d" id="co-capd"></div></div>
+      </div>
+      <div class="grid2">
+        <div class="panel"><h3>Spend by day (est.)</h3><div id="co-days"></div></div>
+        <div class="panel"><h3>Calls by type</h3><div id="co-kinds"></div><div class="note" id="co-note"></div></div>
+        <div class="panel"><h3>Monthly volume vs. the 250 goal</h3><div id="co-goal"></div></div>
+        <div class="panel"><h3>What an item costs</h3><div id="co-per"></div></div>
       </div>
     </section>
 
@@ -725,6 +840,270 @@ async function checkLive(){
 function renderAll(){renderKpis();fillFilters();renderTiers();renderQueue();if(VIEW==='exec')renderExec()}
 renderAll();go((location.hash||'#ops').slice(1));checkLive();
 setInterval(()=>{renderKpis();renderQueue()},60000);
+</script>
+<script id="ops-plus">
+/* ============================================================
+   Operations add-ons (Oct 2026): server sync, bulk decisions,
+   takedown tracking, cost analysis, team memory editor,
+   scheduled-sweep console, agent log, funnel, repeat offenders,
+   250 goal and daily digest. Uses the page's own helpers
+   (api, loadItems, saveItems, renderAll, go, VIEWS ...).
+   ============================================================ */
+(function(){
+const fmt$=v=>v==null?'—':'$'+(v<10?Number(v).toFixed(2):Math.round(v).toLocaleString());
+const ago=iso=>{if(!iso)return '—';const s=(Date.now()-new Date(iso).getTime())/1000;if(isNaN(s))return '—';
+  return s<90?'just now':s<5400?Math.round(s/60)+' min ago':s<172800?Math.round(s/3600)+' hrs ago':Math.round(s/86400)+' days ago'};
+const day=iso=>iso?new Date(iso).toLocaleDateString(undefined,{month:'short',day:'numeric'}):'—';
+async function getJSON(p){const r=await api(p);if(!r.ok)throw new Error(p+' '+r.status);return r.json()}
+async function postJSON(p,b){const r=await api(p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b||{})});
+  let j=null;try{j=await r.json()}catch(e){}if(!r.ok)throw new Error((j&&j.detail)||('error '+r.status));return j}
+
+/* ---------- 1. keep this page's cases in the shared server database ---------- */
+const TENANT='gipec',SENT='spear_synced_v1',MAX_THUMB=1500000;
+let sent={},since=null,timer=null,busy=false;
+const loadSent=()=>{try{sent=JSON.parse(localStorage.getItem(SENT)||'{}')||{}}catch(e){sent={}}};
+const saveSent=()=>{try{localStorage.setItem(SENT,JSON.stringify(sent))}catch(e){}};
+const newUid=()=>crypto.randomUUID?crypto.randomUUID():(Date.now().toString(36)+Math.random().toString(36).slice(2));
+const hash=s=>{let h=0;for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))|0;return h};
+function sig(it){const o={};for(const k in it)if(k!=='thumb'&&k!=='id')o[k]=it[k];const s=JSON.stringify(o);return s.length+':'+hash(s)}
+function doc(it){const o={};for(const k in it){if(k==='thumb'&&it.thumb&&String(it.thumb).length>MAX_THUMB)continue;o[k]=it[k]}return o}
+const rawSave=saveItems;
+async function push(){
+  if(busy||!KEY)return;busy=true;
+  try{
+    loadSent();const a=loadItems();let dirty=false;
+    a.forEach(it=>{if(!it.uid){it.uid=newUid();dirty=true}});if(dirty)rawSave(a);
+    const changed=a.filter(it=>sent[it.uid]!==sig(it));
+    for(let i=0;i<changed.length;i+=20){
+      const b=changed.slice(i,i+20);
+      await postJSON('/api/cases',{tenant:TENANT,cases:b.map(it=>{const d=doc(it);d.id=it.uid;d.local_id=it.id;return d})});
+      b.forEach(it=>sent[it.uid]=sig(it));
+    }
+    saveSent();   // this page never deletes server cases; deletions happen in Agent analysis only
+  }catch(e){console.warn('[ops-sync] save deferred:',e.message)}finally{busy=false}
+}
+async function pull(){
+  if(!KEY)return;
+  try{
+    const j=await getJSON('/api/cases?tenant='+TENANT+(since?'&since='+encodeURIComponent(since):''));since=j.now;
+    loadSent();const a=loadItems(),byUid={};a.forEach(it=>{if(it.uid)byUid[it.uid]=it});
+    let maxId=Math.max(0,...a.map(x=>+x.id||0)),changed=0;
+    (j.cases||[]).forEach(c=>{
+      const d=c.data||{},u=c.id,local=byUid[u],untouched=local&&sent[u]===sig(local);
+      if(c.deleted){if(local&&untouched){a.splice(a.indexOf(local),1);delete sent[u];changed++}return}
+      if(local&&!untouched)return;                    // local edits win; they will be pushed
+      const copy={};for(const k in d)if(k!=='local_id'&&k!=='thumb')copy[k]=d[k];copy.uid=u;
+      if(local){copy.id=local.id;Object.keys(local).forEach(k=>{if(!(k in copy))delete local[k]});Object.assign(local,copy)}
+      else{copy.id=++maxId;a.unshift(copy)}
+      sent[u]=sig(local||copy);changed++;
+    });
+    if(changed){rawSave(a);saveSent();ITEMS=loadItems();renderAll();if(VIEW==='takedown')renderTakedowns()}
+  }catch(e){console.warn('[ops-sync] load deferred:',e.message)}
+}
+saveItems=function(a){rawSave(a);clearTimeout(timer);timer=setTimeout(push,3000)};
+if(KEY){pull().then(push);setInterval(pull,60000)}
+
+/* ---------- 2. new views ---------- */
+VIEWS.takedown={t:'Takedown tracking',s:'Reported cases followed until the post comes down — rechecks, removals and time to removal',sec:'v-takedown'};
+VIEWS.cost={t:'Cost analysis',s:'What the system costs to run — AI calls, estimated spend, hosting and the cost of each item',sec:'v-cost'};
+const _go=go;
+go=function(v){_go(v);if(VIEW==='takedown')renderTakedowns();if(VIEW==='cost')renderCost();if(VIEW==='memory')renderTeam();
+  if(VIEW==='console')renderConsole();if(VIEW==='exec')renderExecPlus();clearSel()};
+const _renderAll=renderAll;
+renderAll=function(){_renderAll();const n=ITEMS.filter(x=>x.reportedAt&&!(x.takedown&&x.takedown.status==='removed')).length;$('c-tk').textContent=n||'';
+  if(VIEW==='takedown')renderTakedowns()};
+
+/* ---------- 3. bulk decisions ---------- */
+const SEL=new Set();
+function clearSel(){SEL.clear();bulkBar()}
+function bulkBar(){const b=$('bulkbar');if(!b)return;b.style.display=SEL.size?'flex':'none';$('bulkn').textContent=SEL.size+' selected'}
+const _renderQueue=renderQueue;
+renderQueue=function(){
+  _renderQueue();
+  const head=document.querySelector('#v-ops thead tr');
+  if(head&&!head.querySelector('.ck'))head.insertAdjacentHTML('afterbegin','<th class="ck"><input type="checkbox" id="selall" title="Select all"></th>');
+  document.querySelectorAll('#qbody tr').forEach(tr=>{
+    const b=tr.querySelector('[data-d]');if(!b||tr.querySelector('.ck'))return;const id=b.dataset.d;
+    const it=ITEMS.find(x=>String(x.id)===String(id));const can=it&&isOpen(it);
+    tr.insertAdjacentHTML('afterbegin',`<td class="ck">${can?`<input type="checkbox" data-sel="${esc(id)}" ${SEL.has(String(id))?'checked':''}>`:''}</td>`);
+  });
+  const sa=$('selall');if(sa)sa.checked=false;bulkBar();
+};
+document.addEventListener('change',e=>{
+  if(e.target.id==='selall'){document.querySelectorAll('#qbody [data-sel]').forEach(c=>{c.checked=e.target.checked;c.checked?SEL.add(c.dataset.sel):SEL.delete(c.dataset.sel)});bulkBar()}
+  else if(e.target.dataset&&e.target.dataset.sel){e.target.checked?SEL.add(e.target.dataset.sel):SEL.delete(e.target.dataset.sel);bulkBar()}
+});
+function bulk(status){const ids=[...SEL];if(!ids.length)return;
+  const word=status==='Confirmed'?'Approve':status==='Dismissed'?'Reject':'Escalate';
+  ids.forEach(id=>decide(id,status));clearSel();toast(`${word}d ${ids.length} case${ids.length>1?'s':''}`)}
+$('fplat').onchange=()=>renderQueue();$('ftype').onchange=()=>renderQueue();$('ftier').onchange=()=>{renderTiers();renderQueue()};
+$('bk-ok').onclick=()=>bulk('Confirmed');$('bk-no').onclick=()=>bulk('Dismissed');$('bk-esc').onclick=()=>bulk('Escalated');$('bk-clr').onclick=()=>{clearSel();renderQueue()};
+
+/* ---------- 4. takedown tracking ---------- */
+const META=/(^|\.)(facebook\.com|fb\.com|fb\.me|instagram\.com|instagr\.am|threads\.net|threads\.com|whatsapp\.com|wa\.me)$/i;
+const RECHECK=[1,3,7,14,30];
+function hostOf(u){try{return new URL((u||'').split(' ')[0]).hostname.replace(/^www\./,'')}catch(e){return ''}}
+function tkOf(it){return it.takedown||{}}
+function tkStatus(it){const t=tkOf(it);if(t.status==='removed')return 'removed';const ch=t.checks||[];return ch.length||t.auto?'up':'unchecked'}
+function lastCheck(it){const t=tkOf(it);const c=(t.checks||[]).slice(-1)[0];const a=t.auto;
+  if(c&&a)return new Date(c.at)>new Date(a.at)?c:{at:a.at,result:a.result,by:'server'};return c||(a?{at:a.at,result:a.result,by:'server'}:null)}
+function nextDue(it){if(tkStatus(it)==='removed')return null;const t=tkOf(it);const ch=t.checks||[];
+  const n=ch.filter(c=>c.result==='still up').length,base=new Date(it.reportedAt).getTime();
+  const last=ch.length?new Date(ch[ch.length-1].at).getTime():0;
+  if(n<RECHECK.length)return Math.max(base+RECHECK[n]*864e5,last+864e5);   // 1, 3, 7, 14, 30 days after the report
+  return last+30*864e5}                                                       // then monthly
+function isDue(it){const d=nextDue(it);return d!=null&&Date.now()>=d}
+function tkRows(){const f=$('t-f').value;
+  return ITEMS.filter(x=>x.reportedAt).filter(it=>!f||(f==='due'?isDue(it):tkStatus(it)===f||(f==='up'&&tkStatus(it)==='unchecked')))
+    .sort((a,b)=>(isDue(b)-isDue(a))||(new Date(b.reportedAt)-new Date(a.reportedAt)))}
+window.renderTakedowns=function(){
+  const all=ITEMS.filter(x=>x.reportedAt),rem=all.filter(x=>tkStatus(x)==='removed');
+  $('t-rep').textContent=all.length;$('t-rem').textContent=rem.length;$('t-remd').textContent=all.length?Math.round(100*rem.length/all.length)+'% of reported':'';
+  $('t-up').textContent=all.length-rem.length;const due=all.filter(isDue).length;$('t-upd').innerHTML=due?`<span class="up">${due} recheck${due>1?'s':''} due</span>`:'none due';
+  const ds=rem.map(x=>(new Date(tkOf(x).removedAt)-new Date(x.reportedAt))/864e5).filter(v=>v>=0).sort((a,b)=>a-b);
+  $('t-med').innerHTML=ds.length?`${ds[Math.floor(ds.length/2)].toFixed(1)}<small>days</small>`:'—';
+  const r=tkRows();$('t-count').textContent=`${r.length} case${r.length===1?'':'s'}`;
+  $('t-body').innerHTML=r.map(it=>{
+    const st=tkStatus(it),lc=lastCheck(it),days=Math.floor((Date.now()-new Date(it.reportedAt))/864e5),meta=META.test(hostOf(it.url));
+    const pill=st==='removed'?'<span class="sla done">Taken down</span>':isDue(it)?'<span class="sla over">Recheck due</span>':st==='up'?'<span class="sla esc">Still up</span>':'<span class="sla">Not checked yet</span>';
+    const lct=lc?`${ago(lc.at)}${lc.by?' · '+esc(lc.by):''}${lc.result!=null?' · '+esc(String(lc.result)):''}`:'—';
+    const btns=st==='removed'?`<button class="btn b-sm lnk" data-tk="reopen" data-id="${it.id}">Undo</button>`
+      :`<div class="dec"><button class="btn b-sm b-no" data-tk="up" data-id="${it.id}">Still up</button><button class="btn b-sm b-ok" data-tk="removed" data-id="${it.id}">Taken down</button></div>`;
+    return `<tr><td class="mono">${caseId(it)}</td><td class="plat"><i style="background:${PCOL[platOf(it)]||'#9aa3b2'}"></i>${esc(platOf(it))}${meta?'':' <span class="mono" title="The server also checks this link">· auto</span>'}</td>
+      <td>${esc(it.poster||'—')}</td><td class="mono">${esc(day(it.reportedAt))}</td><td class="mono">${days}</td><td>${pill}</td><td class="mono" style="white-space:normal">${lct}</td><td>${btns}</td>
+      <td>${/^https?:/.test(it.url||'')?`<a class="btn lnk" style="text-decoration:none" href="${esc((it.url||'').split(' ')[0])}" target="_blank" rel="noopener noreferrer">Open ↗</a>`:'—'}</td></tr>`}).join('');
+  const em=$('t-empty');if(!r.length){em.style.display='';em.innerHTML=all.length?'<b>Nothing in this filter.</b>':'<b>No reported cases yet.</b><br>Mark a case “reported to Meta” from its Case Report and it appears here for follow-up.'}else em.style.display='none';
+};
+$('t-f').onchange=renderTakedowns;
+$('t-body').addEventListener('click',e=>{const b=e.target.closest('button[data-tk]');if(!b)return;const a=b.dataset.tk,now=new Date().toISOString();
+  const by=(localStorage.getItem('spear_ops_name')||'analyst');
+  mutate(b.dataset.id,x=>{const t=x.takedown||(x.takedown={});t.checks=t.checks||[];
+    if(a==='up'){t.status='up';t.checks.push({at:now,result:'still up',by})}
+    else if(a==='removed'){t.status='removed';t.removedAt=now;t.how='marked by '+by;t.checks.push({at:now,result:'taken down',by})}
+    else{delete t.status;delete t.removedAt;delete t.how;t.checks.push({at:now,result:'reopened',by})}});
+  ITEMS=loadItems();renderAll();renderTakedowns();toast(a==='removed'?'Marked taken down':a==='up'?'Recorded: still up — next recheck scheduled':'Reopened')});
+$('t-check').onclick=async()=>{try{const j=await postJSON('/api/takedowns/check',{});toast(j.note||'Checking…');setTimeout(pull,70000)}catch(e){toast('Could not start the check: '+e.message)}};
+$('t-csv').onclick=()=>{const r=tkRows();if(!r.length){toast('Nothing to export');return}
+  const cell=v=>{v=v==null?'':String(v);return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
+  const head=['Case ID','Platform','Account','URL','Reported','Status','Taken down','Days to removal','Last check'];
+  const lines=r.map(it=>{const t=tkOf(it),lc=lastCheck(it);return [caseId(it),platOf(it),it.poster||'',(it.url||'').split(' ')[0],(it.reportedAt||'').slice(0,10),
+    tkStatus(it)==='removed'?'Taken down':isDue(it)?'Recheck due':'Still up',(t.removedAt||'').slice(0,10),
+    t.removedAt?((new Date(t.removedAt)-new Date(it.reportedAt))/864e5).toFixed(1):'',lc?(lc.at||'').slice(0,16)+' '+(lc.result||''):''].map(cell).join(',')});
+  const blob=new Blob(['﻿'+[head.join(','),...lines].join('\r\n')],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=`Project_Spear_takedowns_${new Date().toISOString().slice(0,10)}.csv`;a.click()};
+
+/* ---------- 5. cost analysis ---------- */
+window.renderCost=async function(){
+  try{
+    const j=await getJSON('/api/costs');
+    $('co-ai').textContent=fmt$(j.ai_spend_estimate);$('co-aid').textContent=`estimate · ${j.month}`;
+    const fx=(j.fixed_monthly.web_service||0)+(j.fixed_monthly.database||0);$('co-fix').textContent=fmt$(fx);
+    $('co-calls').textContent=(j.calls||0).toLocaleString();$('co-callsd').textContent=`total this month ≈ ${fmt$(j.total_estimate)} with hosting`;
+    const c=j.caps||{};$('co-cap').innerHTML=c.daily_cap?`${c.used_today}<small>/ ${c.daily_cap}</small>`:'—';
+    $('co-capd').textContent=c.daily_cap?`paid AI calls today · ${c.per_minute_cap||40}/min limit per location`:'';
+    const days=j.days||[];const m=Math.max(0.01,...days.map(d=>d.spend));
+    $('co-days').innerHTML=days.length?days.slice(-31).map(d=>`<div class="bar"><span class="lab">${esc(day(d.day+'T12:00:00'))}</span><span class="trk"><span class="fil" style="width:${Math.max(2,100*d.spend/m)}%;display:block"></span></span><span class="num">${fmt$(d.spend)}</span></div>`).join(''):'<div class="note">Counting starts with the first AI call after this update.</div>';
+    const names={vision:'Image analysis',text:'Post / link analysis',search:'Searches (hunt + sweep)',report:'Reports & briefs'};
+    $('co-kinds').innerHTML=Object.keys(names).map(k=>`<div class="bar"><span class="lab">${names[k]}</span><span class="trk"><span class="fil" style="width:${Math.max(2,100*(j.totals[k]||0)/Math.max(1,...Object.values(j.totals)))}%;display:block"></span></span><span class="num">${(j.totals[k]||0).toLocaleString()}</span></div>`).join('')
+      +`<div class="note" style="margin-top:6px">Per-call estimates: ${Object.keys(names).map(k=>`${names[k].toLowerCase()} ${fmt$(j.rates[k])}`).join(' · ')}</div>`;
+    $('co-note').textContent=j.note||'';
+    renderGoal('co-goal');
+    $('co-per').innerHTML=`<div class="kv"><div>Items analysed</div><div>${j.items_analysed==null?'—':j.items_analysed}</div>
+      <div>AI cost per item</div><div>${j.per_item==null?'—':fmt$(j.per_item)}</div>
+      <div>250 items at that rate</div><div>${j.per_item==null?'—':fmt$(j.per_item*250)}</div>
+      <div>Hosting per item at 250 a month</div><div>${fmt$(fx/250)}</div></div>
+      <div class="note">AI cost is estimated from call counts. Set SPEAR_COST_VISION, SPEAR_COST_TEXT, SPEAR_COST_SEARCH and SPEAR_COST_REPORT on Render to match the Google bill.</div>`;
+  }catch(e){$('co-days').innerHTML=`<div class="note">Cost data not available yet (${esc(e.message)}). It appears once the server update is live.</div>`}
+};
+
+/* ---------- 6. the 250 goal (shared by Executive and Cost views) ---------- */
+async function renderGoal(el){
+  try{const g=await getJSON('/api/vision-log');const n=g.items||0,pct=Math.min(100,Math.round(100*n/250));
+    $(el).innerHTML=`<div class="bar"><span class="lab">${esc(g.month)}</span><span class="trk" style="height:16px"><span class="fil" style="width:${Math.max(2,pct)}%;display:block"></span></span><span class="num">${n}/250</span></div>
+      <div class="kv" style="margin-top:10px"><div>Seconds per item</div><div>median ${g.seconds_per_item.median??'—'} · slowest 10% ${g.seconds_per_item.p90??'—'}</div>
+      <div>Total AI time</div><div>${g.total_ai_seconds?Math.round(g.total_ai_seconds/60)+' min':'—'}</div>
+      <div>Flagged / review / cleared</div><div>${g.flagged} / ${g.review} / ${g.cleared_everyday_numbers}</div>
+      <div>First / last item</div><div class="mono">${esc((g.first||'—').replace('T',' ').slice(0,16))} → ${esc((g.last||'—').replace('T',' ').slice(0,16))}</div>
+      <div>Errors</div><div>${g.errors}</div></div><div class="note">Counts every image and post the server analysed this month (test runs excluded).</div>`}
+  catch(e){$(el).innerHTML='<div class="note">Volume log not available yet.</div>'}
+}
+
+/* ---------- 7. executive add-ons ---------- */
+async function renderExecPlus(){
+  const a=ITEMS,scored=a.length,flagged=a.filter(x=>(x.score||0)>=5),reviewed=flagged.filter(x=>x.status&&x.status!=='Pending'),
+    conf=a.filter(x=>x.status==='Confirmed'||x.status==='Escalated'),rep=a.filter(x=>x.reportedAt),rem=rep.filter(x=>tkStatus(x)==='removed');
+  const steps=[['Scored by the AI',scored],['Flagged (score 5+)',flagged.length],['Reviewed by an analyst',reviewed.length],['Confirmed violation',conf.length],['Reported to the platform',rep.length],['Taken down',rem.length]];
+  const mx=Math.max(1,scored);$('x-funnel').innerHTML=steps.map(([k,v])=>`<div class="bar"><span class="lab">${k}</span><span class="trk"><span class="fil" style="width:${Math.max(2,100*v/mx)}%;display:block"></span></span><span class="num">${v}</span></div>`).join('');
+  const dis=reviewed.filter(x=>x.status==='Dismissed').length;
+  $('x-funneln').textContent=reviewed.length?`False-positive rate: ${Math.round(100*dis/reviewed.length)}% of flagged cases an analyst reviewed were rejected.`:'False-positive rate appears after the first reviews.';
+  const by={};a.forEach(x=>{const p=(x.poster||'').trim();if(!p||/^unknown|not established|^demo/i.test(p))return;(by[p]=by[p]||[]).push(x)});
+  const rep2=Object.entries(by).filter(([,v])=>v.length>1).sort((x,y)=>(y[1].length-x[1].length)||(Math.max(...y[1].map(i=>i.score||0))-Math.max(...x[1].map(i=>i.score||0)))).slice(0,10);
+  $('x-repeat').innerHTML=rep2.length?`<div class="tblwrap"><table class="mini"><thead><tr><th>Account</th><th>Cases</th><th>Platform</th><th>Worst</th><th>Confirmed</th></tr></thead><tbody>${rep2.map(([p,v])=>`<tr><td>${esc(p)}</td><td class="mono">${v.length}</td><td>${esc([...new Set(v.map(platOf))].join(', '))}</td><td class="mono">${Math.max(...v.map(i=>i.score||0))}/10</td><td class="mono">${v.filter(i=>i.status==='Confirmed'||i.status==='Escalated').length}</td></tr>`).join('')}</tbody></table></div>`:'<div class="note" style="margin-top:0">No account appears in more than one case yet.</div>';
+  renderGoal('x-goal');loadDigest();
+}
+async function loadDigest(){try{const d=await getJSON('/api/digest');$('x-digest').textContent=d.text}catch(e){$('x-digest').textContent='Digest not available yet — it appears once the server update is live.'}}
+$('x-dcopy').onclick=()=>navigator.clipboard.writeText($('x-digest').textContent).then(()=>toast('Digest copied'),()=>toast('Copy failed'));
+$('x-drefresh').onclick=loadDigest;
+
+/* ---------- 8. team memory editor ---------- */
+const CATN={coded_term:'Hashtag / coded term',pattern:'Pattern / visual MO',seasonal:'Seasonal pattern',exception:'Known exception',deprecated:'Deprecated'};
+let MEM=null;
+$('tm-by').value=localStorage.getItem('spear_ops_name')||'';
+function showForm(e){const f=$('tm-form');f.style.display='grid';$('tm-id').value=e?e.id:'';$('tm-cat').value=e?e.category:'coded_term';$('tm-cat').disabled=!!e;
+  $('tm-label').value=e?e.label:'';$('tm-detail').value=e?e.detail||'':'';$('tm-var').value=e?(e.variants||[]).join(', '):'';
+  $('tm-sev').value=String(e&&e.severity||4);$('tm-ctx').checked=!!(e&&e.needs_context);$('tm-save').textContent=e?'Save changes':'Save to agent memory';ctFields();$('tm-label').focus()}
+function ctFields(){const ct=$('tm-cat').value==='coded_term'||$('tm-cat').value==='exception';
+  document.querySelectorAll('.tm-ct').forEach(x=>x.style.display=ct?'':'none');
+  document.querySelectorAll('#tm-sev,#tm-ctx').forEach(x=>x.closest('label').style.display=$('tm-cat').value==='coded_term'?'':'none')}
+$('tm-cat').onchange=ctFields;$('tm-new').onclick=()=>showForm(null);$('tm-cancel').onclick=()=>{$('tm-form').style.display='none'};
+$('tm-form').onsubmit=async e=>{e.preventDefault();const by=$('tm-by').value.trim();if(!by){toast('Add your name so the change is attributed');$('tm-by').focus();return}
+  localStorage.setItem('spear_ops_name',by);const id=$('tm-id').value;
+  const body={category:$('tm-cat').value,label:$('tm-label').value.trim(),detail:$('tm-detail').value.trim(),variants:$('tm-var').value,by};
+  if(body.category==='coded_term'){body.severity=+$('tm-sev').value;body.needs_context=$('tm-ctx').checked}
+  try{await postJSON(id?'/api/memory/'+encodeURIComponent(id):'/api/memory',body);$('tm-form').style.display='none';toast(id?'Memory entry updated':'Saved — the agent uses it from the next item');renderTeam()}
+  catch(err){toast('Not saved: '+err.message)}};
+async function memAction(id,action){const by=$('tm-by').value.trim()||localStorage.getItem('spear_ops_name')||'';if(!by){toast('Add your name in the form first');showForm(null);return}
+  try{await postJSON('/api/memory/'+encodeURIComponent(id),{action,by});toast(action==='retire'?'Retired — kept for audit, no longer used':'Restored');renderTeam()}catch(e){toast(e.message)}}
+window.renderTeam=async function(){
+  try{MEM=await getJSON('/api/memory?status=all')}catch(e){$('tm-body').innerHTML='';$('tm-empty').style.display='';$('tm-empty').innerHTML='Team memory appears once the server update is live.';return}
+  const f=$('tm-f').value,l=MEM.entries.filter(e=>f==='all'||e.status===f).slice().sort((a,b)=>(b.updated_at||'').localeCompare(a.updated_at||''));
+  $('tm-count').textContent=`${MEM.counts.active} active · ${MEM.counts.retired} retired`;
+  $('tm-body').innerHTML=l.map(e=>`<tr class="${e.status==='retired'?'retired':''}"><td><span class="pill t-Other">${esc(CATN[e.category]||e.category)}</span></td>
+    <td><b>${esc(e.label)}</b>${(e.variants||[]).length?`<div class="mono" style="white-space:normal">${esc(e.variants.join(', '))}</div>`:''}${e.category==='coded_term'?`<div class="mono">sev ${e.severity}${e.needs_context?' · needs context':''}</div>`:''}</td>
+    <td style="white-space:normal;max-width:340px">${esc(e.detail||'')}</td><td>${e.status==='active'?'<span class="sla done">Active</span>':'<span class="sla rej">Retired</span>'}</td>
+    <td>${esc(e.added_by||'')}</td><td class="mono">${esc(ago(e.updated_at))}</td>
+    <td><div class="dec"><button class="btn b-sm lnk" data-me="${e.id}">Edit</button>${e.status==='active'?`<button class="btn b-sm b-no" data-mr="${e.id}">Retire</button>`:`<button class="btn b-sm b-ok" data-ms="${e.id}">Restore</button>`}</div></td></tr>`).join('');
+  $('tm-empty').style.display=l.length?'none':'';$('tm-empty').innerHTML='<b>No entries yet.</b><br>Add the first one — a new coded term, a known exception, or a pattern the team has seen.';
+  $('tm-audit').innerHTML=(MEM.audit||[]).map(a=>`<div style="padding:5px 0;border-bottom:1px solid var(--line);font-size:12.5px"><span class="mono">${esc((a.at||'').replace('T',' ').slice(0,16))}</span> · <b>${esc(a.by||'')}</b> ${esc(a.action)} <i>${esc(CATN[a.category]||'')}</i>: ${esc(a.label||'')}</div>`).join('')||'<div class="note">No changes yet.</div>';
+};
+$('tm-f').onchange=()=>renderTeam();
+$('tm-body').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+  if(b.dataset.me)showForm(MEM.entries.find(x=>x.id===b.dataset.me));else if(b.dataset.mr)memAction(b.dataset.mr,'retire');else if(b.dataset.ms)memAction(b.dataset.ms,'restore')});
+
+/* ---------- 9. agent console: scheduled sweep + agent log ---------- */
+let WL=null;
+async function renderConsole(){
+  try{const s=await getJSON('/api/sweep');const res=Array.isArray(s.results)?s.results:[];
+    const extra=Object.entries(s).filter(([k,v])=>!['results','generated_at'].includes(k)&&(typeof v==='string'||typeof v==='number'||typeof v==='boolean')).slice(0,5);
+    $('sw-stat').innerHTML=`<div>Last sweep</div><div class="mono">${esc(s.generated_at?String(s.generated_at).replace('T',' ').slice(0,16)+' UTC · '+ago(s.generated_at):'not run yet')}</div><div>Leads returned</div><div>${res.length}</div>`
+      +extra.map(([k,v])=>`<div>${esc(k.replace(/_/g,' '))}</div><div class="mono">${esc(String(v))}</div>`).join('')}
+  catch(e){$('sw-stat').innerHTML=`<div>Status</div><div>not reachable (${esc(e.message)})</div>`}
+  try{const w=await getJSON('/api/watchlist');WL=w.watchlist||w;renderWL()}catch(e){$('sw-tags').innerHTML='<span class="note">Watchlist not reachable.</span>'}
+  try{const g=await getJSON('/api/agent-log?n=80');$('ag-log').innerHTML=(g.rows||[]).map(r=>`<div style="padding:6px 0;border-bottom:1px solid var(--line);font-size:12.5px"><span class="mono">${esc((r.at||'').replace('T',' ').slice(5,16))}</span> <span class="pill t-Other">${esc(r.agent)}</span> ${esc(r.what)}${r.ms?` <span class="mono">${(r.ms/1000).toFixed(1)}s</span>`:''}${r.by?` · ${esc(r.by)}`:''}${r.test?' <span class="mono">(test)</span>':''}</div>`).join('')||'<div class="note">Nothing logged yet.</div>'}
+  catch(e){$('ag-log').innerHTML='<div class="note">Agent log appears once the server update is live.</div>'}
+}
+function renderWL(){const t=(WL&&WL.tags)||[];$('sw-tags').innerHTML=t.map(x=>`<span class="tag" data-wl="${esc(x)}" title="Click to remove">#${esc(x)} ✕</span>`).join('')||'<span class="note">No hashtags yet.</span>'}
+async function saveWL(tags,msg){const body=Object.assign({},WL||{},{tags});delete body._comment;
+  try{await postJSON('/api/watchlist',body);WL=Object.assign({},WL||{},{tags});renderWL();toast(msg)}catch(e){toast('Watchlist not saved: '+e.message)}}
+$('sw-tags').onclick=e=>{const s=e.target.closest('[data-wl]');if(!s)return;const t=((WL&&WL.tags)||[]).filter(x=>x!==s.dataset.wl);saveWL(t,'Removed from the watchlist — add it back any time')};
+$('sw-add').onclick=()=>{const v=$('sw-new').value.trim().replace(/^#/,'');if(!v)return;const t=((WL&&WL.tags)||[]).slice();if(t.map(x=>x.toLowerCase()).includes(v.toLowerCase())){toast('Already on the watchlist');return}
+  t.push(v);$('sw-new').value='';saveWL(t,'Added — the next sweep includes it')};
+$('sw-run').onclick=async()=>{$('sw-run').disabled=true;try{await postJSON('/api/sweep/run',{});toast('Sweep started on the server — new leads show under Watch in a few minutes')}catch(e){toast('Could not start: '+e.message)}finally{setTimeout(()=>{$('sw-run').disabled=false;renderConsole()},8000)}};
+
+// If the page was opened straight on one of the new views, show it now.
+const h=(location.hash||'').slice(1);if(['takedown','cost'].includes(h))go(h);else if(['memory','console','exec'].includes(h))go(h);
+renderAll();
+})();
 </script>
 </body>
 </html>
