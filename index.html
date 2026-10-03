@@ -6113,6 +6113,7 @@ if('serviceWorker' in navigator){window.addEventListener('load',function(){navig
       var origSave = itemsSave;
       itemsSave = function () {
         items.forEach(function (it) { if (!known.has(it)) { known.add(it); if (!it.uid) stamp(it); } });
+        clearTimeout(window.__srcPaint); window.__srcPaint = setTimeout(paint, 500);
         return origSave.apply(this, arguments);
       };
       itemsSave._intake = true;
@@ -6157,6 +6158,89 @@ if('serviceWorker' in navigator){window.addEventListener('load',function(){navig
   setInterval(sendEvidence, 8000);
   setInterval(paint, 30000);
   window.spearIntake = { stamp: stamp, counts: counts, sendEvidence: sendEvidence, app: getApp, setApp: setApp };
+})();
+</script>
+
+<style id="spear-thumbs-css">
+.nothumb{float:left;display:flex;align-items:center;justify-content:center;text-align:center;width:46px;height:46px;margin-right:8px;border:1px dashed #c9d3e0;border-radius:6px;background:#f6f8fb;color:#7a8696;font:600 8.5px/1.15 system-ui,sans-serif;padding:2px;box-sizing:border-box}
+.nothumb.big{float:none;width:100%;max-width:360px;height:120px;font-size:12px;margin:6px 0}
+</style>
+<script id="spear-thumbs">
+/* Pictures after a reload (Oct 2026)
+   The browser drops each case's picture when the page reloads, so the queue showed broken
+   image icons. Now: if the original is stored on the server it is loaded back (one at a time,
+   kept on this device so it is fetched only once); if it was never stored, a clear
+   "No image saved" box is shown instead of a broken icon. */
+(function () {
+  var DB = null, idx = {}, idxAt = 0, busy = false, wait = 0, done = {}, timer = null;
+  function api() { var b = (typeof API_BASE !== 'undefined' && API_BASE) || localStorage.getItem('spear_api') || ''; return String(b).replace(/\/$/, ''); }
+  function key() { return localStorage.getItem('spear_key') || ''; }
+  function db() {
+    if (DB) return DB;
+    DB = new Promise(function (res) {
+      try { var r = indexedDB.open('spear_evidence', 1);
+        r.onupgradeneeded = function () { r.result.createObjectStore('img'); };
+        r.onsuccess = function () { res(r.result); }; r.onerror = function () { res(null); };
+      } catch (e) { res(null); }
+    });
+    return DB;
+  }
+  async function cacheGet(k) { var d = await db(); if (!d) return null;
+    return new Promise(function (res) { try { var q = d.transaction('img').objectStore('img').get(k); q.onsuccess = function () { res(q.result || null); }; q.onerror = function () { res(null); }; } catch (e) { res(null); } }); }
+  async function cachePut(k, v) { var d = await db(); if (!d) return;
+    try { d.transaction('img', 'readwrite').objectStore('img').put(v, k); } catch (e) {} }
+  function blobToUrl(b) { return new Promise(function (res) { var f = new FileReader(); f.onload = function () { res(f.result); }; f.readAsDataURL(b); }); }
+  function hasPic(it) { return (typeof it.thumb === 'string' && it.thumb.length > 30) || (it.frames && it.frames[0] && it.frames[0].thumb); }
+  function rerender() { clearTimeout(timer); timer = setTimeout(function () { try { render(); } catch (e) {} }, 400); }
+  async function loadIndex() {
+    if (!api() || !key() || Date.now() - idxAt < 120000) return;
+    idxAt = Date.now();
+    try { var r = await fetch(api() + '/api/evidence-index', { headers: { 'X-Spear-Key': key() } }); if (r.ok) idx = (await r.json()).files || {}; } catch (e) {}
+  }
+  async function restore() {
+    if (busy || Date.now() < wait || typeof items === 'undefined' || !api() || !key()) return;
+    busy = true;
+    try {
+      await loadIndex();
+      var todo = items.filter(function (it) { return it.uid && idx[it.uid] && !hasPic(it) && !done[it.uid] && it.category !== 'child_safety'; });
+      var fetched = 0;
+      for (var i = 0; i < todo.length; i++) {
+        var it = todo[i], meta = idx[it.uid], ck = it.uid + ':' + meta.sha256, url = await cacheGet(ck);
+        if (!url) {
+          if (fetched >= 1) break;                           // at most one download per pass: the server allows 40 calls a minute
+          fetched++;
+          var r = await fetch(api() + '/api/evidence/' + encodeURIComponent(it.uid), { headers: { 'X-Spear-Key': key() } });
+          if (r.status === 429 || r.status >= 500) { wait = Date.now() + 60000; break; }
+          if (!r.ok) { done[it.uid] = 1; continue; }
+          url = await blobToUrl(await r.blob()); cachePut(ck, url);
+        }
+        done[it.uid] = 1;
+        if (/^image\//.test(meta.mime || '') || /^data:image\//.test(url)) {
+          if (it.type === 'video') { it.frames = it.frames && it.frames.length ? it.frames : [{ thumb: url, t: 0 }]; if (!it.frames[0].thumb) it.frames[0].thumb = url; }
+          else it.thumb = url;
+        }
+        try { var s = JSON.parse(localStorage.getItem('spear_evidence_sent_v1') || '{}'); s[it.uid] = 1; localStorage.setItem('spear_evidence_sent_v1', JSON.stringify(s)); } catch (e) {}
+        rerender();
+      }
+    } catch (e) { wait = Date.now() + 60000; }
+    busy = false;
+  }
+  /* no broken icons: show a labelled box where a picture is missing */
+  function fix(root) {
+    (root || document).querySelectorAll('img.thumb, img.bigthumb, img.vthumb').forEach(function (im) {
+      var s = im.getAttribute('src');
+      if (s && s !== 'undefined' && s !== 'null' && s.length > 10) return;
+      var box = document.createElement('div');
+      box.className = 'nothumb' + (im.classList.contains('bigthumb') ? ' big' : '');
+      box.textContent = 'No image saved';
+      box.title = 'This picture was only kept in the browser that uploaded it. Images uploaded from Oct 3, 2026 are saved on the server.';
+      im.replaceWith(box);
+    });
+  }
+  new MutationObserver(function () { fix(); }).observe(document.body, { childList: true, subtree: true });
+  setInterval(restore, 4000);
+  setTimeout(function () { fix(); restore(); }, 3000);
+  window.spearThumbs = { restore: restore, fix: fix };
 })();
 </script>
 
