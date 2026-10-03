@@ -6011,5 +6011,154 @@ if('serviceWorker' in navigator){window.addEventListener('load',function(){navig
   var tries = 0, t = setInterval(function () { if (hook() || ++tries > 120) clearInterval(t); }, 1000);
 })();
 </script>
+<style id="spear-intake-css">
+.srcrow{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:9px}
+.srcrow .sl{font-size:12.5px;font-weight:700;color:var(--navy,#0f2a5c);margin-right:2px}
+.srcchip{border:1px solid var(--line,#d9e0ea);background:#fff;border-radius:999px;padding:5px 11px;font:600 12.5px/1 inherit;font-family:inherit;cursor:pointer;color:#334}
+.srcchip:hover{border-color:#94a3b8}
+.srcchip.on{color:#fff;border-color:transparent}
+.srcchip.meta.on{background:#1f5fd6}.srcchip[data-app=Instagram].on{background:#e0457b}.srcchip[data-app=Threads].on{background:#111}
+.srcchip[data-app=WhatsApp].on{background:#1f9d55}.srcchip[data-app=Messenger].on{background:#7c3aed}.srcchip[data-app=Other].on{background:#64748b}
+.srcnote{font-size:12px;color:#8a5a00;margin-top:5px}
+.srcnote.ok{color:#475569}
+.srcnote b{color:#0f2a5c}
+</style>
+<script id="spear-intake">
+/* Intake tracking (Oct 2026)
+   - "Where is it from?" picker on the upload box. Every file loaded by hand is stamped with
+     intake:"file", source_app (Facebook / Instagram / Threads / WhatsApp / Messenger / Other)
+     and meta:true|false, so the dashboards can count Meta files loaded manually.
+     A phone screenshot named like "Screenshot_..._Instagram.jpg" is recognised automatically.
+   - Pasted links are stamped intake:"link" (Meta when the link is a Meta address).
+   - Evidence: after a case is saved to the server, its picture (or first video frame) is sent
+     once to /api/evidence/<case> so it can be downloaded later from any device.
+     Child-safety cases are never sent. */
+(function () {
+  var APPS = ['Facebook', 'Instagram', 'Threads', 'WhatsApp', 'Messenger'];
+  var KEY_APP = 'spear_source_app', KEY_EV = 'spear_evidence_sent_v1';
+  function getApp() { try { return localStorage.getItem(KEY_APP) || ''; } catch (e) { return ''; } }
+  function setApp(v) { try { localStorage.setItem(KEY_APP, v); } catch (e) {} paint(); }
+  function appFromText(s) {
+    s = String(s || '').toLowerCase();
+    if (/instagram|instagr\.am/.test(s)) return 'Instagram';
+    if (/threads/.test(s)) return 'Threads';
+    if (/whatsapp|wa\.me/.test(s)) return 'WhatsApp';
+    if (/messenger|m\.me\//.test(s)) return 'Messenger';
+    if (/facebook|fb\.com|fb\.me|(^|[^a-z])fb([^a-z]|$)|katana/.test(s)) return 'Facebook';
+    return '';
+  }
+  function nowIso() { return new Date().toISOString().slice(0, 16); }
+  function month() { return new Date().toISOString().slice(0, 7); }
+  function isUpload(it) { return /upload/i.test(it.platform || '') || /^photo:/.test(it.url || ''); }
+  function stamp(it, hint) {
+    if (!it || it.intake) return;
+    var file = isUpload(it) || it.type === 'video' || it.type === 'audio';
+    if (file) {
+      var app = appFromText(hint || it.name) || getApp();
+      it.intake = 'file';
+      it.source_app = app || '';
+      it.meta = APPS.indexOf(app) >= 0;
+      if (it.meta) { it.upload_kind = it.type || 'image'; it.platform = app; }
+    } else if (/^https?:/.test(it.url || '')) {
+      var a = appFromText((it.url || '').split(' ')[0]);
+      it.intake = 'link'; it.source_app = a; it.meta = !!a;
+    } else return;
+    it.intake_at = nowIso();
+  }
+  /* counts shown under the picker: files loaded by hand this month */
+  function counts() {
+    var m = month(), meta = 0, untagged = 0, by = {};
+    (typeof items !== 'undefined' ? items : []).forEach(function (it) {
+      if (it.intake !== 'file' || String(it.intake_at || it.captured || '').slice(0, 7) !== m) return;
+      if (it.meta) { meta++; by[it.source_app] = (by[it.source_app] || 0) + 1; } else if (!it.source_app) untagged++;
+    });
+    return { meta: meta, untagged: untagged, by: by };
+  }
+  function paint() {
+    var row = document.getElementById('srcRow'); if (!row) return;
+    var v = getApp();
+    row.querySelectorAll('.srcchip').forEach(function (c) { c.classList.toggle('on', c.dataset.app === v); });
+    var n = document.getElementById('srcNote'), c = counts();
+    var parts = Object.keys(c.by).map(function (k) { return k + ' ' + c.by[k]; }).join(' · ');
+    if (!v) { n.className = 'srcnote'; n.innerHTML = 'Pick where these screenshots came from so Meta files are counted. It stays set for the next uploads.'; }
+    else { n.className = 'srcnote ok'; n.innerHTML = 'Meta files loaded by hand this month: <b>' + c.meta + '</b>' + (parts ? ' (' + parts + ')' : '') + (c.untagged ? ' · ' + c.untagged + ' with no source set' : ''); }
+  }
+  function build() {
+    var host = document.getElementById('heroPoster'); if (!host || document.getElementById('srcRow')) return;
+    var row = document.createElement('div'); row.className = 'srcrow'; row.id = 'srcRow';
+    row.innerHTML = '<span class="sl">Where is it from?</span>' +
+      APPS.map(function (a) { return '<button type="button" class="srcchip meta" data-app="' + a + '">' + a + '</button>'; }).join('') +
+      '<button type="button" class="srcchip" data-app="Other" title="Not from a Meta app">Other</button>';
+    host.insertAdjacentElement('afterend', row);
+    var note = document.createElement('div'); note.id = 'srcNote'; note.className = 'srcnote'; row.insertAdjacentElement('afterend', note);
+    row.addEventListener('click', function (e) { var b = e.target.closest('.srcchip'); if (b) setApp(getApp() === b.dataset.app ? '' : b.dataset.app); });
+    paint();
+  }
+  /* stamp at creation: photos through addPhoto, everything else when the queue is saved */
+  var known = null;
+  function wrap() {
+    if (typeof addPhoto !== 'function' || typeof itemsSave !== 'function' || typeof items === 'undefined') return false;
+    if (!addPhoto._intake) {
+      var origAdd = addPhoto;
+      addPhoto = function (dataUrl, o) {
+        o = o || {};
+        if (o.platform === 'upload') { var a = appFromText(o.name) || getApp(); if (APPS.indexOf(a) >= 0) o.platform = a; }
+        var p = origAdd.apply(this, arguments);
+        return Promise.resolve(p).then(function (it) { if (it) { stamp(it, o.name); try { itemsSave(); } catch (e) {} paint(); } return it; });
+      };
+      addPhoto._intake = true;
+    }
+    if (!itemsSave._intake) {
+      known = new Set(items.map(function (it) { return it; }));
+      var origSave = itemsSave;
+      itemsSave = function () {
+        items.forEach(function (it) { if (!known.has(it)) { known.add(it); if (!it.uid) stamp(it); } });
+        return origSave.apply(this, arguments);
+      };
+      itemsSave._intake = true;
+    }
+    return true;
+  }
+  /* evidence upload: one file per case, one request at a time */
+  var evSent = {};
+  try { evSent = JSON.parse(localStorage.getItem(KEY_EV) || '{}') || {}; } catch (e) {}
+  function api() { var b = (typeof API_BASE !== 'undefined' && API_BASE) || localStorage.getItem('spear_api') || ''; return String(b).replace(/\/$/, ''); }
+  function key() { return localStorage.getItem('spear_key') || ''; }
+  function fileOf(it) {
+    if (it.category === 'child_safety' || /NCMEC/.test(it.status || '')) return null;
+    if (typeof it.thumb === 'string' && /^data:(image|video|audio)\//.test(it.thumb)) return { data: it.thumb, kind: it.type || 'image' };
+    var f = it.frames && it.frames[0] && it.frames[0].thumb;
+    if (typeof f === 'string' && /^data:image\//.test(f)) return { data: f, kind: 'video-frame' };
+    return null;
+  }
+  var evBusy = false, evWait = 0;
+  async function sendEvidence() {
+    if (evBusy || Date.now() < evWait || !api() || !key() || typeof items === 'undefined') return;
+    var synced = {}; try { synced = JSON.parse(localStorage.getItem('spear_synced_v1') || '{}') || {}; } catch (e) {}
+    var todo = items.filter(function (it) { return it.uid && synced[it.uid] && !evSent[it.uid] && fileOf(it); });
+    if (!todo.length) return;
+    evBusy = true;
+    try {
+      for (var i = 0; i < todo.length && i < 1; i++) {      // one file per pass: the server allows 40 calls a minute per address
+        var it = todo[i], f = fileOf(it);
+        var r = await fetch(api() + '/api/evidence/' + encodeURIComponent(it.uid), { method: 'POST',
+          headers: { 'X-Spear-Key': key(), 'Content-Type': 'application/json' },
+          body: JSON.stringify({ data: f.data, kind: f.kind, name: it.name || '', category: it.category || '', status: it.status || '' }) });
+        if (r.status === 429 || r.status >= 500) { evWait = Date.now() + 60000; break; }
+        if (r.status === 404 || r.status === 405) { evWait = Date.now() + 3600e3; break; }   // server update not live yet
+        evSent[it.uid] = r.ok ? 1 : r.status;                                                // 403/413: do not retry
+        try { localStorage.setItem(KEY_EV, JSON.stringify(evSent)); } catch (e) {}
+              }
+    } catch (e) { evWait = Date.now() + 60000; console.warn('[evidence] deferred:', e.message); }
+    evBusy = false;
+  }
+  // the main app starts only after the server answers (up to a minute or two on a cold start), so keep checking
+  var tries = 0, t = setInterval(function () { build(); if ((wrap() && document.getElementById('srcRow')) || ++tries > 900) clearInterval(t); }, 700);
+  setInterval(sendEvidence, 8000);
+  setInterval(paint, 30000);
+  window.spearIntake = { stamp: stamp, counts: counts, sendEvidence: sendEvidence, app: getApp, setApp: setApp };
+})();
+</script>
+
 </body>
 </html>

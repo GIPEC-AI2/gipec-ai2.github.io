@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
+<head><script>window.__spearHash=location.hash</script>
 <script>
 /* Phone "Share to Project Spear" lands here (manifest share_target) -> hand it to the analysis workspace. */
 (function(){try{var u=new URLSearchParams(location.search);if(u.has('share_url')||u.has('share_text')||u.has('share_title')){location.replace('./'+location.search);}}catch(e){}})();
@@ -1169,6 +1169,215 @@ if(ban){const t=document.createElement('span');t.className='chip notes';t.title=
 /* fold the analyst-workspace shortcuts */
 const g=[...document.querySelectorAll('.side .grp')].find(x=>/Analyst workspace/i.test(x.textContent));
 if(g){g.classList.add('fold');g.title='Show the analyst workspace shortcuts';g.onclick=()=>g.classList.toggle('open')}
+})();
+</script>
+<style id="ops-files-css">
+.dlist{display:grid;gap:8px}
+.dl{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:9px;padding:9px 11px;background:#fbfcfe}
+.dl .di{font-size:18px;width:24px;text-align:center}
+.dl .dt2{flex:1;min-width:0;font-size:12.5px}.dl .dt2 b{display:block;font-size:13px;color:var(--navy,#0f2a5c)}
+.dl .dt2 span{color:var(--muted,#6b7785);word-break:break-all}
+.evb{display:inline-block;margin-left:6px;font:700 9.5px/1 Inter,sans-serif;padding:3px 5px;border-radius:4px;background:#e8f1ff;color:#1f4fb8;vertical-align:1px}
+.srcb{display:inline-block;margin-left:6px;font:700 9.5px/1 Inter,sans-serif;padding:3px 6px;border-radius:4px;background:#e7efff;color:#1f5fd6;vertical-align:1px}
+.srcsel{font:600 12.5px Inter,sans-serif;border:1px solid var(--line);border-radius:7px;padding:5px 8px}
+#metaCard{display:none;margin-bottom:14px}
+#metaCard.on{display:block}
+.mrow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:12px}
+.mbox{border:1px solid var(--line);border-top:4px solid #1f5fd6;border-radius:10px;padding:11px 13px;background:#fff}
+.mbox .v{font:700 24px/1.1 Inter,sans-serif;color:#1f5fd6}.mbox .l{font-size:11.5px;color:var(--muted,#6b7785);margin-top:3px}
+.mbox.warn{border-top-color:#d97706}.mbox.warn .v{color:#d97706}
+.mbox.gray{border-top-color:#64748b}.mbox.gray .v{color:#334155}
+.mgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}
+@media (max-width:760px){.mrow{grid-template-columns:repeat(2,minmax(0,1fr))}.mgrid{grid-template-columns:1fr}}
+</style>
+<script id="ops-files">
+/* ============================================================
+   Meta files + downloads (Oct 2026)
+   - "Meta files" category: every file loaded by hand is tagged with the Meta app it came from
+     (Facebook, Instagram, Threads, WhatsApp, Messenger) or Other. A Meta files view, an
+     executive panel and a sidebar count show how many were loaded this month. The source
+     can be corrected from the case details.
+   - Downloads: from any case, download the original image (stored on the server with its
+     SHA-256 fingerprint), a stand-alone case report (.html, image embedded), the case data
+     (.json) and the existing PDF reports. Tick several cases, or use "Download view", to get
+     one .zip with everything plus a cases.csv index.
+   ============================================================ */
+(function(){
+const META_APPS=['Facebook','Instagram','Threads','WhatsApp','Messenger'];
+const ACOL={Facebook:'#1F5FD6',Instagram:'#E0457B',Threads:'#111827',WhatsApp:'#1F9D55',Messenger:'#7C3AED',Other:'#64748B','Not set':'#D97706'};
+Object.assign(PCOL,{Threads:'#111827',WhatsApp:'#1f9d55',Messenger:'#7c3aed'});
+function appFromText(s){s=String(s||'').toLowerCase();
+  if(/instagram|instagr\.am/.test(s))return 'Instagram';if(/threads/.test(s))return 'Threads';
+  if(/whatsapp|wa\.me/.test(s))return 'WhatsApp';if(/messenger|m\.me\//.test(s))return 'Messenger';
+  if(/facebook|fb\.com|fb\.me/.test(s)||s==='fb')return 'Facebook';return ''}
+const _platOf=platOf;
+platOf=function(it){const a=appFromText(it.platform);if(a)return a;return _platOf(it)};
+function intakeOf(it){if(it.intake)return it.intake;const p=String(it.platform||'').toLowerCase(),u=String(it.url||'').split(' ')[0];
+  if(/upload/.test(p)||/^photo:/.test(u)||it.type==='video'||it.type==='audio')return 'file';
+  if(it.huntedFrom||it.sweep)return 'other';if(/^https?:/.test(u))return 'link';return 'other'}
+function appOf(it){if(it.source_app)return META_APPS.includes(it.source_app)?it.source_app:null;
+  return appFromText(it.platform)||(intakeOf(it)==='link'?appFromText(String(it.url||'').split(' ')[0]):'')||null}
+function isMetaFile(it){return intakeOf(it)==='file'&&!!appOf(it)}
+function monthOf(it){return String(it.intake_at||it.captured||'').slice(0,7)}
+function srcLabel(it){const i=intakeOf(it),a=appOf(it);
+  if(i==='file')return a?`Meta · ${a} — file loaded by hand`:(it.source_app?'Other (not Meta) — file loaded by hand':'File loaded by hand — source not set');
+  if(i==='link')return a?`Meta · ${a} — link pasted by hand`:'Link pasted by hand';return 'Found by the agent (hunt / sweep)'}
+window.spearMeta={intakeOf,appOf,isMetaFile};
+
+/* ---------- 1. Meta files view + count ---------- */
+VIEWS.meta={t:'Meta files',s:'Files loaded by hand from Facebook, Instagram, Threads, WhatsApp and Messenger — counted by month',sec:'v-ops',q:'Meta files loaded by hand',f:isMetaFile};
+(function nav(){const ref=document.querySelector('.nav[data-v="takedown"]');if(!ref||document.querySelector('.nav[data-v="meta"]'))return;
+  ref.insertAdjacentHTML('afterend','<a class="nav" data-v="meta"><span class="ic">ⓜ</span>Meta files<span class="ct" id="c-meta"></span></a>');
+  document.querySelector('.nav[data-v="meta"]').addEventListener('click',()=>go('meta'))})();
+const card=document.createElement('div');card.id='metaCard';card.className='card';
+document.querySelector('#v-ops .card.tiers').insertAdjacentElement('beforebegin',card);
+function metaStats(){const m=new Date().toISOString().slice(0,7),d=new Date().toISOString().slice(0,10);
+  const files=ITEMS.filter(it=>intakeOf(it)==='file');
+  const meta=files.filter(isMetaFile),mm=meta.filter(it=>monthOf(it)===m);
+  const byApp={},byMonth={};mm.forEach(it=>{const a=appOf(it);byApp[a]=(byApp[a]||0)+1});
+  meta.forEach(it=>{const k=monthOf(it);if(/^\d{4}-\d\d$/.test(k))byMonth[k]=(byMonth[k]||0)+1});
+  return {month:mm.length,today:meta.filter(it=>String(it.intake_at||it.captured||'').slice(0,10)===d).length,total:meta.length,byApp,byMonth,
+    links:ITEMS.filter(it=>intakeOf(it)==='link'&&appOf(it)&&monthOf(it)===m).length,
+    unset:files.filter(it=>!it.source_app&&!appOf(it)).length,other:files.filter(it=>it.source_app&&!appOf(it)&&monthOf(it)===m).length}}
+function colsHtml(bm){const ks=Object.keys(bm).sort().slice(-12);if(!ks.length)return '<div class="note" style="display:block">No Meta files yet.</div>';
+  const mx=Math.max(...ks.map(k=>bm[k]));const nm=k=>new Date(k+'-15').toLocaleString('en-US',{month:'short'});
+  return `<div class="cols">${ks.map(k=>`<div class="col"><span class="cv">${bm[k]}</span><span class="cb" style="height:${Math.max(3,120*bm[k]/mx)}px;background:linear-gradient(180deg,#3b7cf0,#1f5fd6)!important"></span></div>`).join('')}</div><div class="colx">${ks.map(k=>`<span>${nm(k)}</span>`).join('')}</div>`}
+function appBars(el,by){const o={};META_APPS.forEach(a=>{if(by[a])o[a]=by[a]});bars(el,o);
+  document.querySelectorAll('#'+el+' .bar').forEach(b=>{const n=b.querySelector('.lab').textContent.trim();if(ACOL[n]){b.style.setProperty('--bc',ACOL[n]);b.dataset.painted='1'}})}
+function renderMetaCard(){const on=VIEW==='meta';card.classList.toggle('on',on);if(!on)return;const s=metaStats();
+  const mon=new Date().toLocaleString('en-US',{month:'long'});
+  card.innerHTML=`<h3 style="margin-top:0">Meta files loaded by hand</h3>
+    <div class="mrow"><div class="mbox"><div class="v">${s.month}</div><div class="l">in ${mon}</div></div>
+      <div class="mbox"><div class="v">${s.today}</div><div class="l">today</div></div>
+      <div class="mbox gray"><div class="v">${s.links}</div><div class="l">Meta links pasted in ${mon}</div></div>
+      <div class="mbox ${s.unset?'warn':'gray'}"><div class="v">${s.unset}</div><div class="l">uploads with no source set${s.unset?' — open the case to set it':''}</div></div></div>
+    <div class="mgrid"><div><div class="sec">${mon}, by Meta app</div><div id="m-app"></div></div><div><div class="sec">By month</div>${colsHtml(s.byMonth)}</div></div>
+    <div class="note">Counted from the “Where is it from?” choice on the upload page (a phone screenshot named after the app is recognised automatically). Links are counted separately because the server never opens Meta links.</div>`;
+  appBars('m-app',s.byApp);if(!Object.keys(s.byApp).length)$('m-app').innerHTML='<div class="note" style="display:block">None this month yet.</div>'}
+function renderMetaExec(){if(VIEW!=='exec')return;let g=$('x-metagrid');
+  if(!g){[...document.querySelectorAll('#v-exec .grid2')].pop().insertAdjacentHTML('afterend',`<div class="grid2" id="x-metagrid" style="margin-top:14px">
+    <div class="panel"><h3>Meta files loaded by hand — this month</h3><div id="x-meta"></div><div id="x-metaapp"></div></div>
+    <div class="panel"><h3>Meta files by month</h3><div id="x-metamon"></div><div class="note">Files uploaded from Facebook, Instagram, Threads, WhatsApp and Messenger. <a href="#meta" onclick="go('meta');return false">Open the list</a>.</div></div></div>`)}
+  document.querySelectorAll('#x-plat .bar').forEach(b=>{const n=b.querySelector('.lab').textContent.trim();if(ACOL[n]&&n!=='Other'){b.style.setProperty('--bc',ACOL[n]);const l=b.querySelector('.lab');if(!l.querySelector('i.sw'))l.insertAdjacentHTML('afterbegin','<i class="sw"></i>')}});
+  const s=metaStats();
+  $('x-meta').innerHTML=`<div style="font:700 30px Inter,sans-serif;color:#1f5fd6">${s.month}<span style="font-size:13px;color:var(--muted);font-weight:600"> Meta files · ${s.today} today${s.unset?` · <span style="color:#d97706">${s.unset} uploads with no source</span>`:''}</span></div>`;
+  appBars('x-metaapp',s.byApp);if(!Object.keys(s.byApp).length)$('x-metaapp').innerHTML='';$('x-metamon').innerHTML=colsHtml(s.byMonth)}
+function countMeta(){const n=metaStats().month;const c=$('c-meta');if(c)c.textContent=n||''}
+
+/* ---------- 2. source on the case: shown, editable, in the report ---------- */
+const _reportRows=reportRows;
+reportRows=function(it){const r=_reportRows(it);const i=r.findIndex(x=>x[0]==='Platform');r.splice(i+1,0,['Source',esc(srcLabel(it))]);
+  const ev=EVX[it.uid];if(ev)r.push(['Evidence file',`${esc(ev.name||'image')} · ${(ev.size/1024).toFixed(0)} KB · SHA-256 <span style="font-family:monospace;font-size:11px">${esc(ev.sha256)}</span>`]);return r};
+function setSource(id,v){mutate(id,x=>{x.intake='file';x.source_app=v==='Not set'?'':v;x.meta=META_APPS.includes(v);x.intake_at=x.intake_at||String(x.captured||'').replace(' ','T');
+    if(x.meta)x.platform=v;else if(appFromText(x.platform))x.platform=x.type==='video'?'video upload':x.type==='audio'?'audio upload':'upload'});
+  ITEMS=loadItems();renderAll();openDetails(id);toast(META_APPS.includes(v)?`Counted as a Meta file (${v})`:'Not counted as a Meta file')}
+window.spearSetSource=setSource;
+
+/* ---------- 3. downloads ---------- */
+let EVX={},EVT=0;
+async function loadEvx(force){if(!KEY||(!force&&Date.now()-EVT<60000))return;EVT=Date.now();
+  try{const r=await api('/api/evidence-index');if(r.ok){EVX=(await r.json()).files||{};renderQueue()}}catch(e){}}
+const fname=s=>String(s).replace(/[^\w.-]+/g,'_');
+function saveBlob(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},4000)}
+function cleanCase(it){const o={};for(const k in it)if(k!=='thumb'&&k!=='frames')o[k]=it[k];o.case_id=caseId(it);o.source=srcLabel(it);if(EVX[it.uid])o.evidence=EVX[it.uid];return o}
+const blobToDataUrl=b=>new Promise(res=>{const f=new FileReader();f.onload=()=>res(f.result);f.readAsDataURL(b)});
+async function fetchEvidence(it){if(!it.uid||!EVX[it.uid])return null;const r=await api('/api/evidence/'+encodeURIComponent(it.uid)+'?label='+encodeURIComponent(caseId(it)));
+  if(!r.ok)return null;const b=await r.blob();return {blob:b,sha:r.headers.get('X-Evidence-SHA256')||EVX[it.uid].sha256,ext:(EVX[it.uid].mime||'').split('/')[1]||'jpg'}}
+function reportHtml(it,evUrl){const rows=reportRows(it);
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Case Report — ${caseId(it)}</title>
+<style>body{font:14px/1.5 Inter,Arial,sans-serif;color:#1b2533;max-width:860px;margin:28px auto;padding:0 18px}h1{font-size:22px;color:#0f2a5c;margin:0 0 4px}.sub{color:#6b7785;font-size:12.5px;margin-bottom:16px}
+table{border-collapse:collapse;width:100%}td{border-top:1px solid #e1e7ee;padding:7px 9px;vertical-align:top}td:first-child{width:170px;color:#6b7785;font-weight:600}
+.tier{display:inline-flex;gap:6px;align-items:center;border-radius:6px;padding:2px 8px;font-size:11.5px;color:#fff;background:#5a6472}.tr-CRITICAL{background:#B42318}.tr-HIGH{background:#D9480F}.tr-MEDIUM{background:#B7791F}.tr-LOW{background:#2F855A}
+img{max-width:100%;border:1px solid #e1e7ee;border-radius:8px;margin-top:6px}.foot{margin-top:22px;font-size:11.5px;color:#889;border-top:1px solid #e1e7ee;padding-top:10px}@media print{body{margin:0}}</style></head><body>
+<h1>Case Report — ${caseId(it)}</h1><div class="sub">Project Spear / GIPEC AI² · downloaded ${esc(new Date().toLocaleString())}</div>
+<table>${rows.map(([k,v])=>`<tr><td>${k}</td><td>${v}</td></tr>`).join('')}</table>
+${it.category==='child_safety'?'<p><b>Evidence image withheld — child-safety material is routed to NCMEC and never stored or attached.</b></p>':evUrl?`<h3 style="color:#0f2a5c;margin-top:22px">Evidence</h3><img src="${evUrl}" alt="Evidence for ${caseId(it)}">`:'<p style="color:#6b7785">No stored evidence image for this case.</p>'}
+<div class="foot">To send as a PDF: open this file, then File → Print → Save as PDF. © 2026 GIPEC AI². Patent Pending. Confidential.</div></body></html>`}
+async function dlEvidence(id){const it=ITEMS.find(x=>String(x.id)===String(id));if(!it)return;
+  try{const e=await fetchEvidence(it);if(!e){toast('No stored image for this case');return}saveBlob(e.blob,`${caseId(it)}_evidence.${e.ext.replace('jpeg','jpg')}`);toast('Image downloaded')}catch(e){toast('Download failed: '+e.message)}}
+async function dlReport(id){const it=ITEMS.find(x=>String(x.id)===String(id));if(!it)return;
+  let url=null;try{const e=await fetchEvidence(it);if(e)url=await blobToDataUrl(e.blob)}catch(e){}
+  saveBlob(new Blob([reportHtml(it,url)],{type:'text/html'}),`${caseId(it)}_case_report.html`);toast('Case report downloaded')}
+function dlJson(id){const it=ITEMS.find(x=>String(x.id)===String(id));if(!it)return;
+  saveBlob(new Blob([JSON.stringify(cleanCase(it),null,2)],{type:'application/json'}),`${caseId(it)}_case.json`)}
+window.spearDl={evidence:dlEvidence,report:dlReport,json:dlJson,zip:list=>zipCases(list)};
+function filesPanel(it){const ev=EVX[it.uid];const cs=it.category==='child_safety'||/NCMEC/.test(it.status||'');
+  return `<div class="sec">Download files</div><div class="dlist">
+    <div class="dl"><span class="di">🖼</span><span class="dt2"><b>Original image</b><span>${cs?'Withheld — child-safety material is never stored':ev?`${esc(ev.name||'image')} · ${(ev.size/1024).toFixed(0)} KB · SHA-256 ${esc(ev.sha256.slice(0,16))}…`:it.uid?'Not stored on the server — only images uploaded after this update are kept':'This case has not reached the server yet'}</span></span>${ev&&!cs?`<button class="btn ghost" onclick="spearDl.evidence('${it.id}')">⬇ Image</button>`:''}</div>
+    <div class="dl"><span class="di">📄</span><span class="dt2"><b>Case report</b><span>Stand-alone page with the image embedded — open it and print to PDF</span></span><button class="btn ghost" onclick="spearDl.report('${it.id}')">⬇ Report</button></div>
+    <div class="dl"><span class="di">{ }</span><span class="dt2"><b>Case data</b><span>Every field of the case (.json)</span></span><button class="btn ghost" onclick="spearDl.json('${it.id}')">⬇ Data</button></div>
+    <div class="dl"><span class="di">📑</span><span class="dt2"><b>Platform reports (PDF)</b><span>The submission brief and evidence report pages</span></span><a class="btn ghost" style="text-decoration:none" href="brief.html?id=${encodeURIComponent(it.id)}" target="_blank">Open</a></div>
+  </div>`}
+const _openDetails=openDetails;
+openDetails=function(id){_openDetails(id);const it=ITEMS.find(x=>String(x.id)===String(id));if(!it)return;
+  const kv=document.querySelector('#db .kv');
+  if(kv){const i=intakeOf(it);const cur=it.source_app?(META_APPS.includes(it.source_app)?it.source_app:'Other'):(appOf(it)||'Not set');
+    kv.insertAdjacentHTML('beforeend',`<div>Source</div><div>${i==='file'?`<select class="srcsel" onchange="spearSetSource('${it.id}',this.value)">${[...META_APPS,'Other','Not set'].map(a=>`<option ${a===cur?'selected':''}>${a}</option>`).join('')}</select> <span class="note" style="display:inline;margin:0">${META_APPS.includes(cur)?'counted as a Meta file':'not counted as a Meta file'}</span>`:esc(srcLabel(it))}</div>`)}
+  $('db').insertAdjacentHTML('beforeend',filesPanel(it))};
+const _openReport=openReport;
+openReport=function(id){_openReport(id);const it=ITEMS.find(x=>String(x.id)===String(id));if(!it)return;
+  $('df').insertAdjacentHTML('afterbegin',`<button class="btn pri" onclick="spearDl.report('${it.id}')">⬇ Download report</button>`)};
+
+/* ---------- 4. zip of many cases ---------- */
+let ZIPLIB=null;
+function loadZip(){if(window.JSZip)return Promise.resolve(window.JSZip);if(ZIPLIB)return ZIPLIB;
+  ZIPLIB=new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+    s.onload=()=>res(window.JSZip);s.onerror=()=>{ZIPLIB=null;rej(new Error('could not load the zip tool'))};document.head.appendChild(s)});return ZIPLIB}
+async function zipCases(list){
+  list=(list||[]).slice(0,400);if(!list.length){toast('No cases to download');return}
+  toast(`Packing ${list.length} case${list.length>1?'s':''}…`);
+  try{
+    const JSZip=await loadZip(),zip=new JSZip(),evUrl={},evFile={};
+    const withEv=list.filter(it=>it.uid&&EVX[it.uid]);
+    if(withEv.length){const r=await api('/api/evidence-zip',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cases:withEv.map(it=>({id:it.uid,label:caseId(it)}))})});
+      if(r.ok){const sz=await JSZip.loadAsync(await r.blob());const fp=await sz.file('evidence/fingerprints.csv').async('string');
+        for(const line of fp.split('\n').slice(1)){const [fn,label]=line.split(',');if(!fn)continue;const f=sz.file('evidence/'+fn);if(!f)continue;
+          const bytes=await f.async('uint8array');zip.file('evidence/'+fn,bytes);evFile[label]=fn;
+          evUrl[label]=await blobToDataUrl(new Blob([bytes],{type:'image/'+(fn.split('.').pop().replace('jpg','jpeg'))}))}
+        zip.file('evidence/fingerprints.csv',fp)}}
+    const cell=v=>{v=v==null?'':String(v);return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
+    const head=['Case','Date found','Type','Platform','Source','Meta file','User','URL','Risk','Status','Evidence file','Evidence SHA-256','Report file'];
+    const lines=[head.join(',')];
+    list.forEach(it=>{const id=caseId(it),rep=`reports/${id}_case_report.html`;
+      zip.file(rep,reportHtml(it,evUrl[id]||null));zip.file(`data/${id}_case.json`,JSON.stringify(cleanCase(it),null,2));
+      lines.push([id,(it.captured||'').slice(0,10),typeOf(it),platOf(it),srcLabel(it),isMetaFile(it)?'yes':'no',it.poster||'',(it.url||'').split(' ')[0],
+        `${it.score||0}/10 ${tierFor(it)}`,it.status||'Pending',evFile[id]?'evidence/'+evFile[id]:'',EVX[it.uid]?EVX[it.uid].sha256:'',rep].map(cell).join(','))});
+    zip.file('cases.csv','﻿'+lines.join('\r\n'));
+    zip.file('README.txt',`Project Spear case files — downloaded ${new Date().toLocaleString()}\r\n\r\ncases.csv  one row per case, with the file names below\r\nevidence/  the original images, named by case (fingerprints.csv has each file's SHA-256)\r\nreports/   a stand-alone case report per case, image embedded (open, then Print -> Save as PDF)\r\ndata/      every field of each case (.json)\r\n\r\nChild-safety material is never stored or included.\r\n© 2026 GIPEC AI². Patent Pending. Confidential.\r\n`);
+    const blob=await zip.generateAsync({type:'blob'});
+    saveBlob(blob,`Project_Spear_${fname(VIEW)}_${new Date().toISOString().slice(0,10)}_${list.length}_cases.zip`);
+    toast(`Downloaded ${list.length} case${list.length>1?'s':''} · ${Object.keys(evFile).length} image${Object.keys(evFile).length===1?'':'s'}`);
+  }catch(e){toast('Download failed: '+e.message)}
+}
+// buttons: "Download view (.zip)" in the queue header, "Download selected" in the bulk bar
+$('bcsv').insertAdjacentHTML('afterend','<button class="btn pri" id="bzip" title="Images, case reports and data for every case in this view, in one .zip">⬇ Download files (.zip)</button>');
+$('bzip').onclick=()=>zipCases(rows());
+$('bk-clr').insertAdjacentHTML('beforebegin','<button class="btn b-sm" id="bk-zip" style="background:#0f2a5c;color:#fff">⬇ Download selected</button>');
+const checked=()=>[...document.querySelectorAll('#qbody [data-sel]:checked')].map(c=>ITEMS.find(x=>String(x.id)===String(c.dataset.sel))).filter(Boolean);
+$('bk-zip').onclick=()=>zipCases(checked());
+// bulk decisions apply to open cases only (closed cases can now be ticked for download)
+[['bk-ok','Confirmed','Approved'],['bk-no','Dismissed','Rejected'],['bk-esc','Escalated','Escalated']].forEach(([b,st,w])=>{$(b).onclick=()=>{
+  const sel=checked(),open=sel.filter(isOpen);if(!open.length){toast('None of the selected cases are open');return}
+  open.forEach(it=>decide(it.id,st));$('bk-clr').click();toast(`${w} ${open.length} case${open.length>1?'s':''}${sel.length>open.length?` · ${sel.length-open.length} already decided, left as they were`:''}`)}});
+
+/* ---------- 5. hook into rendering ---------- */
+const _renderQueue=renderQueue;
+renderQueue=function(){_renderQueue();
+  document.querySelectorAll('#qbody tr').forEach(tr=>{const b=tr.querySelector('[data-d]');if(!b)return;const id=b.dataset.d;
+    const it=ITEMS.find(x=>String(x.id)===String(id));if(!it)return;
+    const ck=tr.querySelector('td.ck');if(ck&&!ck.querySelector('input'))ck.innerHTML=`<input type="checkbox" data-sel="${esc(id)}">`;
+    const c0=tr.querySelector('td.mono');if(c0&&!c0.querySelector('.evb')&&it.uid&&EVX[it.uid])c0.insertAdjacentHTML('beforeend','<span class="evb" title="Original image stored — downloadable">IMG</span>');
+    const pc=tr.querySelector('td.plat');if(pc&&!pc.querySelector('.srcb')&&isMetaFile(it))pc.insertAdjacentHTML('beforeend','<span class="srcb" title="Meta file loaded by hand">FILE</span>');
+    const dc=b.closest('.dec');if(dc&&!dc.querySelector('[data-dl]'))dc.insertAdjacentHTML('beforeend',`<button class="btn lnk" data-dl="${esc(id)}" title="Download this case's files">⬇ Files</button>`)});
+  renderMetaCard()};
+$('qbody').addEventListener('click',e=>{const b=e.target.closest('[data-dl]');if(!b)return;e.stopPropagation();openDetails(b.dataset.dl);
+  setTimeout(()=>{const s=[...document.querySelectorAll('#db .sec')].find(x=>/Download files/.test(x.textContent));if(s)s.scrollIntoView({behavior:'smooth'})},50)},true);
+const _renderAll=renderAll;
+renderAll=function(){_renderAll();countMeta();renderMetaExec()};
+const _go=go;
+go=function(v){_go(v);renderMetaCard();renderMetaExec()};
+renderAll();loadEvx(true);setInterval(()=>loadEvx(false),60000);
+if(String(window.__spearHash||location.hash).slice(1)==='meta')go('meta');
 })();
 </script>
 </body>
