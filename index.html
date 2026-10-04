@@ -6265,6 +6265,17 @@ if('serviceWorker' in navigator){window.addEventListener('load',function(){navig
   new MutationObserver(function () { fix(); }).observe(document.body, { childList: true, subtree: true });
   setInterval(restore, 4000);
   setTimeout(function () { fix(); restore(); }, 3000);
+  /* "Reports" opens the full analyst report (Q1-Q4 for Meta) once the case is on the server */
+  var ob = setInterval(function () {
+    if (typeof openBrief !== 'function' || openBrief._deep) return;
+    var orig = openBrief;
+    openBrief = function (id) {
+      var it = (typeof items !== 'undefined' ? items : []).find(function (x) { return String(x.id) === String(id); });
+      if (it && it.uid) { try { itemsSave(); } catch (e) {} window.open('report.html?cases=' + encodeURIComponent(it.uid), '_blank'); return; }
+      return orig.apply(this, arguments);
+    };
+    openBrief._deep = true; clearInterval(ob);
+  }, 1000);
   window.spearThumbs = { restore: restore, fix: fix };
 })();
 </script>

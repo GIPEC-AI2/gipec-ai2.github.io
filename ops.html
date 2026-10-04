@@ -1380,5 +1380,69 @@ renderAll();loadEvx(true);setInterval(()=>loadEvx(false),60000);
 if(String(window.__spearHash||location.hash).slice(1)==='meta')go('meta');
 })();
 </script>
+<script src="spear-report.js"></script>
+<style id="ops-deep-css">
+.deepbox{border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:0 0 14px;background:#fff}
+.deepbox .dh{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:6px}
+.deepbox .dh b{color:var(--navy,#0f2a5c);font-size:13px;margin-right:auto}
+.deepbox .sr{font-size:13px}
+.deepbox .sr .imgs{grid-template-columns:repeat(auto-fill,minmax(120px,1fr))}
+.deepmsg{font-size:12.5px;color:var(--muted,#6b7785);padding:6px 0}
+.dspin{display:inline-block;width:13px;height:13px;border:2px solid #c7d2e5;border-top-color:#1f5fd6;border-radius:50%;animation:dsp 1s linear infinite;vertical-align:-2px;margin-right:6px}
+@keyframes dsp{to{transform:rotate(360deg)}}
+</style>
+<script id="ops-deep">
+/* View Details shows the full analyst report (Q1–Q4 for Meta, then designation check, takeaways,
+   evidence). The report is written once on the server from the archived original(s) and kept;
+   opening the case again shows the saved report. Several screenshots of the same post can be
+   combined from the full report page, or by ticking cases and pressing "One report from selected". */
+(function(){
+const BUSY={};
+const H=()=>({'X-Spear-Key':KEY});
+async function getJ(p){const r=await api(p);if(!r.ok)throw new Error(r.status);return r.json()}
+async function imgsFor(rep){const out={};for(const ev of rep.evidence||[]){if(!ev.case_id)continue;
+  try{const r=await api('/api/evidence/'+encodeURIComponent(ev.case_id));if(r.ok){const b=await r.blob();out[ev.case_id]=await new Promise(res=>{const f=new FileReader();f.onload=()=>res(f.result);f.readAsDataURL(b)})}}catch(e){}}return out}
+function box(it,inner,btns){return `<div class="deepbox" id="deepbox"><div class="dh"><b>Full analyst report — Q1–Q4 for Meta</b>${btns||''}</div>${inner}</div>`}
+function openFull(it){window.open('report.html?cases='+encodeURIComponent(it.uid),'_blank')}
+window.spearDeep={open:id=>{const it=ITEMS.find(x=>String(x.id)===String(id));if(it&&it.uid)openFull(it)},
+  copy:()=>{const p=document.querySelector('#deepbox .sr');if(!p)return;navigator.clipboard.writeText(SpearReport.metaText(p)).then(()=>toast('Q1–Q4 copied — paste into Meta’s form'),()=>toast('Copy blocked by the browser'))},
+  write:id=>{const it=ITEMS.find(x=>String(x.id)===String(id));if(it)fill(it,true)}};
+async function fill(it,force){
+  const host=document.getElementById('deepbox');if(!host||DRAWER_ID==null||String(DRAWER_ID)!==String(it.id))return;
+  const set=h=>{const b=document.getElementById('deepbox');if(b&&String(DRAWER_ID)===String(it.id))b.outerHTML=h};
+  const btnOpen=`<button class="btn ghost b-sm" onclick="spearDeep.open('${it.id}')">Open full report ↗</button>`;
+  if(it.category==='child_safety'||/NCMEC/.test(it.status||'')){set(box(it,'<div class="deepmsg">Child-safety case — routed to NCMEC. No report is written and no image is kept.</div>'));return}
+  if(!it.uid){set(box(it,'<div class="deepmsg">This case has not reached the server yet — the report is available a few seconds after it is saved.</div>'));return}
+  try{
+    if(!force){const l=await getJ('/api/deep-reports?case='+encodeURIComponent(it.uid));const hit=(l.reports||[])[0];
+      if(hit){const j=await getJ('/api/deep-report/'+hit.id);const im=await imgsFor(j.report);
+        set(box(it,`<div class="sr compact">${SpearReport.render(j.report,{edits:j.edits||{},imgs:im,editable:false})}</div>`,
+          `<button class="btn pri b-sm" onclick="spearDeep.copy()">📋 Copy Q1–Q4 for Meta</button>${btnOpen}`));return}}
+    if(BUSY[it.uid]){set(box(it,'<div class="deepmsg"><span class="dspin"></span>Writing the report… about 1–2 minutes.</div>'));return}
+    BUSY[it.uid]=1;
+    set(box(it,'<div class="deepmsg"><span class="dspin"></span>Writing the full report from the archived original… about 1–2 minutes. You can keep working; it will appear here.</div>'));
+    const r=await api('/api/deep-report',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({case_ids:[it.uid],author:localStorage.getItem('spear_author')||'Eric Feinberg'})});
+    delete BUSY[it.uid];
+    if(!r.ok){let d='';try{d=(await r.json()).detail||''}catch(e){}
+      set(box(it,`<div class="deepmsg">${r.status===404?'No archived image for this case — only images uploaded from Oct 3, 2026 are kept.':'The report was not written: '+esc(d||('error '+r.status))}</div>`,
+        r.status===404?'':`<button class="btn ghost b-sm" onclick="spearDeep.write('${it.id}')">Try again</button>`));return}
+    fill(it,false);
+  }catch(e){delete BUSY[it.uid];set(box(it,'<div class="deepmsg">Could not load the report: '+esc(e.message)+'</div>',`<button class="btn ghost b-sm" onclick="spearDeep.write('${it.id}')">Try again</button>`))}
+}
+const _od=openDetails;
+openDetails=function(id){_od(id);const it=ITEMS.find(x=>String(x.id)===String(id));if(!it)return;
+  const kv=document.querySelector('#db .kv');if(!kv)return;
+  kv.insertAdjacentHTML('afterend',box(it,'<div class="deepmsg"><span class="dspin"></span>Loading the report…</div>'));
+  fill(it,false);
+  const pr=[...document.querySelectorAll('#db .dl')].find(d=>/Platform reports/.test(d.textContent));
+  if(pr)pr.insertAdjacentHTML('beforebegin',`<div class="dl"><span class="di">🧾</span><span class="dt2"><b>Full analyst report</b><span>Q1–Q4 for Meta and the full analysis — PDF, HTML, editable</span></span><button class="btn ghost" onclick="spearDeep.open('${it.id}')">Open</button></div>`);
+};
+// one report from several ticked screenshots of the same post
+const bz=document.getElementById('bk-zip');
+if(bz){bz.insertAdjacentHTML('beforebegin','<button class="btn b-sm" id="bk-deep" style="background:#1f5fd6;color:#fff" title="Screenshots of the same post: one report reading them together">🧾 One report from selected</button>');
+  document.getElementById('bk-deep').onclick=()=>{const ids=[...document.querySelectorAll('#qbody [data-sel]:checked')].map(c=>ITEMS.find(x=>String(x.id)===String(c.dataset.sel))).filter(x=>x&&x.uid).map(x=>x.uid).slice(0,6);
+    if(!ids.length){toast('None of the selected cases are on the server yet');return}window.open('report.html?cases='+ids.map(encodeURIComponent).join(','),'_blank')}}
+})();
+</script>
 </body>
 </html>
