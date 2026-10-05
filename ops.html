@@ -1416,8 +1416,9 @@ async function fill(it,force){
   try{
     if(!force){const l=await getJ('/api/deep-reports?case='+encodeURIComponent(it.uid));const hit=(l.reports||[])[0];
       if(hit){const j=await getJ('/api/deep-report/'+hit.id);const im=await imgsFor(j.report);
-        set(box(it,`<div class="sr compact">${SpearReport.render(j.report,{edits:j.edits||{},imgs:im,editable:false})}</div>`,
-          `<button class="btn pri b-sm" onclick="spearDeep.copy()">📋 Copy Q1–Q4 for Meta</button>${btnOpen}`));return}}
+        set(box(it,`<div class="sr compact">${SpearReport.render(j.report,{edits:j.edits||{},imgs:im,editable:false,teach:true})}</div>`,
+          `<button class="btn pri b-sm" onclick="spearDeep.copy()">📋 Copy Q1–Q4 for Meta</button>${btnOpen}`));
+        const sr=document.querySelector('#deepbox .sr');if(sr&&SpearReport.wireLearning)SpearReport.wireLearning(sr,{base:API,key:KEY,by:localStorage.getItem('spear_author')||'Eric Feinberg',reportId:hit.id,caseIds:j.case_ids||[it.uid]});return}}
     if(BUSY[it.uid]){set(box(it,'<div class="deepmsg"><span class="dspin"></span>Writing the report… about 1–2 minutes.</div>'));return}
     BUSY[it.uid]=1;
     set(box(it,'<div class="deepmsg"><span class="dspin"></span>Writing the full report from the archived original… about 1–2 minutes. You can keep working; it will appear here.</div>'));
@@ -1442,6 +1443,76 @@ const bz=document.getElementById('bk-zip');
 if(bz){bz.insertAdjacentHTML('beforebegin','<button class="btn b-sm" id="bk-deep" style="background:#1f5fd6;color:#fff" title="Screenshots of the same post: one report reading them together">🧾 One report from selected</button>');
   document.getElementById('bk-deep').onclick=()=>{const ids=[...document.querySelectorAll('#qbody [data-sel]:checked')].map(c=>ITEMS.find(x=>String(x.id)===String(c.dataset.sel))).filter(x=>x&&x.uid).map(x=>x.uid).slice(0,6);
     if(!ids.length){toast('None of the selected cases are on the server yet');return}window.open('report.html?cases='+ids.map(encodeURIComponent).join(','),'_blank')}}
+})();
+</script>
+<style id="ops-learn-css">
+#lrn .stats{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 12px}
+#lrn .st{border:1px solid var(--line);border-radius:10px;padding:8px 12px;min-width:120px;background:#fff}
+#lrn .st b{display:block;font-size:20px;color:var(--navy,#0f2a5c)}
+#lrn .st span{font-size:11.5px;color:var(--muted,#6b7785)}
+#lrn table{width:100%;border-collapse:collapse;font-size:13px}
+#lrn th{text-align:left;font-size:11px;color:var(--muted,#6b7785);text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--line);padding:6px}
+#lrn td{border-bottom:1px solid #eef1f6;padding:8px 6px;vertical-align:top}
+#lrn td.tm{font-weight:700}
+#lrn .kd{display:inline-block;font:700 10.5px/1 inherit;padding:3px 7px;border-radius:9px;background:#eef1f6;color:#475467;white-space:nowrap}
+#lrn .kd.lead{background:#eaf1ff;color:#1f4fb8}#lrn .kd.lesson{background:#e9f7ef;color:#1f7a4d}
+#lrn .acts button{margin:0 4px 4px 0}
+#lrn .lnote{font-size:12px;color:var(--muted,#6b7785);line-height:1.45}
+body:not(.show-notes) #deepbox .sr .note{display:revert!important}
+.navbadge{display:inline-block;min-width:18px;padding:1px 6px;border-radius:9px;background:#d92d20;color:#fff;font:700 11px/16px inherit;text-align:center;margin-left:6px}
+</style>
+<script id="ops-learn">
+/* Teaching loop on the Agent memory screen: what SPEAR suggested and is waiting for the analyst,
+   what the analyst confirmed, rejected or taught, and the two exports for Meta (lessons CSV and the
+   labelled training set). Confirmed items become team-memory entries used in every later scan. */
+(function(){
+const by=()=>localStorage.getItem('spear_author')||'Eric Feinberg';
+async function getJ(p){const r=await api(p);if(!r.ok)throw new Error(p+' '+r.status);return r.json()}
+async function postJ(p,b){const r=await api(p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b||{})});
+  let j=null;try{j=await r.json()}catch(e){}if(!r.ok)throw new Error((j&&j.detail)||('error '+r.status));return j}
+let L=null;
+function panel(){let p=document.getElementById('lrn');if(p)return p;const tm=document.getElementById('tm');if(!tm)return null;
+  tm.insertAdjacentHTML('beforebegin',`<div class="panel" style="margin-top:18px" id="lrn">
+    <div class="qhead" style="padding:0 0 8px;border:0"><h3 style="margin:0">Teaching loop — SPEAR ⇄ analyst</h3><div class="sp"></div>
+      <button class="btn ghost b-sm" id="lrn-csv" title="Every term and pattern the analyst taught or confirmed, with his explanation">⬇ What Meta’s AI missed (CSV)</button>
+      <button class="btn pri b-sm" id="lrn-zip" title="Labelled examples: archived images + labels (violation, policy, decoded terms, evasion tactics, rationale) + the confirmed vocabulary">⬇ Training set for Meta (zip)</button></div>
+    <div class="lnote" style="margin-bottom:8px">SPEAR lists the slurs and coded terms it finds in each report, and related terms to look for next. New ones do nothing until you confirm them. What you teach from a report goes straight into team memory.</div>
+    <div class="stats" id="lrn-stats"></div>
+    <h4 style="margin:10px 0 4px">Waiting for your review</h4><div id="lrn-pend"></div>
+    <h4 style="margin:16px 0 4px">Recent decisions and lessons</h4><div id="lrn-rec"></div></div>`);
+  document.getElementById('lrn-csv').onclick=()=>dl('/api/learning/lessons.csv','SPEAR_lessons.csv');
+  document.getElementById('lrn-zip').onclick=()=>dl('/api/learning/training-set.zip','SPEAR_training_set.zip');
+  document.getElementById('lrn').addEventListener('click',onClick);
+  return document.getElementById('lrn')}
+async function dl(path,name){try{toast('Preparing '+name+'…');const r=await api(path);if(!r.ok)throw new Error(r.status);const b=await r.blob();
+  const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},3000)}catch(e){toast('Download failed: '+e.message)}}
+function kind(it){return it.kind==='lead'?'<span class="kd lead">lead</span>':it.kind==='lesson'?'<span class="kd lesson">taught by analyst</span>':'<span class="kd">found in post</span>'}
+function rep(it){return it.report_id?` <a href="report.html?id=${encodeURIComponent(it.report_id)}" target="_blank">report ↗</a>`:''}
+function badge(n){const a=document.querySelector('.nav[data-v="memory"]');if(!a)return;let b=a.querySelector('.navbadge');if(!n){if(b)b.remove();return}
+  if(!b){b=document.createElement('span');b.className='navbadge';a.appendChild(b)}b.textContent=n;b.title=n+' SPEAR suggestions waiting for your review'}
+async function load(){const p=panel();
+  try{L=await getJ('/api/learning')}catch(e){if(p)document.getElementById('lrn-pend').innerHTML='<div class="lnote">The teaching loop appears once the server update is live.</div>';return}
+  const c=L.counts||{};badge(c.pending||0);if(!p)return;
+  document.getElementById('lrn-stats').innerHTML=[[c.pending,'waiting for you'],[c.confirmed,'confirmed by you'],[c.rejected,'not right'],[c.taught,'taught by you ('+(c.taught_this_month||0)+' this month)'],[L.active_memory,'active team-memory entries'],[c.first_look_raised_this_month,'first-look scores raised by the full report this month']]
+    .map(([n,t])=>`<div class="st"><b>${n||0}</b><span>${esc(t)}</span></div>`).join('');
+  const pend=L.pending||[];
+  document.getElementById('lrn-pend').innerHTML=pend.length?`<table><tr><th>Term</th><th>Kind</th><th>What SPEAR says</th><th>Seen</th><th></th></tr>${pend.map(it=>{const d=it.data||{};
+    return `<tr><td class="tm">${esc(it.term)}${d.standard?`<div class="lnote">= ${esc(d.standard)}</div>`:''}</td><td>${kind(it)}${d.relationship?`<div class="lnote">${esc(d.relationship)}</div>`:''}</td>
+      <td>${esc(d.meaning||d.why||'')}${d.basis?` <span class="lnote">(${esc(d.basis)})</span>`:''}${rep(it)}</td><td>${d.seen||1}×</td>
+      <td class="acts" style="white-space:nowrap"><button class="btn pri b-sm" data-l="confirm" data-id="${it.id}">✓ Confirm</button><button class="btn ghost b-sm" data-l="reject" data-id="${it.id}">✗ Not right</button></td></tr>`}).join('')}</table>`
+    :'<div class="lnote">Nothing waiting. New suggestions appear here after each full report.</div>';
+  const rec=(L.recent||[]).slice(0,25);
+  document.getElementById('lrn-rec').innerHTML=rec.length?`<table><tr><th>Term / pattern</th><th>Kind</th><th>Decision</th><th>Why (analyst / SPEAR)</th><th>When</th></tr>${rec.map(it=>{const d=it.data||{};
+    return `<tr><td class="tm">${esc(it.term)}</td><td>${kind(it)}</td><td>${it.status==='rejected'?'✗ not right':it.status==='taught'?'✓ taught':'✓ confirmed'}${it.status!=='taught'?` <button class="btn ghost b-sm" data-l="undo" data-id="${it.id}" style="padding:1px 6px">undo</button>`:''}</td>
+      <td>${esc(d.why||d.meaning||'')}${d.review_note?`<div class="lnote">Note: ${esc(d.review_note)}</div>`:''}${rep(it)}</td><td class="lnote">${esc(new Date(it.reviewed_at||it.created_at).toLocaleString())}<br>${esc(it.reviewed_by||it.created_by||'')}</td></tr>`}).join('')}</table>`
+    :'<div class="lnote">No decisions yet.</div>'}
+async function onClick(e){const b=e.target.closest('[data-l]');if(!b)return;b.disabled=true;
+  try{await postJ('/api/learning/'+encodeURIComponent(b.dataset.id),{action:b.dataset.l,by:by()});
+    toast(b.dataset.l==='confirm'?'Confirmed — SPEAR uses it from the next scan':b.dataset.l==='reject'?'Marked not right — it will not be suggested again':'Undone');
+    await load();try{if(typeof renderTeam==='function'&&VIEW==='memory')renderTeam()}catch(x){}}catch(er){b.disabled=false;toast('Not saved: '+er.message)}}
+const _g=go;go=function(v){_g(v);if(VIEW==='memory')load()};
+setTimeout(()=>{load().catch(()=>{})},4000);
+window.spearLearn={load};
 })();
 </script>
 </body>
