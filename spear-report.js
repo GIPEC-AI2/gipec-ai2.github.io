@@ -43,6 +43,9 @@
     '.sr .teach{border:2px solid #1f5fd6;border-radius:8px;padding:12px 14px;margin:18px 0;background:#f7faff}.sr .teach .t{font-weight:700;color:#0f2a5c}' +
     '.sr .teach .g{display:grid;grid-template-columns:170px 1fr;gap:8px 10px;margin-top:8px;align-items:center}.sr .teach input,.sr .teach select,.sr .teach textarea{font:13.5px Helvetica,Arial,sans-serif;border:1px solid #c9d6f3;border-radius:6px;padding:7px 9px;width:100%;box-sizing:border-box}' +
     '.sr .teach .go{margin-top:10px;font:700 13px Helvetica;border:0;border-radius:7px;padding:9px 14px;background:#1f5fd6;color:#fff;cursor:pointer}.sr .teach .msg{font-size:12.5px;margin-left:8px}' +
+    '.sr h2.stg{background:#0f2a5c;color:#fff;border:0;padding:7px 12px;border-radius:5px;letter-spacing:.6px;font-size:15.5px}.sr h2.stg .qn{background:#fff;color:#0f2a5c}.sr h2.stg .stsub{font-weight:400;opacity:.85;font-size:13px;letter-spacing:0;margin-left:4px}' +
+    '.sr .bl{border:2px solid #0f2a5c;border-radius:8px;padding:10px 14px;margin:6px 0 10px}.sr .bl .blk{font:700 11px Helvetica;letter-spacing:1px;color:#0f2a5c;text-transform:uppercase}.sr .bl .verdict{margin:6px 0}' +
+    '.sr ul.dl{padding-left:18px;margin:6px 0}.sr ul.dl li{margin:5px 0}.sr .mono{font-family:Menlo,Consolas,monospace;font-size:12px;word-break:break-all}.sr .stage h3 .qn{display:inline-block;background:#0f2a5c;color:#fff;border-radius:4px;padding:0 6px;margin-right:7px;font-size:13px}' +
     '@media (max-width:700px){.sr .teach .g{grid-template-columns:1fr}.sr table.lt td.tm{white-space:normal}}' +
     '@media print{.sr .teach,.sr .lbtn{display:none!important}' +
     '}@media print{.sr h2,.sr .tac,.sr .des,.sr .ib{break-inside:avoid}}';
@@ -52,8 +55,97 @@
   function vcls(a) { a = String(a || '').toLowerCase(); return a.indexOf('yes') === 0 ? 'yes' : a.indexOf('no') === 0 ? 'no' : 'bl'; }
   function conf(c) { c = String(c || '').toLowerCase(); return c.indexOf('doc') === 0 ? 'documented' : c.indexOf('rep') === 0 ? 'reported' : 'not'; }
 
-  /* opts: {edits, imgs:{case_id:dataUrl}, editable, compact, author} */
-  function render(r, opts) {
+  function isDossier(r) { return !!r && ((r.extraction || []).length || (r.countermeasures || []).length || (r.submission && r.submission.q1)); }
+  /* opts: {edits, imgs:{case_id:dataUrl}, editable, compact, author, teach} */
+  function render(r, opts) { return isDossier(r) ? renderDossier(r, opts) : renderLegacy(r, opts); }
+
+  /* SPEAR DOSSIER: the analyst's stages - Hunt, Capture, Be hunted, Flag, Teach, Report. */
+  function renderDossier(r, opts) {
+    css(); opts = opts || {}; var ED = opts.edits || {}, IM = opts.imgs || {}, ce = opts.editable !== false;
+    function E(k, html, tag, cls) { var v = ED[k]; tag = tag || 'div'; return '<' + tag + (cls ? ' class="' + cls + '"' : '') + (ce ? ' contenteditable="true"' : '') + ' data-k="' + k + '">' + (v != null ? v : html) + '</' + tag + '>'; }
+    var v = r.verdict || {}, m = r.missed || {}, ev = r.evidence || [], sub = r.submission || {}, brief = isBrief(r);
+    var plat = String(r.platform || '').trim(), onMeta = !brief;
+    var links = (r.links || []).filter(function (u) { return /^https?:\/\//.test(u); });
+    var date = new Date(r.written_at || Date.now()).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    var whose = onMeta ? 'Meta’s AI' : ((plat && !/^other/i.test(plat) ? plat + '’s' : 'the platform’s') + ' moderation');
+    function stage(n, name, sub2) { return '<h2 class="stg"><span class="qn">' + n + '</span>' + name + (sub2 ? ' <span class="stsub">' + sub2 + '</span>' : '') + '</h2>'; }
+    function li(a, f) { return a && a.length ? '<ul class="dl">' + items(a, f) + '</ul>' : ''; }
+    var h = '';
+    h += '<span class="tag">RESTRICTED // SPEAR DOSSIER' + (brief ? ' · INTELLIGENCE BRIEF' : '') + '</span><h1>SPEAR DOSSIER</h1>';
+    h += E('title', esc(r.title || 'Multimodal threat analysis'), 'p', 'sub');
+    h += '<div class="meta"><div class="k">Account</div>' + E('account', esc(r.account || 'Not recorded')) +
+      '<div class="k">Platform</div>' + E('platform', esc((plat || '') + (r.content_type ? ' · ' + r.content_type : ''))) +
+      '<div class="k">Analyst</div>' + E('author', esc(r.author || opts.author || '')) +
+      '<div class="k">Date</div>' + E('date', esc(date)) +
+      '<div class="k">Risk</div><div>' + esc(r.risk_score) + '/10 · ' + esc(String(r.category || '').replace(/_/g, ' ')) + '</div>' +
+      '<div class="k">Type</div><div>' + (brief ? 'Intelligence brief' : 'Meta missed-capture report') + '</div>' +
+      (links.length ? '<div class="k">Link</div><div data-links="' + esc(links.join(' ')) + '" style="grid-column:span 3;word-break:break-all">' + links.map(function (u) { return '<a href="' + esc(u) + '" target="_blank" rel="noopener noreferrer">' + esc(u) + '</a>'; }).join('<br>') + '</div>' : '') + '</div>';
+    h += '<div class="bl"><div class="blk">Bottom line</div>' + E('vans', esc(v.answer || ''), 'div', 'verdict ' + vcls(v.answer)) + E('vsum', esc(v.summary || ''), 'p') + '</div>';
+    var figs = ev.map(function (e, i) { return IM[e.case_id] ? '<figure><img src="' + IM[e.case_id] + '" alt="Image ' + (i + 1) + '"><figcaption>Image ' + (i + 1) + '</figcaption></figure>' : ''; }).join('');
+
+    /* 1 HUNT */
+    h += '<section class="stage">' + stage(1, 'THE HUNT', 'Discovery &amp; extraction');
+    if (figs) h += '<div class="imgs">' + figs + '</div>';
+    h += E('extr', li(r.extraction, function (x) { return '<li><b>' + esc(x.label) + ':</b> ' + esc(x.value) + '</li>'; }) || '<p class="note">Nothing extracted.</p>');
+    if (r.combined_message) h += E('combined', 'Full message when the frames are read together: “' + esc(r.combined_message) + '”', 'div', 'combined');
+    if ((r.context || []).length) h += '<h3>What it means (decoded)</h3>' + E('context', '<ol class="n">' + items(r.context, function (c) { return '<li><b>' + esc(c.title) + ':</b> ' + esc(c.text) + '</li>'; }) + '</ol>');
+    if ((r.images || []).length) h += '<h3>Frame-by-frame</h3>' + items(r.images, function (im, i) {
+      return '<div class="ib"><div class="t">' + esc(im.label || ('Image ' + (i + 1))) + (im.timestamp ? ' (' + esc(im.timestamp) + ')' : '') + '</div>' + E('img' + i, esc(im.visual || '') + (im.notes ? ' <span class="note">' + esc(im.notes) + '</span>' : ''), 'p') + '</div>';
+    });
+    h += '</section>';
+
+    /* 2 CAPTURE */
+    h += '<section class="stage">' + stage(2, 'CAPTURE', 'Forensic evidence record') + '<ul class="dl">' +
+      '<li><b>Originals archived:</b> ' + ev.length + ' image' + (ev.length === 1 ? '' : 's') + ', kept permanently whether or not the post is taken down' + (r.from_text ? ' (no screenshot stored — written from the captured text and link)' : '') + '</li>' +
+      ev.map(function (e, i) { return e.sha256 ? '<li><b>Image ' + (i + 1) + ' SHA-256:</b> <span class="mono">' + esc(e.sha256) + '</span></li>' : ''; }).join('') +
+      (links.length ? '<li><b>Post link:</b> ' + esc(links.join(' · ')) + '</li>' : '') +
+      '<li><b>Written:</b> ' + esc(new Date(r.written_at || Date.now()).toLocaleString()) + (r.model ? ' · ' + esc(r.model) : '') + '</li></ul></section>';
+
+    /* 3 BE HUNTED */
+    h += '<section class="stage">' + stage(3, 'BE HUNTED', 'Why ' + esc(whose) + ' missed it') + E('mintro', esc(m.intro || ''), 'p');
+    h += items(m.tactics, function (t, i) { return E('tac' + i, '<div class="t">' + (i + 1) + '. ' + esc(t.title) + '</div><div><span class="lab">What the poster did:</span> ' + esc(t.tactic) + '</div><div><span class="lab">Why it gets past automated review:</span> ' + esc(t.why_missed) + '</div>', 'div', 'tac'); });
+    h += '<p class="note">The analyst’s assessment of likely reasons, not a statement of how the platform’s internal systems work.</p></section>';
+
+    /* 4 FLAG */
+    h += '<section class="stage">' + stage(4, 'FLAG', 'Policy &amp; audit mapping');
+    h += '<h3>' + E('vq', esc(v.question || 'Is this a violation?'), 'span') + '</h3>' + E('vwhy', '<ol class="n">' + items(v.reasons, function (c) { return '<li><b>' + esc(c.title) + ':</b> ' + esc(c.text) + '</li>'; }) + '</ol>');
+    if ((r.policy_mapping || []).length) h += '<h3>Rules it breaks</h3>' + E('pmap', li(r.policy_mapping, function (x) { return '<li><b>' + esc(x.framework) + ':</b> ' + esc(x.finding) + '</li>'; }));
+    if (v.platform_context) h += E('vplat', esc(v.platform_context), 'p');
+    if ((r.designations || []).length) h += '<h3>Designation check</h3>' + items(r.designations, function (d, i) {
+      return E('des' + i, '<p><b>' + esc(d.question || ('Is ' + d.entity + ' designated?')) + '</b><span class="conf ' + conf(d.confidence) + '">' + esc(d.confidence || 'not confirmed') + '</span><br>' + esc(d.answer) + (d.what_it_means ? ' ' + esc(d.what_it_means) : '') + '</p><p class="note">Basis: ' + esc(d.basis || '—') + '</p>', 'div', 'des');
+    });
+    var cp = r.cross_platform || [];
+    if (r.threat_assessment || cp.length) {
+      h += '<section ' + (brief ? 'data-q="5"' : 'data-x="5"') + '><h3>' + (brief ? '<span class="qn">5</span>' : '') + 'Why it’s dangerous</h3>' + E('threat', esc(r.threat_assessment || ''), 'p');
+      if (cp.length) h += '<h3>Danger to other platforms</h3>' + E('xplat', li(cp, function (c) { return '<li><b>' + esc(c.platform) + ':</b> ' + esc(c.risk) + (c.policy ? ' <span class="note">Rule it breaks there: ' + esc(c.policy) + '</span>' : '') + '</li>'; }));
+      h += '</section>';
+    }
+    h += '<p><span class="lab">Recommended action:</span> ' + E('rec', esc(r.recommended_action || '—'), 'span') + '</p></section>';
+
+    /* 5 TEACH */
+    h += '<section class="stage">' + stage(5, 'TEACH', 'How ' + (onMeta ? 'Meta’s' : 'the platform’s') + ' AI could learn to catch it');
+    h += items(r.countermeasures, function (c, i) { return E('cm' + i, '<div class="t">' + String.fromCharCode(65 + i) + '. ' + esc(c.title) + '</div><div><span class="lab">The fix:</span> ' + esc(c.fix) + '</div><div><span class="lab">How:</span> ' + esc(c.execution) + '</div>' + (c.pattern ? '<div><span class="lab">Detection template:</span> <span class="mono">' + esc(c.pattern) + '</span></div>' : ''), 'div', 'tac') + (c.pattern && (c.lid || c.known) ? '<div class="note" style="margin:-4px 0 10px 14px">Add this template to team memory? ' + chip(c) + '</div>' : ''); });
+    h += '<p class="note">Recommendations for the platform’s own engineering and trust-and-safety teams. SPEAR supplies the labelled examples and the analysis; it does not access or retrain the platform’s systems.</p>';
+    h += learnHtml(r, opts).replace('<section class="lrn"><h2>Slurs &amp; coded language found</h2>', '<div class="lrn"><h3>Slurs &amp; coded language found</h3>').replace(/<\/section>$/, '</div>');
+    h += '</section>';
+
+    /* 6 REPORT */
+    var q3t = onMeta ? 'Why did Meta’s AI miss it?' : 'Why does ' + esc(whose) + ' miss it?';
+    h += '<section class="stage">' + stage(6, 'REPORT', onMeta ? 'The four answers for Meta — ready to paste' : 'Ready-to-send brief');
+    h += '<section data-q="1"><h3><span class="qn">Q1</span>' + (r.from_text ? 'What is this post?' : 'Can you describe this image?') + '</h3>' + E('s1', esc(sub.q1 || ''), 'p') + '</section>';
+    h += '<section data-q="2"><h3><span class="qn">Q2</span>' + esc(v.question || 'Is this a violation?') + '</h3>' + E('s2', esc(sub.q2 || ((v.answer || '') + ' ' + (v.summary || ''))), 'p') + '</section>';
+    h += '<section data-q="3"><h3><span class="qn">Q3</span>' + q3t + '</h3>' + E('s3', esc(sub.q3 || m.intro || ''), 'p') + '</section>';
+    h += '<section data-q="4"><h3><span class="qn">Q4</span>Could GIPECAI Project SPEAR have captured it?</h3>' + E('s4', esc(sub.q4 || r.spear_answer || ''), 'p') + '</section>';
+    if ((r.spear_catch || []).length) h += '<h3>How SPEAR catches it</h3>' + E('catch', li(r.spear_catch, function (c) { return '<li><b>' + esc(c.title) + ':</b> ' + esc(c.text) + '</li>'; }));
+    if ((r.takeaways || []).length) h += '<h3>Key takeaways</h3>' + E('take', li(r.takeaways, function (c) { return '<li><b>' + esc(c.title) + ':</b> ' + esc(c.text) + '</li>'; }));
+    if ((r.leverage || []).length) h += '<h3>How to use this capture</h3>' + E('lev', li(r.leverage, function (c) { return '<li><b>' + esc(c.title) + ':</b> ' + esc(c.text) + '</li>'; }));
+    h += '</section>';
+    h += '<div class="appx"><h2>Appendix — About Project SPEAR</h2>' + E('appx', '<p>Project SPEAR (GIPEC AI²) is a human-in-the-loop threat-intelligence system for coordinated harmful content. It hunts open platforms for known terms, captures and fingerprints every original, analyses how each post evades automated moderation, flags it against the platform’s published rules, and turns each confirmed case into labelled examples and recommendations a platform can use to teach its own systems. A human analyst confirms every case, and his decisions feed back into the system.</p>') + '</div>';
+    h += '<div class="foot"><span>PROJECT SPEAR // DOSSIER</span><span>© ' + new Date().getFullYear() + ' GIPEC AI². Patent Pending. Confidential.</span></div>';
+    return h;
+  }
+
+  function renderLegacy(r, opts) {
     css(); opts = opts || {}; var ED = opts.edits || {}, IM = opts.imgs || {}, ce = opts.editable !== false;
     function E(k, html, tag, cls) { var v = ED[k]; tag = tag || 'div'; return '<' + tag + (cls ? ' class="' + cls + '"' : '') + (ce ? ' contenteditable="true"' : '') + ' data-k="' + k + '">' + (v != null ? v : html) + '</' + tag + '>'; }
     var v = r.verdict || {}, m = r.missed || {}, ev = r.evidence || [];
@@ -188,6 +280,15 @@
   /* The four answers as plain text, from what is on screen (so the analyst's edits are included). */
   function isBrief(r) { return !!r && r.report_type === 'brief'; }
   function copyLabel(r) { return isBrief(r) ? '📋 Copy brief' : '📋 Copy Q1–Q4 for Meta'; }
+  /* The whole dossier as plain text (what is on screen, edits included). */
+  function fullText(root) {
+    var c = root.cloneNode(true);
+    c.querySelectorAll('.teach,.lbtn,.noprint,.appx,.foot,.imgs,.tag').forEach(function (x) { x.remove(); });
+    c.querySelectorAll('li').forEach(function (li) { li.insertAdjacentText('afterbegin', '• '); li.insertAdjacentText('beforeend', '\n'); });
+    c.querySelectorAll('h1,h2,h3,p,div,ol,ul,tr').forEach(function (b) { b.insertAdjacentText('beforeend', '\n'); });
+    c.querySelectorAll('h2.stg .qn').forEach(function (x) { x.textContent = x.textContent + '. '; });
+    return c.textContent.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+  }
   function metaText(root) {
     var out = [], lk = root.querySelector('[data-links]');
     if (lk && lk.dataset.links) out.push('Post link: ' + lk.dataset.links.split(' ').join('\n'));
@@ -201,5 +302,5 @@
     });
     return out.join('\n\n');
   }
-  window.SpearReport = { render: render, metaText: metaText, css: css, wireLearning: wireLearning, isBrief: isBrief, copyLabel: copyLabel };
+  window.SpearReport = { render: render, metaText: metaText, fullText: fullText, css: css, wireLearning: wireLearning, isBrief: isBrief, copyLabel: copyLabel, isDossier: isDossier };
 })();
