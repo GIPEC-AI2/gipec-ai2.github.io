@@ -59,19 +59,22 @@
     var v = r.verdict || {}, m = r.missed || {}, ev = r.evidence || [];
     var date = new Date(r.written_at || Date.now()).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
     var figs = ev.map(function (e, i) { return IM[e.case_id] ? '<figure><img src="' + IM[e.case_id] + '" alt="Image ' + (i + 1) + '"><figcaption>Image ' + (i + 1) + (e.sha256 ? ' · SHA-256 ' + esc(e.sha256.slice(0, 16)) + '…' : '') + '</figcaption></figure>' : ''; }).join('');
-    var nDes = (r.designations || []).length;
+    var nDes = (r.designations || []).length, brief = isBrief(r), plat = String(r.platform || '').trim();
+    var links = (r.links || []).filter(function (u) { return /^https?:\/\//.test(u); });
     var h = '';
-    h += '<span class="tag">RESTRICTED // ANALYST REPORT</span><h1>PROJECT SPEAR</h1>';
+    h += '<span class="tag">RESTRICTED // ' + (brief ? 'INTELLIGENCE BRIEF' : 'ANALYST REPORT') + '</span><h1>PROJECT SPEAR</h1>';
     h += E('title', esc(r.title || 'Analyst Report'), 'p', 'sub');
     h += '<div class="meta"><div class="k">Account</div>' + E('account', esc(r.account || 'Not recorded')) +
       '<div class="k">Platform</div>' + E('platform', esc((r.platform || '') + (r.content_type ? ' · ' + r.content_type : ''))) +
       '<div class="k">Analyst</div>' + E('author', esc(r.author || opts.author || '')) +
       '<div class="k">Date</div>' + E('date', esc(date)) +
       '<div class="k">Risk</div><div>' + esc(r.risk_score) + '/10 · ' + esc(String(r.category || '').replace(/_/g, ' ')) + '</div>' +
-      '<div class="k">Framework</div><div>GIPEC AI² / SPEAR</div></div>';
+      '<div class="k">Framework</div><div>GIPEC AI² / SPEAR' + (brief ? ' · Intelligence brief' : ' · Meta report') + '</div>' +
+      (links.length ? '<div class="k">Link</div><div data-links="' + esc(links.join(' ')) + '" style="grid-column:span 3;word-break:break-all">' + links.map(function (u) { return '<a href="' + esc(u) + '" target="_blank" rel="noopener noreferrer">' + esc(u) + '</a>'; }).join('<br>') + '</div>' : '') + '</div>';
     if (figs) h += '<div class="imgs">' + figs + '</div>';
 
-    h += '<section data-q="1"><h2><span class="qn">Q1</span>Can you describe this image?</h2>';
+    h += '<section data-q="1"><h2><span class="qn">Q1</span>' + (r.from_text ? 'What is this post?' : 'Can you describe this image?') + '</h2>';
+    if (r.from_text) h += '<p class="note">No screenshot was stored for this post; this is written from the captured text and link.</p>';
     h += items(r.images, function (im, i) {
       return '<div class="ib"><div class="t">' + esc(im.label || ('Image ' + (i + 1))) + (im.timestamp ? ' (Timestamp ' + esc(im.timestamp) + ')' : '') + '</div>' +
         E('img' + i, '<ul>' + (im.visual ? '<li><span class="lab">Visual content:</span> ' + esc(im.visual) + '</li>' : '') +
@@ -88,7 +91,7 @@
     h += '<h3>Why</h3>' + E('vwhy', '<ol class="n">' + items(v.reasons, function (c) { return '<li><b>' + esc(c.title) + ':</b> ' + esc(c.text) + '</li>'; }) + '</ol>');
     h += '<h3>Platform moderation context</h3>' + E('vplat', esc(v.platform_context || ''), 'p') + '</section>';
 
-    h += '<section data-q="3"><h2><span class="qn">Q3</span>Why did Meta’s AI miss it?</h2>' + E('mintro', esc(m.intro || ''), 'p');
+    h += '<section data-q="3"><h2><span class="qn">Q3</span>' + (brief ? 'Why does ' + esc(plat && !/^other/i.test(plat) ? plat + '’s' : 'platform') + ' moderation miss it?' : 'Why did Meta’s AI miss it?') + '</h2>' + E('mintro', esc(m.intro || ''), 'p');
     h += items(m.tactics, function (t, i) { return E('tac' + i, '<div class="t">' + (i + 1) + '. ' + esc(t.title) + '</div><div><span class="lab">The evasion tactic:</span> ' + esc(t.tactic) + '</div><div><span class="lab">Why platform AI misses it:</span> ' + esc(t.why_missed) + '</div>', 'div', 'tac'); });
     h += '<p class="note">The analyst’s assessment of likely reasons, not a statement of how the platform’s internal systems work.</p></section>';
 
@@ -96,6 +99,12 @@
     if (r.spear_answer) h += E('capans', esc(r.spear_answer), 'div', 'verdict cap');
     h += E('catch', '<ol class="n">' + items(r.spear_catch, function (c) { return '<li><b>' + esc(c.title) + ':</b> ' + esc(c.text) + '</li>'; }) + '</ol>') + '</section>';
 
+    var cp = r.cross_platform || [];
+    if (r.threat_assessment || cp.length) {
+      h += '<section ' + (brief ? 'data-q="5"' : 'data-x="5"') + '><h2>' + (brief ? '<span class="qn">5</span>' : '') + 'Why it’s dangerous</h2>' + E('threat', esc(r.threat_assessment || ''), 'p');
+      if (cp.length) h += '<h3>Danger to other platforms</h3>' + E('xplat', '<ol class="n">' + items(cp, function (c) { return '<li><b>' + esc(c.platform) + ':</b> ' + esc(c.risk) + (c.policy ? ' <span class="note">Rule it breaks there: ' + esc(c.policy) + '</span>' : '') + '</li>'; }) + '</ol>');
+      h += '</section>';
+    }
     h += learnHtml(r, opts);
     if (nDes) h += '<h2>Designation check</h2>' + items(r.designations, function (d, i) {
       return E('des' + i, '<h3 style="margin-top:0">' + esc(d.question || ('Is ' + d.entity + ' designated?')) + '<span class="conf ' + conf(d.confidence) + '">' + esc(d.confidence || 'not confirmed') + '</span></h3><p>' + esc(d.answer) + '</p>' +
@@ -177,16 +186,20 @@
   }
 
   /* The four answers as plain text, from what is on screen (so the analyst's edits are included). */
+  function isBrief(r) { return !!r && r.report_type === 'brief'; }
+  function copyLabel(r) { return isBrief(r) ? '📋 Copy brief' : '📋 Copy Q1–Q4 for Meta'; }
   function metaText(root) {
-    var out = [];
+    var out = [], lk = root.querySelector('[data-links]');
+    if (lk && lk.dataset.links) out.push('Post link: ' + lk.dataset.links.split(' ').join('\n'));
     root.querySelectorAll('section[data-q]').forEach(function (s) {
       var c = s.cloneNode(true);
-      c.querySelectorAll('.qn').forEach(function (x) { x.textContent = 'Q' + s.dataset.q + '. '; });
+      c.querySelectorAll('.teach,.lbtn,.noprint').forEach(function (x) { x.remove(); });
+      c.querySelectorAll('.qn').forEach(function (x) { x.textContent = (/^\d$/.test(s.dataset.q) && s.dataset.q < 5 ? 'Q' : '') + s.dataset.q + '. '; });
       c.querySelectorAll('li').forEach(function (li) { li.insertAdjacentText('afterbegin', '• '); li.insertAdjacentText('beforeend', '\n'); });
       c.querySelectorAll('h2,h3,p,div,ol,ul').forEach(function (b) { b.insertAdjacentText('beforeend', '\n'); });
       out.push(c.textContent.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim());
     });
     return out.join('\n\n');
   }
-  window.SpearReport = { render: render, metaText: metaText, css: css, wireLearning: wireLearning };
+  window.SpearReport = { render: render, metaText: metaText, css: css, wireLearning: wireLearning, isBrief: isBrief, copyLabel: copyLabel };
 })();
