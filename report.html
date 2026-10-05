@@ -74,7 +74,7 @@ async function start(){
     if(!CASES.length){say('<b>No case selected.</b><br>Open this from a case in the dashboard.');return}
     const l=await jget('/api/deep-reports?case='+encodeURIComponent(CASES[0]));
     const want=[...CASES].sort().join(',');
-    const hit=(l.reports||[]).find(x=>[...x.case_ids].sort().join(',')===want);
+    const hit=CASES.length===1?(l.reports||[])[0]:(l.reports||[]).find(x=>[...x.case_ids].sort().join(',')===want);   // one case: its newest report, even one shared with other screenshots of the post
     if(hit){const j=await jget('/api/deep-report/'+hit.id);return show(j)}
     return writeNew();
   }catch(e){say('<b>Could not load the report.</b><br>'+esc(e.message)+'<br><br><button onclick="start()">Try again</button>')}

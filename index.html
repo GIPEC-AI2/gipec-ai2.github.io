@@ -6280,5 +6280,124 @@ if('serviceWorker' in navigator){window.addEventListener('load',function(){navig
 })();
 </script>
 
+<style id="spear-batch-css">
+.bmode{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:8px}
+.bmode .sl{font-size:12.5px;font-weight:700;color:var(--navy,#0f2a5c);margin-right:2px}
+.bchip{border:1px solid var(--line,#d9e0ea);background:#fff;border-radius:999px;padding:5px 11px;font:600 12.5px/1 inherit;font-family:inherit;cursor:pointer;color:#334}
+.bchip.on{background:#0f2a5c;color:#fff;border-color:transparent}
+#batchWhy{margin-top:8px;width:100%;max-width:560px;border:1px solid var(--line,#d9e0ea);border-radius:8px;padding:9px 11px;font:13.5px/1.4 inherit;font-family:inherit;resize:vertical;min-height:38px}
+#batchStat{margin-top:8px;font-size:13px}
+#batchStat .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:7px 10px;border:1px solid #dfe5ee;border-radius:8px;margin-top:6px;background:#f8fafc}
+#batchStat .row.ok{background:#eef8f2;border-color:#b9e2c8}
+#batchStat .row.err{background:#fff4f2;border-color:#f3c9c3}
+#batchStat a{font-weight:700;color:#1f5fd6}
+.bspin{display:inline-block;width:12px;height:12px;border:2px solid #c7d2e5;border-top-color:#1f5fd6;border-radius:50%;animation:bsp 1s linear infinite;vertical-align:-2px}
+@keyframes bsp{to{transform:rotate(360deg)}}
+</style>
+<script id="spear-batch">
+/* Upload several screenshots at once and get the full analyst report (Q1–Q4 for Meta) without
+   another click. "One post": all the screenshots in the upload are frames of the same post and
+   are read together in one report. "Separate posts": one report per screenshot.
+   "Why it's bad" is the analyst's own reasoning in his words; the report is built on it.
+   Reports are written on the server from the archived originals and saved with the cases. */
+(function () {
+  var KEY_MODE = 'spear_batch_mode';
+  function mode() { try { return localStorage.getItem(KEY_MODE) || 'one'; } catch (e) { return 'one'; } }
+  function setMode(v) { try { localStorage.setItem(KEY_MODE, v); } catch (e) {} paint(); }
+  function api() { var b = (typeof API_BASE !== 'undefined' && API_BASE) || localStorage.getItem('spear_api') || ''; return String(b).replace(/\/$/, ''); }
+  function key() { return localStorage.getItem('spear_key') || ''; }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function paint() {
+    document.querySelectorAll('#bModeRow .bchip').forEach(function (c) { c.classList.toggle('on', c.dataset.m === mode()); });
+  }
+  function build() {
+    var after = document.getElementById('srcNote') || document.getElementById('heroPoster');
+    if (!after || document.getElementById('bModeRow')) return !!document.getElementById('bModeRow');
+    var row = document.createElement('div'); row.className = 'bmode'; row.id = 'bModeRow';
+    row.innerHTML = '<span class="sl">Several screenshots at once:</span>' +
+      '<button type="button" class="bchip" data-m="one" title="All the screenshots in this upload are the same post (e.g. frames of one Reel) — one report reads them together">One post</button>' +
+      '<button type="button" class="bchip" data-m="each" title="Each screenshot is a different post — one report each">Separate posts</button>';
+    after.insertAdjacentElement('afterend', row);
+    var why = document.createElement('textarea'); why.id = 'batchWhy'; why.rows = 1;
+    why.placeholder = 'Why it’s bad — in your words (optional). The full report is built on your reasoning.';
+    row.insertAdjacentElement('afterend', why);
+    var st = document.createElement('div'); st.id = 'batchStat'; why.insertAdjacentElement('afterend', st);
+    row.addEventListener('click', function (e) { var b = e.target.closest('.bchip'); if (b) setMode(b.dataset.m); });
+    paint(); return true;
+  }
+  function line(html, cls) {
+    var st = document.getElementById('batchStat'); if (!st) return null;
+    var d = document.createElement('div'); d.className = 'row' + (cls ? ' ' + cls : ''); d.innerHTML = html; st.insertBefore(d, st.firstChild);
+    while (st.children.length > 6) st.removeChild(st.lastChild);
+    return d;
+  }
+  function synced(it) { var s = {}; try { s = JSON.parse(localStorage.getItem('spear_synced_v1') || '{}') || {}; } catch (e) {} return it.uid && s[it.uid]; }
+  async function waitSynced(list) {
+    for (var t = 0; t < 40; t++) {                       // up to ~2 minutes for the cases to reach the server
+      if (list.every(synced)) return true;
+      try { if (window.spearCaseSync && t % 3 === 2) window.spearCaseSync.push(); } catch (e) {}
+      await new Promise(function (r) { setTimeout(r, 3000); });
+    }
+    return list.some(synced);
+  }
+  async function writeReport(group, why, label) {
+    var row = line('<span class="bspin"></span> Writing the full report for ' + esc(label) + '… about 1–2 minutes. Keep this page open.');
+    var ok = await waitSynced(group);
+    var ids = group.filter(synced).map(function (it) { return it.uid; });
+    if (!ok || !ids.length) { if (row) { row.className = 'row err'; row.innerHTML = 'Report not started for ' + esc(label) + ': the case did not reach the server. Open it later in View Details.'; } return; }
+    var last = '';
+    for (var a = 0; a < 3; a++) {
+      try {
+        var r = await fetch(api() + '/api/deep-report', { method: 'POST', headers: { 'X-Spear-Key': key(), 'Content-Type': 'application/json' },
+          body: JSON.stringify({ case_ids: ids, analyst_notes: why || '', author: localStorage.getItem('spear_author') || 'Eric Feinberg' }) });
+        if (r.ok) {
+          var j = await r.json(), rep = j.report || {};
+          group.forEach(function (it) { it.deep_report_id = j.id; if (why) it.notes = it.notes ? it.notes : why; });
+          try { itemsSave(); } catch (e) {}
+          if (row) { row.className = 'row ok'; row.innerHTML = '✅ <b>' + esc(rep.title || 'Full report') + '</b> — ' + esc((rep.verdict || {}).answer || '') +
+            ' <a href="report.html?id=' + encodeURIComponent(j.id) + '" target="_blank">Open report ↗</a>'; }
+          return;
+        }
+        var d = ''; try { d = (await r.json()).detail || ''; } catch (e) {}
+        last = d || ('error ' + r.status);
+        if (r.status === 404 && a === 0) { if (row) row.innerHTML = '<span class="bspin"></span> Waiting for the original image to reach the archive…'; await new Promise(function (res) { setTimeout(res, 45000); }); continue; }
+        if ([400, 403, 404].indexOf(r.status) >= 0) break;
+      } catch (e) { last = 'could not reach the server'; }
+      await new Promise(function (res) { setTimeout(res, 15000); });
+    }
+    if (row) { row.className = 'row err'; row.innerHTML = 'Report not written for ' + esc(label) + ': ' + esc(last) + '. It can be written later from View Details.'; }
+  }
+  var queue = Promise.resolve();
+  function afterUpload(before, why) {
+    var made = items.filter(function (it) { return !before.has(it) && it.intake === 'file' && it.type !== 'audio' && it.category !== 'child_safety'; });
+    if (!made.length) return;
+    made.sort(function (a, b) { return String(a.captured || '').localeCompare(String(b.captured || '')) || String(a.name || '').localeCompare(String(b.name || '')); });
+    var groups = [];
+    if (mode() === 'one') { for (var i = 0; i < made.length; i += 6) groups.push(made.slice(i, i + 6)); }
+    else made.forEach(function (it) { groups.push([it]); });
+    groups.forEach(function (g) {
+      var label = g.length > 1 ? g.length + ' screenshots of one post' : (g[0].name || 'this screenshot');
+      queue = queue.then(function () { return writeReport(g, why, label); });   // one report at a time
+    });
+  }
+  function wrap(name) {
+    var fn = window[name]; if (typeof fn !== 'function' || fn._batch) return !!(fn && fn._batch);
+    var w = async function () {
+      var before = new Set(items), why = ((document.getElementById('batchWhy') || {}).value || '').trim();
+      var out = await fn.apply(this, arguments);
+      try { afterUpload(before, why); var bw = document.getElementById('batchWhy'); if (bw) bw.value = ''; } catch (e) { console.warn('[batch]', e); }
+      return out;
+    };
+    w._batch = true; window[name] = w;
+    try { if (name === 'heroPick') heroPick = w; if (name === 'ingestPhotos') ingestPhotos = w; } catch (e) {}
+    return true;
+  }
+  var tries = 0, t = setInterval(function () {
+    var ok = build() && typeof items !== 'undefined' && wrap('heroPick') && wrap('ingestPhotos');
+    if (ok || ++tries > 900) clearInterval(t);
+  }, 700);
+})();
+</script>
+
 </body>
 </html>
