@@ -106,7 +106,8 @@ async function show(j){
 function render(){
   const ap=$('pg')&&$('pg').classList.contains('with-appx');
   document.title='Project SPEAR — '+(R.title||'Analyst Report');
-  $('root').innerHTML='<div class="page sr'+(ap?' with-appx':'')+'" id="pg">'+SpearReport.render(R,{edits:EDITS,imgs:IMGS,author:author()})+'<p class="noprint note" style="margin-top:16px">Click any paragraph to edit it. Edits are saved on the server with the report.</p></div>';
+  $('root').innerHTML='<div class="page sr'+(ap?' with-appx':'')+'" id="pg">'+SpearReport.render(R,{edits:EDITS,imgs:IMGS,author:author(),teach:true})+'<p class="noprint note" style="margin-top:16px">Click any paragraph to edit it. Edits are saved on the server with the report.</p></div>';
+  if(SpearReport.wireLearning)SpearReport.wireLearning($('pg'),{base:API,key:KEY,by:author(),reportId:RID,caseIds:CASES});
   document.querySelectorAll('#pg [contenteditable]').forEach(el=>el.addEventListener('input',queueSave));
 }
 let saveT=null;
