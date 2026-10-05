@@ -1402,12 +1402,12 @@ const H=()=>({'X-Spear-Key':KEY});
 async function getJ(p){const r=await api(p);if(!r.ok)throw new Error(r.status);return r.json()}
 async function imgsFor(rep){const out={};for(const ev of rep.evidence||[]){if(!ev.case_id)continue;
   try{const r=await api('/api/evidence/'+encodeURIComponent(ev.case_id));if(r.ok){const b=await r.blob();out[ev.case_id]=await new Promise(res=>{const f=new FileReader();f.onload=()=>res(f.result);f.readAsDataURL(b)})}}catch(e){}}return out}
-function box(it,inner,btns){return `<div class="deepbox" id="deepbox"><div class="dh"><b>Full analyst report — Q1–Q4 for Meta</b>${btns||''}</div>${inner}</div>`}
+function box(it,inner,btns,rep){const t=rep&&rep.report_type==='brief'?'SPEAR Dossier — intelligence brief':'SPEAR Dossier — Q1–Q4 for Meta in step 6';return `<div class="deepbox" id="deepbox"><div class="dh"><b>${t}</b>${btns||''}</div>${inner}</div>`}
 function openFull(it){window.open('report.html?cases='+encodeURIComponent(it.uid),'_blank')}
 window.spearDeep={open:id=>{const it=ITEMS.find(x=>String(x.id)===String(id));if(it&&it.uid)openFull(it)},
-  copy:()=>{const p=document.querySelector('#deepbox .sr');if(!p)return;navigator.clipboard.writeText(SpearReport.metaText(p)).then(()=>toast('Q1–Q4 copied — paste into Meta’s form'),()=>toast('Copy blocked by the browser'))},
-  write:id=>{const it=ITEMS.find(x=>String(x.id)===String(id));if(it)fill(it,true)}};
-async function fill(it,force){
+  copy:()=>{const p=document.querySelector('#deepbox .sr');if(!p)return;const b=!!p.querySelector('section[data-q="5"]');navigator.clipboard.writeText(SpearReport.metaText(p)).then(()=>toast(b?'Brief copied':'Q1–Q4 copied — paste into Meta’s form'),()=>toast('Copy blocked by the browser'))},
+  write:(id,txt)=>{const it=ITEMS.find(x=>String(x.id)===String(id));if(it)fill(it,true,txt)}};
+async function fill(it,force,allowText){
   const host=document.getElementById('deepbox');if(!host||DRAWER_ID==null||String(DRAWER_ID)!==String(it.id))return;
   const set=h=>{const b=document.getElementById('deepbox');if(b&&String(DRAWER_ID)===String(it.id))b.outerHTML=h};
   const btnOpen=`<button class="btn ghost b-sm" onclick="spearDeep.open('${it.id}')">Open full report ↗</button>`;
@@ -1417,14 +1417,16 @@ async function fill(it,force){
     if(!force){const l=await getJ('/api/deep-reports?case='+encodeURIComponent(it.uid));const hit=(l.reports||[])[0];
       if(hit){const j=await getJ('/api/deep-report/'+hit.id);const im=await imgsFor(j.report);
         set(box(it,`<div class="sr compact">${SpearReport.render(j.report,{edits:j.edits||{},imgs:im,editable:false,teach:true})}</div>`,
-          `<button class="btn pri b-sm" onclick="spearDeep.copy()">📋 Copy Q1–Q4 for Meta</button>${btnOpen}`));
+          `<button class="btn pri b-sm" onclick="spearDeep.copy()">${SpearReport.copyLabel?SpearReport.copyLabel(j.report):'📋 Copy Q1–Q4 for Meta'}</button>${btnOpen}`,j.report));
         const sr=document.querySelector('#deepbox .sr');if(sr&&SpearReport.wireLearning)SpearReport.wireLearning(sr,{base:API,key:KEY,by:localStorage.getItem('spear_author')||'Eric Feinberg',reportId:hit.id,caseIds:j.case_ids||[it.uid]});return}}
     if(BUSY[it.uid]){set(box(it,'<div class="deepmsg"><span class="dspin"></span>Writing the report… about 1–2 minutes.</div>'));return}
     BUSY[it.uid]=1;
     set(box(it,'<div class="deepmsg"><span class="dspin"></span>Writing the full report from the archived original… about 1–2 minutes. You can keep working; it will appear here.</div>'));
-    const r=await api('/api/deep-report',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({case_ids:[it.uid],author:localStorage.getItem('spear_author')||'Eric Feinberg'})});
+    const r=await api('/api/deep-report',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({case_ids:[it.uid],author:localStorage.getItem('spear_author')||'Eric Feinberg',allow_text:!!allowText})});
     delete BUSY[it.uid];
     if(!r.ok){let d='';try{d=(await r.json()).detail||''}catch(e){}
+      if(r.status===404&&/text brief available/.test(d)){set(box(it,'<div class="deepmsg">No screenshot is stored for this post. SPEAR can write the intelligence brief from the captured text and link.</div>',
+        `<button class="btn pri b-sm" onclick="spearDeep.write('${it.id}',true)">🧾 Write the brief from the text</button>`));return}
       set(box(it,`<div class="deepmsg">${r.status===404?'No archived image for this case — only images uploaded from Oct 3, 2026 are kept.':'The report was not written: '+esc(d||('error '+r.status))}</div>`,
         r.status===404?'':`<button class="btn ghost b-sm" onclick="spearDeep.write('${it.id}')">Try again</button>`));return}
     fill(it,false);
