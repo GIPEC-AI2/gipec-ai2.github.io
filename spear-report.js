@@ -36,7 +36,16 @@
     '.sr.compact h1,.sr.compact .tag,.sr.compact .foot,.sr.compact .appx{display:none}.sr.compact{font-size:13.5px}.sr.compact h2{font-size:15px;margin:18px 0 8px}' +
     '.sr.compact .meta{grid-template-columns:90px 1fr}' +
     '@media (max-width:700px){.sr .meta{grid-template-columns:90px 1fr}.sr .kv{grid-template-columns:110px 1fr}}' +
-    '@media print{.sr h2,.sr .tac,.sr .des,.sr .ib{break-inside:avoid}}';
+    '.sr table.lt{width:100%;border-collapse:collapse;font-size:13px;margin:6px 0 4px}.sr table.lt th{text-align:left;font-size:11px;color:#5b6678;text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid #dfe5ee;padding:5px 6px}' +
+    '.sr table.lt td{border-bottom:1px solid #eef1f6;padding:7px 6px;vertical-align:top}.sr table.lt td.tm{font-weight:700;white-space:nowrap}' +
+    '.sr .lchip{display:inline-block;font:700 11px Helvetica;padding:3px 8px;border-radius:10px;white-space:nowrap}.sr .lchip.k{background:#e9f7ef;color:#1f7a4d}.sr .lchip.p{background:#fff6e5;color:#a15c07}.sr .lchip.r{background:#eef1f6;color:#5b6678}' +
+    '.sr .lbtn{font:600 11.5px Helvetica;border:1px solid #c9d6f3;background:#fff;color:#1f5fd6;border-radius:6px;padding:3px 8px;cursor:pointer;margin:3px 3px 0 0}.sr .lbtn.ok{background:#1f7a4d;border-color:#1f7a4d;color:#fff}.sr .lbtn.lnk{border:0;padding:0;background:none;text-decoration:underline;color:#5b6678}' +
+    '.sr .teach{border:2px solid #1f5fd6;border-radius:8px;padding:12px 14px;margin:18px 0;background:#f7faff}.sr .teach .t{font-weight:700;color:#0f2a5c}' +
+    '.sr .teach .g{display:grid;grid-template-columns:170px 1fr;gap:8px 10px;margin-top:8px;align-items:center}.sr .teach input,.sr .teach select,.sr .teach textarea{font:13.5px Helvetica,Arial,sans-serif;border:1px solid #c9d6f3;border-radius:6px;padding:7px 9px;width:100%;box-sizing:border-box}' +
+    '.sr .teach .go{margin-top:10px;font:700 13px Helvetica;border:0;border-radius:7px;padding:9px 14px;background:#1f5fd6;color:#fff;cursor:pointer}.sr .teach .msg{font-size:12.5px;margin-left:8px}' +
+    '@media (max-width:700px){.sr .teach .g{grid-template-columns:1fr}.sr table.lt td.tm{white-space:normal}}' +
+    '@media print{.sr .teach,.sr .lbtn{display:none!important}' +
+    '}@media print{.sr h2,.sr .tac,.sr .des,.sr .ib{break-inside:avoid}}';
   function css() { if (!document.getElementById('sr-css')) { var s = document.createElement('style'); s.id = 'sr-css'; s.textContent = CSS; document.head.appendChild(s); } }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function items(a, f) { return (a || []).map(f).join(''); }
@@ -87,6 +96,7 @@
     if (r.spear_answer) h += E('capans', esc(r.spear_answer), 'div', 'verdict cap');
     h += E('catch', '<ol class="n">' + items(r.spear_catch, function (c) { return '<li><b>' + esc(c.title) + ':</b> ' + esc(c.text) + '</li>'; }) + '</ol>') + '</section>';
 
+    h += learnHtml(r, opts);
     if (nDes) h += '<h2>Designation check</h2>' + items(r.designations, function (d, i) {
       return E('des' + i, '<h3 style="margin-top:0">' + esc(d.question || ('Is ' + d.entity + ' designated?')) + '<span class="conf ' + conf(d.confidence) + '">' + esc(d.confidence || 'not confirmed') + '</span></h3><p>' + esc(d.answer) + '</p>' +
         (d.what_it_means ? '<p><span class="lab">What that means:</span> ' + esc(d.what_it_means) + '</p>' : '') + '<p class="note"><span class="lab">Basis:</span> ' + esc(d.basis || '—') + '</p>', 'div', 'des');
@@ -102,6 +112,70 @@
     return h;
   }
 
+  /* Teaching loop: what the AI found (the analyst confirms or rejects each new one) and what the
+     analyst teaches it back. Confirmed items go into team memory and are used in every later scan. */
+  function chip(t) {
+    if (t.known) return '<span class="lchip k">✓ In team memory</span>';
+    if (!t.lid) return '';
+    return '<span class="lstate" data-lid="' + esc(t.lid) + '">' + stateHtml(t.state || 'pending') + '</span>';
+  }
+  function stateHtml(st) {
+    if (st === 'confirmed') return '<span class="lchip k">✓ Confirmed — in memory</span> <button class="lbtn lnk noprint" data-act="undo">undo</button>';
+    if (st === 'rejected') return '<span class="lchip r">✗ Not right</span> <button class="lbtn lnk noprint" data-act="undo">undo</button>';
+    return '<span class="lchip p">New — your call</span><br><button class="lbtn ok noprint" data-act="confirm" title="Add to team memory: SPEAR looks for it in every scan from now on">✓ Confirm</button><button class="lbtn noprint" data-act="reject" title="Not right — SPEAR will not suggest it again">✗ Not right</button>';
+  }
+  function learnHtml(r, opts) {
+    var terms = r.terms || [], leads = r.leads || [];
+    if (!terms.length && !leads.length && !opts.teach) return '';
+    var h = '<section class="lrn"><h2>Slurs &amp; coded language found</h2>';
+    h += terms.length ? '<table class="lt"><tr><th>As it appears</th><th>Meaning</th><th>Where</th><th style="width:150px"></th></tr>' + items(terms, function (t) {
+      return '<tr><td class="tm">' + esc(t.term) + (t.standard ? '<div class="note">= ' + esc(t.standard) + '</div>' : '') + (t.type ? '<div class="note">' + esc(t.type) + '</div>' : '') + '</td><td>' + esc(t.meaning) + '</td><td class="note">' + esc(t.where) + '</td><td>' + chip(t) + '</td></tr>';
+    }) + '</table>' : '<p class="note">No slur or coded term was named in this post.</p>';
+    if (leads.length) h += '<h3>Leads — related terms to look for next</h3><table class="lt"><tr><th>Term</th><th>Why it is linked</th><th>Basis</th><th style="width:150px"></th></tr>' + items(leads, function (t) {
+      return '<tr><td class="tm">' + esc(t.term) + (t.relationship ? '<div class="note">' + esc(t.relationship) + '</div>' : '') + '</td><td>' + esc(t.why) + '</td><td class="note">' + esc(t.basis) + '</td><td>' + chip(t) + '</td></tr>';
+    }) + '</table>';
+    if (terms.length || leads.length) h += '<p class="note">SPEAR found these. New ones do nothing until the analyst confirms them; confirmed ones are used in every later scan and report.</p>';
+    if (opts.teach) h += '<div class="teach noprint"><div class="t">Teach SPEAR — what did the AI miss or get wrong?</div>' +
+      '<div class="note">In your words. Saved to team memory right away and used from the next scan; it is also kept as a lesson on what Meta’s AI misses.</div>' +
+      '<div class="g"><label>What kind</label><select data-f="kind"><option value="coded_term">Slur / coded term / number / emoji</option><option value="pattern">Visual pattern or evasion tactic</option><option value="exception">Not harmful — a false alarm</option></select>' +
+      '<label>Name it</label><input data-f="term" maxlength="120" placeholder="the term or symbol as it appears, or a short name for the pattern">' +
+      '<label>Other spellings</label><input data-f="variants" maxlength="400" placeholder="optional, separated by commas">' +
+      '<label>Why it’s bad</label><textarea data-f="why" rows="3" maxlength="1000" placeholder="what it means, who uses it, why it breaks the rules"></textarea></div>' +
+      '<button type="button" class="go" data-act="teach">Teach SPEAR</button><span class="msg"></span></div>';
+    return h + '</section>';
+  }
+  /* ctx: {base, key, by, reportId, caseIds} */
+  function wireLearning(root, ctx) {
+    if (!root || root._learn) return; root._learn = true;
+    function call(path, body) {
+      return fetch(ctx.base + path, { method: body ? 'POST' : 'GET', headers: Object.assign({ 'X-Spear-Key': ctx.key }, body ? { 'Content-Type': 'application/json' } : {}), body: body ? JSON.stringify(body) : undefined })
+        .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok) throw new Error(j.detail || ('error ' + r.status)); return j; }); });
+    }
+    var ids = [].map.call(root.querySelectorAll('.lstate[data-lid]'), function (x) { return x.dataset.lid; });
+    if (ids.length) call('/api/learning?ids=' + ids.join(',')).then(function (j) {
+      (j.items || []).forEach(function (it) { root.querySelectorAll('.lstate[data-lid="' + it.id + '"]').forEach(function (x) { x.innerHTML = stateHtml(it.status); }); });
+    }).catch(function () {});
+    root.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-act]'); if (!b || !root.contains(b)) return;
+      var act = b.dataset.act;
+      if (act === 'teach') {
+        var box = b.closest('.teach'), f = function (n) { return box.querySelector('[data-f="' + n + '"]'); }, msg = box.querySelector('.msg');
+        var body = { kind: f('kind').value, term: f('term').value.trim(), variants: f('variants').value, why: f('why').value.trim(), by: ctx.by || 'analyst', case_ids: ctx.caseIds || [], report_id: ctx.reportId || '' };
+        if (body.term.length < 2) { msg.textContent = 'Name the term, symbol or pattern.'; return; }
+        if (body.why.length < 5) { msg.textContent = 'Say why it is bad, in your words.'; return; }
+        b.disabled = true; msg.textContent = 'Saving…';
+        call('/api/teach', body).then(function () { msg.textContent = '✓ Saved — SPEAR uses “' + body.term + '” from the next scan.'; f('term').value = ''; f('variants').value = ''; f('why').value = ''; })
+          .catch(function (er) { msg.textContent = 'Not saved: ' + er.message; }).then(function () { b.disabled = false; });
+        return;
+      }
+      var holder = b.closest('.lstate'); if (!holder) return;
+      b.disabled = true;
+      call('/api/learning/' + encodeURIComponent(holder.dataset.lid), { action: act, by: ctx.by || 'analyst' })
+        .then(function (it) { root.querySelectorAll('.lstate[data-lid="' + holder.dataset.lid + '"]').forEach(function (x) { x.innerHTML = stateHtml(it.status); }); })
+        .catch(function (er) { b.disabled = false; b.title = 'Not saved: ' + er.message; b.textContent = '⚠ Try again'; });
+    });
+  }
+
   /* The four answers as plain text, from what is on screen (so the analyst's edits are included). */
   function metaText(root) {
     var out = [];
@@ -114,5 +188,5 @@
     });
     return out.join('\n\n');
   }
-  window.SpearReport = { render: render, metaText: metaText, css: css };
+  window.SpearReport = { render: render, metaText: metaText, css: css, wireLearning: wireLearning };
 })();
