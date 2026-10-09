@@ -2895,9 +2895,9 @@ async function extractAudioWav(file,maxSec){
 }
 async function analyzeVideoAudio(file){
   if(!GEMINI_KEY&&!BACKEND_VISION)return {__error:'Vision AI is off — audio needs it'};
-  const a=await extractAudioWav(file);
+  const a=await extractAudioWav(file,300);
   if(!a)return {__error:'no readable audio track in this file'};
-  const ctx='This is the AUDIO TRACK of a video, not a picture. Transcribe what is spoken or sung in the original language, name the language, give the English translation, and say whether it is a nasheed/jihadi chant, incitement, threat, or benign.';
+  const ctx='This is the AUDIO TRACK of a video, not a picture. Listen to all of it. Transcribe what is spoken or sung in the original language, name the language, give the English translation, and say whether it is a nasheed/jihadi chant, incitement, threat, or benign. If it is a known nasheed or speech (for example an ISIS / al-Hayat nasheed, a known preacher or spokesman), name it. Note any channel names, Telegram links, handles, places, dates or calls to action that are spoken aloud. The audio often tells what the video is really about, even when the pictures look harmless.';
   const v=await visionAnalyze(a.wav,ctx);
   if(v&&!v.__error){v.__seconds=a.seconds;v.__full=a.full;}
   return v;
@@ -2979,7 +2979,7 @@ async function ingestVideo(){
   const v=document.createElement('video');v.muted=true;v.playsInline=true;v.preload='auto';v.src=url;
   const ok=await new Promise(res=>{v.onloadedmetadata=()=>res(true);v.onerror=()=>res(false)});
   if(!ok||!v.duration||!isFinite(v.duration)){setBusy(false);st.textContent='';toast('Could not read that video format — try MP4/WebM');URL.revokeObjectURL(url);return}
-  const dur=v.duration, MAXF=18, step=Math.max(1,dur/MAXF), W=560;
+  const dur=v.duration, MAXF=Math.min(48,Math.max(18,Math.ceil(dur/2))), step=Math.max(0.5,dur/MAXF), W=960; /* about one frame every 2 s, up to 48, at higher resolution so small watermarks and t.me links are readable */
   const times=[];for(let t=Math.min(0.3,dur/2);t<dur-0.05;t+=step)times.push(t);
   const cvs=document.createElement('canvas');
   const seek=t=>new Promise(res=>{const h=()=>{v.removeEventListener('seeked',h);res()};v.addEventListener('seeked',h);try{v.currentTime=t}catch(e){res()}});
@@ -3009,19 +3009,33 @@ async function ingestVideo(){
     const pick=[];
     const flagged=frames.slice(0,2).map(fr=>({t:fr.t,du:fr.thumb}));
     pick.push(...flagged);
-    [0,Math.floor(kept.length/2),kept.length-1].forEach(i=>{const k=kept[i];
+    [0,...[1,2,3,4,5].map(j=>Math.floor(j*kept.length/6)),kept.length-1].forEach(i=>{const k=kept[i];
       if(k&&!pick.some(p=>Math.abs(p.t-k.t)<0.5))pick.push(k)});
-    const look=pick.slice(0,3);
+    const look=pick.slice(0,8);
     for(let i=0;i<look.length;i++){
       st.textContent=`👁 Looking at frame ${i+1} of ${look.length} with Vision AI…`;
       setBusy(true,`Vision AI is looking at the video (${i+1}/${look.length})…`);
       try{
-        const r=await visionAnalyze(look[i].du,'This is a FRAME from a video at '+fmtTime(look[i].t)+'. Look for media-outlet logos, watermarks, flags or insignia anywhere in the frame INCLUDING the corners, even small, faded or partly cut off. Transcribe and translate any non-English text.'+HUNT_CTX);
+        const r=await visionAnalyze(look[i].du,'This is a FRAME from a video at '+fmtTime(look[i].t)+'. Look for media-outlet logos, watermarks, flags or insignia anywhere in the frame INCLUDING the corners, even small, faded or partly cut off — in particular ISIS / jihadist media brands (e.g. Amaq, al-Furqan, al-Hayat, al-I\u2019tisam, Ajnad, Nashir, al-Naba, Wilayat provinces, A\u2019maq-style tickers), the black standard / shahada flag, and Telegram channel links or handles (t.me/…, @…). Copy every link, handle and channel name EXACTLY as written. Transcribe and translate any non-English text.'+HUNT_CTX);
         if(r&&!r.__error)vframes.push({t:look[i].t,thumb:look[i].du,v:r});
       }catch(e){}
     }
   }
   
+  /* Watermark sheet: the four corners of sampled frames, enlarged side by side, so small or faded
+     logos, outlet names and t.me links are read (by OCR and by the Vision AI) even when they are tiny. */
+  if(kept.length){try{
+    const sel=[...new Set([0,...[1,2,3,4].map(j=>Math.floor(j*kept.length/5)),kept.length-1])].map(i=>kept[i]).filter(Boolean).slice(0,6);
+    const im0=await loadImg(sel[0].du);const cw=Math.round(im0.naturalWidth*0.3),ch=Math.round(im0.naturalHeight*0.22),S=1.6;
+    const sh=document.createElement('canvas');sh.width=Math.round(cw*S)*4;sh.height=Math.round(ch*S)*sel.length;const g=sh.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,sh.width,sh.height);
+    for(let r=0;r<sel.length;r++){const im=await loadImg(sel[r].du);const W2=im.naturalWidth,H2=im.naturalHeight;
+      [[0,0],[W2-cw,0],[0,H2-ch],[W2-cw,H2-ch]].forEach((p,c)=>g.drawImage(im,p[0],p[1],cw,ch,c*Math.round(cw*S),r*Math.round(ch*S),Math.round(cw*S),Math.round(ch*S)));}
+    const sdu=sh.toDataURL('image/jpeg',0.85);
+    st.textContent='🔎 Reading corners for watermarks and links…';setBusy(true,'Checking the corners for watermarks and Telegram links…');
+    let stext='';try{stext=await ocrImage(sdu)}catch(e){}if(stext)allText.push(stext);
+    const r=await visionAnalyze(sdu,'This image is a grid of the FOUR CORNERS (top-left, top-right, bottom-left, bottom-right) of frames sampled across one video, enlarged. Identify every watermark, logo, outlet name, flag, channel name, Telegram link (t.me/…) or @handle, and which jihadist / extremist media brand each belongs to (e.g. Amaq, al-Furqan, al-Hayat, al-I\u2019tisam, Ajnad, Nashir, al-Naba, Wilayat). Copy links and handles EXACTLY. Transcribe and translate any non-English text.');
+    if(r&&!r.__error)vframes.push({t:0,thumb:sdu,v:r,sheet:true});
+  }catch(e){}}
   st.textContent='🎧 Listening to the audio track…';setBusy(true,'Listening to the audio…');
   let audioFinding=null;
   try{audioFinding=await analyzeVideoAudio(f)}catch(e){audioFinding={__error:String(e.message||e).slice(0,140)}}
@@ -6482,6 +6496,72 @@ function selectDupes(){
 }
 function hook(){if(typeof render!=='function'||render.__sel)return false;var r=render;render=function(){r.apply(this,arguments);try{bar();paint()}catch(e){}};render.__sel=1;css();try{render()}catch(e){}return true}
 if(!hook()){var t=setInterval(function(){if(hook())clearInterval(t)},400);setTimeout(function(){clearInterval(t)},120000)}
+})();
+</script>
+<script id="spear-links">
+/* Keep the trail: every uploaded picture keeps the link it came from, when there is one.
+   1. "Link to the post" box on the upload panel: paste the post or profile link (optional).
+   2. Whenever possible, links, @accounts and #hashtags visible in the screenshot are read out and
+      saved with the case as leads; on Instagram / Facebook / Threads / X / TikTok / Telegram an
+      @account becomes its public profile link. Leads are recorded for the analyst to follow;
+      Meta pages are never fetched automatically. */
+(function(){
+  var PROF={instagram:'https://www.instagram.com/{h}/',facebook:'https://www.facebook.com/{h}',threads:'https://www.threads.net/@{h}',x:'https://x.com/{h}',twitter:'https://x.com/{h}',tiktok:'https://www.tiktok.com/@{h}',telegram:'https://t.me/{h}'};
+  function appOf(it){var s=String(it.source_app||it.platform||localStorage.getItem('spear_source_app')||'').toLowerCase();for(var k in PROF)if(s.indexOf(k)>=0)return k;return ''}
+  function uniq(a){var s={},o=[];a.forEach(function(x){var k=String(x).toLowerCase();if(x&&!s[k]){s[k]=1;o.push(x)}});return o}
+  function leads(it){
+    var t=[it.ocr,it.visionDesc,it.caption,it.reasoning].filter(Boolean).join(' \n ');
+    var urls=(t.match(/https?:\/\/[^\s"'<>\)\]]+/g)||[]).map(function(u){return u.replace(/[.,;:!?]+$/,'')});
+    (t.match(/\b(?:www\.)?(?:instagram\.com|facebook\.com|fb\.com|threads\.net|x\.com|twitter\.com|tiktok\.com|t\.me|youtube\.com|youtu\.be|telegram\.me|bsky\.app|linktr\.ee|rumble\.com|bitchute\.com|odysee\.com|gab\.com|truthsocial\.com)\/[^\s"'<>\)\]]+/gi)||[]).forEach(function(u){urls.push('https://'+u.replace(/[.,;:!?]+$/,''))});
+    var handles=[];(t.replace(/[\w.+-]+@[\w-]+\.[\w.]+/g,' ').match(/(?:^|[^\w@])@([A-Za-z0-9_.]{2,30})/g)||[]).forEach(function(m){var h=m.replace(/^[^@]*@/,'').replace(/\.+$/,'');if(h)handles.push(h)});
+    var am=t.match(/\b(?:account|user|profile|page|handle)\s+(?:named\s+)?['"\u2018\u2019\u201c\u201d]([A-Za-z0-9_.]{2,30})['"\u2018\u2019\u201c\u201d]/gi)||[];am.forEach(function(m){var h=m.replace(/^.*['"\u2018\u2019\u201c\u201d]([A-Za-z0-9_.]{2,30})['"\u2018\u2019\u201c\u201d]$/,'$1');if(h)handles.push(h)});
+    if(it.poster&&/^@?[A-Za-z0-9_.]{2,30}$/.test(String(it.poster).trim())&&!/unknown/i.test(it.poster))handles.push(String(it.poster).trim().replace(/^@/,''));
+    var tags=t.match(/#[\p{L}\p{N}_]{2,40}/gu)||[];
+    var app=appOf(it);handles=uniq(handles);
+    if(app)handles.forEach(function(h){urls.push(PROF[app].replace('{h}',h))});
+    return {links:uniq(urls).slice(0,20),handles:handles.slice(0,15),hashtags:uniq(tags).slice(0,20)};
+  }
+  function box(){
+    if(document.getElementById('heroLink'))return;var p=document.getElementById('heroPoster');if(!p)return;
+    var i=document.createElement('input');i.id='heroLink';i.type='url';i.placeholder='Link to the post, if you have it (optional — keeps the trail to related posts, images and terms)';
+    i.style.cssText=p.style.cssText;i.style.display='block';i.style.maxWidth='520px';i.style.width='100%';i.style.marginTop='6px';
+    p.insertAdjacentElement('afterend',i)}
+  var clearT=null;
+  function hook(){
+    if(typeof addPhoto!=='function'||addPhoto.__links)return false;
+    var orig=addPhoto;
+    addPhoto=async function(d,o){
+      o=o||{};var lk=document.getElementById('heroLink');var pasted=lk&&lk.value.trim();
+      if(!o.source_url&&pasted&&/^(https?:\/\/|www\.)/i.test(pasted))o.source_url=/^www\./i.test(pasted)?'https://'+pasted:pasted;
+      var it=await orig.apply(this,[d,o]);
+      try{if(it){var L=leads(it);it.links=uniq([].concat(o.source_url?[o.source_url]:[],L.links));it.handles=L.handles;it.hashtags=L.hashtags;
+        if(o.source_url)it.post_url=o.source_url;
+        else if(/^photo:/.test(it.url||'')){var post=it.links.filter(function(u){return /\/(p|reel|reels|tv|posts|status|video|watch|story|stories)\/|youtu\.be\/|t\.me\/[^\/]+\/\d+/i.test(u)})[0];if(post){it.post_url=post;it.url=post}}
+        if((!it.poster||/unknown/i.test(it.poster))&&L.handles.length)it.poster='@'+L.handles[0];
+        if(typeof itemsSave==='function')itemsSave();if(typeof render==='function')render()}}catch(e){}
+      clearTimeout(clearT);clearT=setTimeout(function(){var x=document.getElementById('heroLink');if(x)x.value=''},4000);
+      return it};
+    addPhoto.__links=1;box();wrapMedia('ingestVideo','videoPoster');wrapMedia('ingestAudio','audioPoster');return true}
+  /* videos and audio: links, handles and hashtags seen on screen, read in the corners or spoken aloud
+     are kept as leads too; a link typed in the "poster / source" box is kept as the post link */
+  function wrapMedia(name,srcId){
+    var f=window[name];if(typeof f!=='function'||f.__links)return;
+    window[name]=async function(){
+      var before={};items.forEach(function(i){before[i.id]=1});
+      var src=((document.getElementById(srcId)||{}).value||'').trim();var lk=document.getElementById('heroLink');var pasted=(lk&&lk.value.trim())||'';
+      var link=[src,pasted].filter(function(x){return /^(https?:\/\/|www\.)/i.test(x)})[0]||'';if(/^www\./i.test(link))link='https://'+link;
+      var r=await f.apply(this,arguments);
+      try{items.filter(function(i){return !before[i.id]}).forEach(function(it){
+        var parts=[it.ocr,it.visionDesc,it.reasoning];(it.vframes||[]).forEach(function(x){if(x&&x.v)parts.push(x.v.description,x.v.visible_text,x.v.translation,(x.v.indicators||[]).join(' '))});
+        if(it.audio&&!it.audio.__error)parts.push(it.audio.description,it.audio.translation,it.audio.threat,(it.audio.indicators||[]).join(' '));
+        var L=leads({ocr:parts.filter(Boolean).join(' \n '),poster:it.poster,platform:it.platform,source_app:it.source_app});
+        it.links=uniq([].concat(link?[link]:[],L.links));it.handles=L.handles;it.hashtags=L.hashtags;
+        if(link){it.post_url=link}else{var tg=it.links.filter(function(u){return /t\.me\//i.test(u)});if(tg.length)it.telegram=tg}
+        if((!it.poster||/unknown/i.test(it.poster))&&L.handles.length)it.poster='@'+L.handles[0]});
+        if(typeof itemsSave==='function')itemsSave();if(typeof render==='function')render()}catch(e){}
+      return r};
+    window[name].__links=1}
+  if(!hook()){var t=setInterval(function(){box();if(hook())clearInterval(t)},400);setTimeout(function(){clearInterval(t)},120000)}
 })();
 </script>
 <script id="spear-nav">
