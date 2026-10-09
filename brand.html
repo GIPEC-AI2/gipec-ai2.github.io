@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Brand Safety Monitor — GIPEC AI²</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#0f2a5c; --navy2:#16357a; --blue:#1f5fd6; --cyan:#1c9fd1; --ink:#1b2433; --muted:#6b7688; --line:#e4e8ef;
+  --bg:#f4f6fa; --card:#fff; --green:#1f9d55; --green-bg:#e8f7ee; --red:#d23c3c; --red-bg:#fdecec;
+  --amber:#c27a00; --amber-bg:#fff4e0; --violet:#6a3fb5; --violet-bg:#f0eafb;
+}
+*{box-sizing:border-box}
+body{margin:0;font:14px/1.5 Inter,system-ui,Segoe UI,Arial,sans-serif;color:var(--ink);background:var(--bg)}
+button,input,select,textarea{font:inherit}
+a{color:var(--blue)}
+.top{background:var(--navy);color:#fff;display:flex;align-items:center;gap:14px;padding:12px 20px;flex-wrap:wrap}
+.top .mark{font-weight:800;letter-spacing:1.5px}
+.top .mark b{color:#7fd3f2}
+.top .sp{flex:1}
+.top a{color:#d6e6f5;text-decoration:none;font-size:13px}
+.top .tag{font-size:11px;letter-spacing:1px;border:1px solid #7fd3f2;color:#7fd3f2;border-radius:3px;padding:2px 6px}
+.wrap{display:grid;grid-template-columns:260px 1fr;gap:18px;padding:18px 20px;max-width:1400px;margin:0 auto}
+@media (max-width:900px){.wrap{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.side h3{margin:0 0 10px;font-size:12px;letter-spacing:1px;color:var(--muted);text-transform:uppercase}
+.client{display:block;width:100%;text-align:left;border:1px solid var(--line);background:#fff;border-radius:10px;padding:10px 12px;margin-bottom:8px;cursor:pointer}
+.client.on{border-color:var(--blue);box-shadow:0 0 0 2px #1f5fd622}
+.client .nm{font-weight:700;display:flex;align-items:center;gap:6px}
+.client .sub{font-size:12px;color:var(--muted);margin-top:2px}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;background:#b8c0cc}
+.dot.live{background:var(--green)}
+.btn{border:1px solid var(--line);background:#fff;border-radius:8px;padding:7px 12px;cursor:pointer;font-weight:600}
+.btn:hover{border-color:var(--blue)}
+.btn.pri{background:var(--blue);border-color:var(--blue);color:#fff}
+.btn.ok{background:var(--green);border-color:var(--green);color:#fff}
+.btn.no{background:#fff;border-color:var(--red);color:var(--red)}
+.btn.sm{padding:4px 9px;font-size:12px}
+.btn:disabled{opacity:.5;cursor:default}
+.head{display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.head h1{margin:0;font-size:22px;color:var(--navy)}
+.head .meta{font-size:12.5px;color:var(--muted)}
+.tabs{display:flex;gap:6px;border-bottom:1px solid var(--line);margin:6px 0 14px;flex-wrap:wrap}
+.tab{border:none;background:none;padding:8px 12px;cursor:pointer;font-weight:600;color:var(--muted);border-bottom:3px solid transparent}
+.tab.on{color:var(--navy);border-bottom-color:var(--cyan)}
+.tab .ct{background:var(--bg);border-radius:10px;padding:0 7px;margin-left:5px;font-size:12px}
+.inc{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px;background:#fff}
+.inc .row1{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.score{font-weight:800;border-radius:6px;padding:2px 8px;font-size:13px}
+.s-hi{background:var(--red-bg);color:var(--red)} .s-md{background:var(--amber-bg);color:var(--amber)} .s-lo{background:var(--bg);color:var(--muted)}
+.pill{font-size:11.5px;border-radius:20px;padding:2px 9px;background:var(--bg);color:var(--ink);font-weight:600}
+.pill.k1{background:var(--violet-bg);color:var(--violet)} .pill.k2{background:#e9f0fd;color:var(--blue)} .pill.k3{background:var(--amber-bg);color:var(--amber)}
+.inc .txt{margin:8px 0;white-space:pre-wrap;word-break:break-word}
+.inc .why{font-size:13px;color:#334;background:var(--bg);border-radius:8px;padding:8px 10px}
+.chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.chip{font-size:11.5px;background:var(--red-bg);color:var(--red);border-radius:12px;padding:1px 8px}
+.chip.g{background:#eef1f6;color:var(--ink)}
+.act{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.act textarea{flex:1;min-width:220px;min-height:36px;border:1px solid var(--line);border-radius:8px;padding:6px 8px}
+.act select{border:1px solid var(--line);border-radius:8px;padding:6px}
+.empty{color:var(--muted);padding:24px;text-align:center}
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.form label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:4px;letter-spacing:.3px}
+.form input,.form textarea,.form select{width:100%;border:1px solid var(--line);border-radius:8px;padding:7px 9px;background:#fff}
+.form textarea{min-height:90px}
+.form .full{grid-column:1/-1}
+.cats{display:flex;flex-wrap:wrap;gap:6px 14px}
+.cats label{font-weight:500;color:var(--ink);display:flex;gap:6px;align-items:center;margin:0}
+.hint{font-size:12px;color:var(--muted)}
+.msg{font-size:13px;margin-left:8px}
+.msg.err{color:var(--red)} .msg.okm{color:var(--green)}
+.lastscan{font-size:12.5px;background:var(--bg);border-radius:8px;padding:8px 10px;margin-bottom:12px}
+/* report */
+.rep{background:#fff;border:1px solid var(--line);border-radius:12px;padding:26px 30px}
+.rep .rhead{display:flex;align-items:center;gap:12px;border-bottom:3px solid var(--navy);padding-bottom:10px}
+.rep .rhead .wm{font-weight:800;letter-spacing:1.5px;color:var(--navy)}
+.rep .rhead .wm b{color:var(--cyan)}
+.rep h2{font-size:24px;color:var(--navy);margin:14px 0 2px}
+.rep h3{font-size:15px;color:var(--navy);margin:20px 0 8px;letter-spacing:.3px;border-bottom:1px solid var(--line);padding-bottom:4px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}
+@media (max-width:700px){.kpis{grid-template-columns:repeat(2,1fr)}}
+.kpi{border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.kpi .v{font-size:24px;font-weight:800;color:var(--navy)}
+.kpi .l{font-size:12px;color:var(--muted)}
+.bar{display:grid;grid-template-columns:230px 1fr 40px;gap:8px;align-items:center;margin:5px 0;font-size:13px}
+.bar .b{height:10px;border-radius:5px;background:var(--cyan)}
+.rt{width:100%;border-collapse:collapse;font-size:12.5px}
+.rt th{text-align:left;background:var(--navy);color:#fff;padding:6px 8px;font-weight:600}
+.rt td{border-bottom:1px solid var(--line);padding:6px 8px;vertical-align:top}
+.rt tr:nth-child(even) td{background:#f8fafc}
+.rfoot{margin-top:20px;font-size:11.5px;color:var(--muted);border-top:1px solid var(--line);padding-top:8px}
+@media print{
+  body{background:#fff}
+  .top,.side,.tabs,.head,.noprint{display:none!important}
+  .wrap{display:block;padding:0}
+  .rep{border:none;padding:0}
+  .rt tr{break-inside:avoid}
+}
+</style>
+</head>
+<body>
+<div class="top">
+  <span class="mark">GIPEC AI<b>²</b> · BRAND SAFETY MONITOR</span>
+  <span class="tag">CONFIDENTIAL</span>
+  <span class="sp"></span>
+  <a href="ops.html">← Operational view</a>
+  <a href="./">Agent analysis</a>
+</div>
+
+<div class="wrap">
+  <aside class="side">
+    <div class="card">
+      <h3>Clients</h3>
+      <div id="clients"><div class="hint">Loading…</div></div>
+      <button class="btn pri" id="newClient" style="width:100%;margin-top:4px">+ New client</button>
+      <p class="hint" style="margin-top:12px">Each client has a codename. The codename is what appears on screens and reports, so a client is never named where they shouldn't be.</p>
+    </div>
+  </aside>
+
+  <main>
+    <div class="card" id="main"><div class="empty">Loading…</div></div>
+  </main>
+</div>
+
+<script>
+const LS = k => { try { return localStorage.getItem(k) } catch (e) { return null } };
+const BASE = (LS('spear_api') || 'https://project-spear-backend.onrender.com').replace(/\/$/, '');
+const KEY = LS('spear_key') || '';
+const CATS = ["Hate speech","Violent extremism and terrorism","Violence and threats","Harassment and targeted abuse",
+  "Misinformation and coordinated manipulation","Adult and sexual content","Self-harm","Illegal goods and drugs","Other sensitive content"];
+const KIND = { brand_reference: ['Names the brand', 'k1'], context: ['In brand ad context', 'k2'], ad_adjacency: ['Ad next to harmful content', 'k3'] };
+const st = { clients: [], sel: null, tab: 'candidate', incidents: [], poll: null, delArm: false, days: 30, showBrand: false };
+
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const when = s => { if (!s) return '—'; const d = new Date(s); return isNaN(d) ? esc(s) : d.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }); };
+const day = s => { if (!s) return '—'; const d = new Date(s); return isNaN(d) ? esc(s) : d.toLocaleDateString([], { dateStyle: 'medium' }); };
+const sev = n => n >= 8 ? 's-hi' : n >= 5 ? 's-md' : 's-lo';
+const lines = v => (v || []).join('\n');
+const split = s => String(s || '').split(/[\n,]/).map(x => x.trim()).filter(Boolean);
+
+async function api(path, opt = {}) {
+  const r = await fetch(BASE + path, { ...opt, headers: { 'X-Spear-Key': KEY, 'Content-Type': 'application/json', ...(opt.headers || {}) } });
+  if (!r.ok) { let d = ''; try { d = (await r.json()).detail } catch (e) {} throw new Error(d || ('HTTP ' + r.status)); }
+  const ct = r.headers.get('content-type') || '';
+  return ct.includes('json') ? r.json() : r.text();
+}
+
+async function loadClients(keepSel = true) {
+  st.clients = await api('/api/brand/tenants');
+  if (!keepSel || !st.clients.find(c => c.id === st.sel)) st.sel = st.clients[0]?.id || null;
+  drawClients();
+}
+
+function drawClients() {
+  const el = document.getElementById('clients');
+  if (!st.clients.length) { el.innerHTML = '<div class="hint">No clients yet.</div>'; return; }
+  el.innerHTML = st.clients.map(c => `<button class="client ${c.id === st.sel ? 'on' : ''}" data-id="${esc(c.id)}">
+    <div class="nm"><span class="dot ${c.active ? 'live' : ''}"></span>${esc(c.codename)}</div>
+    <div class="sub">${c.counts.candidate} to review · ${c.counts.confirmed} confirmed${c.scanning ? ' · scanning…' : ''}</div></button>`).join('');
+  el.querySelectorAll('.client').forEach(b => b.onclick = () => { st.sel = b.dataset.id; st.tab = 'candidate'; st.delArm = false; drawClients(); drawMain(); });
+}
+
+const cur = () => st.clients.find(c => c.id === st.sel);
+
+function lastScanText(c) {
+  const r = c.last_result || {};
+  if (c.scanning) return '<b>Scan running…</b> This page refreshes on its own. A scan takes a few minutes.';
+  if (!c.last_scan && !r.error) return 'Not scanned yet. Click <b>Scan now</b> to run the first pass.';
+  if (r.error) return `<b>Last scan stopped:</b> ${esc(r.error)}`;
+  return `<b>Last scan ${when(c.last_scan)}:</b> ${r.queries || 0} searches · ${r.found || 0} public posts found · ${r.new || 0} new · ` +
+    `${r.scored || 0} checked by AI · <b>${r.flagged || 0} flagged for review</b> · ${r.cleared || 0} cleared` +
+    (r.skipped_reference ? ` · ${r.skipped_reference} news/research items set aside` : '') +
+    (r.skipped_counter_speech ? ` · ${r.skipped_counter_speech} counter-speech set aside` : '') +
+    (r.deferred ? ` · ${r.deferred} waiting for the next scan` : '') + (r.errors ? ` · ${r.errors} errors` : '');
+}
+
+async function drawMain() {
+  const m = document.getElementById('main');
+  const c = cur();
+  if (st.sel === '__new') return drawSettings(null);
+  if (!c) { m.innerHTML = '<div class="empty">Add a client to start monitoring.</div>'; return; }
+  const ct = c.counts;
+  m.innerHTML = `<div class="head">
+      <div style="flex:1;min-width:240px"><h1>${esc(c.codename)}</h1>
+      <div class="meta">${c.active ? '<span class="dot live"></span> Monitoring on · scans every ' + c.every_hours + ' h' : '<span class="dot"></span> Monitoring off'} · flags at ${c.min_score}/10 and above</div></div>
+      <button class="btn" id="tog">${c.active ? 'Pause monitoring' : 'Turn monitoring on'}</button>
+      <button class="btn pri" id="scan" ${c.scanning ? 'disabled' : ''}>${c.scanning ? 'Scanning…' : 'Scan now'}</button></div>
+    <div class="lastscan">${lastScanText(c)}</div>
+    <div class="tabs">
+      <button class="tab ${st.tab === 'candidate' ? 'on' : ''}" data-t="candidate">To review<span class="ct">${ct.candidate}</span></button>
+      <button class="tab ${st.tab === 'confirmed' ? 'on' : ''}" data-t="confirmed">Confirmed<span class="ct">${ct.confirmed}</span></button>
+      <button class="tab ${st.tab === 'rejected' ? 'on' : ''}" data-t="rejected">Rejected<span class="ct">${ct.rejected}</span></button>
+      <button class="tab ${st.tab === 'report' ? 'on' : ''}" data-t="report">Client report</button>
+      <button class="tab ${st.tab === 'settings' ? 'on' : ''}" data-t="settings">Settings</button></div>
+    <div id="body"><div class="empty">Loading…</div></div>`;
+  m.querySelectorAll('.tab').forEach(b => b.onclick = () => { st.tab = b.dataset.t; st.delArm = false; drawMain(); });
+  m.querySelector('#scan').onclick = startScan;
+  m.querySelector('#tog').onclick = async () => { await api('/api/brand/tenants', { method: 'POST', body: JSON.stringify({ id: c.id, active: !c.active }) }); await loadClients(); drawMain(); };
+  if (st.tab === 'settings') return drawSettings(c);
+  if (st.tab === 'report') return drawReport(c);
+  return drawIncidents(c);
+}
+
+async function startScan() {
+  const c = cur();
+  try { await api(`/api/brand/tenants/${encodeURIComponent(c.id)}/scan`, { method: 'POST' }); } catch (e) {}
+  await loadClients(); drawMain(); watch();
+}
+
+function watch() {
+  clearInterval(st.poll);
+  st.poll = setInterval(async () => {
+    const before = cur()?.scanning;
+    await loadClients();
+    const now = cur()?.scanning;
+    if (!st.clients.some(c => c.scanning)) clearInterval(st.poll);
+    if (before !== now) drawMain(); else drawClients();
+  }, 6000);
+}
+
+function incCard(i, c) {
+  const k = KIND[i.kind] || ['Finding', ''];
+  const cats = CATS.map(x => `<option ${x === i.risk_category ? 'selected' : ''}>${esc(x)}</option>`).join('');
+  const actions = i.status === 'candidate'
+    ? `<select data-cat>${cats}</select><button class="btn ok sm" data-a="confirm">Confirm</button><button class="btn no sm" data-a="reject">Reject</button>`
+    : `<button class="btn sm" data-a="reopen">Move back to review</button>`;
+  return `<div class="inc" data-id="${esc(i.id)}">
+    <div class="row1"><span class="score ${sev(i.score)}">${i.score}/10</span><span class="pill">${esc(i.risk_category || '—')}</span>
+      <span class="pill ${k[1]}">${k[0]}</span><span class="pill">${esc(i.platform || 'web')}</span>
+      <span style="font-weight:600">${esc(i.poster || '')}</span><span class="hint" style="margin-left:auto">${when(i.when || i.detected_at)}</span></div>
+    ${i.title && i.title !== '@' + i.poster ? `<div style="font-weight:600;margin-top:6px">${esc(i.title)}</div>` : ''}
+    <div class="txt">${esc(i.text || '')}</div>
+    ${i.threat ? `<div class="why"><b>Why it was flagged:</b> ${esc(i.threat)}${i.policy && i.policy !== 'none' ? `<br><b>Rule:</b> ${esc(i.policy)}` : ''}</div>` : ''}
+    <div class="chips">${(i.brand_hits || []).map(b => `<span class="chip g">brand: ${esc(b)}</span>`).join('')}${(i.codebook_hits || []).map(b => `<span class="chip">${esc(b)}</span>`).join('')}${(i.indicators || []).filter(x => !(i.codebook_hits || []).some(h => String(h).toLowerCase() === String(x).toLowerCase())).slice(0, 6).map(b => `<span class="chip g">${esc(b)}</span>`).join('')}</div>
+    ${i.url ? `<div style="margin-top:6px;font-size:12.5px"><a href="${esc(i.url)}" target="_blank" rel="noopener noreferrer">Open the post ↗</a> <span class="hint">· found by searching “${esc(i.query || '')}” · ${esc(i.note || '')}</span></div>` : ''}
+    ${i.analyst_note && i.status !== 'candidate' ? `<div style="margin-top:6px;font-size:13px"><b>Analyst note:</b> ${esc(i.analyst_note)}</div>` : ''}
+    <div class="act"><textarea data-note placeholder="Analyst note (why it is or isn't a brand-safety risk)">${esc(i.analyst_note || '')}</textarea>${actions}<span class="msg" data-msg></span></div>
+  </div>`;
+}
+
+async function drawIncidents(c) {
+  const b = document.getElementById('body');
+  try {
+    const r = await api(`/api/brand/tenants/${encodeURIComponent(c.id)}/incidents?status=${st.tab}`);
+    st.incidents = r.incidents;
+  } catch (e) { b.innerHTML = `<div class="empty msg err">${esc(e.message)}</div>`; return; }
+  const empty = { candidate: 'Nothing waiting for review.', confirmed: 'No confirmed incidents yet.', rejected: 'Nothing rejected.' }[st.tab];
+  let html = st.tab === 'confirmed' ? addForm() : '';
+  html += st.incidents.length ? st.incidents.map(i => incCard(i, c)).join('') : `<div class="empty">${empty}</div>`;
+  b.innerHTML = html;
+  b.querySelectorAll('.inc').forEach(card => card.querySelectorAll('[data-a]').forEach(btn => btn.onclick = async () => {
+    const msg = card.querySelector('[data-msg]');
+    btn.disabled = true;
+    try {
+      await api(`/api/brand/incidents/${card.dataset.id}`, { method: 'POST', body: JSON.stringify({
+        action: btn.dataset.a, note: card.querySelector('[data-note]').value,
+        risk_category: card.querySelector('[data-cat]')?.value, by: 'analyst' }) });
+      card.style.opacity = .4; msg.className = 'msg okm'; msg.textContent = { confirm: 'Confirmed', reject: 'Rejected', reopen: 'Moved back' }[btn.dataset.a];
+      await loadClients(); setTimeout(drawMain, 500);
+    } catch (e) { msg.className = 'msg err'; msg.textContent = e.message; btn.disabled = false; }
+  }));
+  const f = b.querySelector('#addf');
+  if (f) f.onsubmit = async ev => {
+    ev.preventDefault();
+    const d = Object.fromEntries(new FormData(f).entries());
+    const m = f.querySelector('.msg');
+    try { await api(`/api/brand/tenants/${encodeURIComponent(c.id)}/incidents`, { method: 'POST', body: JSON.stringify({ ...d, by: 'analyst' }) });
+      m.className = 'msg okm'; m.textContent = 'Added'; await loadClients(); setTimeout(drawMain, 500);
+    } catch (e) { m.className = 'msg err'; m.textContent = e.message; }
+  };
+}
+
+function addForm() {
+  return `<details class="card" style="margin-bottom:12px"><summary style="cursor:pointer;font-weight:700">+ Add an incident you found</summary>
+  <p class="hint">For something you captured yourself: an ad shown next to harmful content, a Meta post, or a post the scan missed. It is saved as confirmed.</p>
+  <form id="addf" class="form">
+    <div><label>Link to the post</label><input name="url" placeholder="https://"></div>
+    <div><label>Platform</label><input name="platform" placeholder="Instagram, TikTok, X…"></div>
+    <div><label>Account</label><input name="poster" placeholder="@account"></div>
+    <div><label>Type</label><select name="kind"><option value="ad_adjacency">Ad next to harmful content</option><option value="brand_reference">Names the brand</option><option value="context">In brand ad context</option></select></div>
+    <div><label>Risk category</label><select name="risk_category">${CATS.map(x => `<option>${esc(x)}</option>`).join('')}</select></div>
+    <div><label>Severity (1–10)</label><input name="score" type="number" min="1" max="10" value="7"></div>
+    <div class="full"><label>What it shows</label><textarea name="text" placeholder="Describe the post and where the brand appears"></textarea></div>
+    <div class="full"><label>Analyst note</label><textarea name="note" placeholder="Why this is a brand-safety risk"></textarea></div>
+    <div class="full"><label>Case ID in SPEAR (optional)</label><input name="case_id" placeholder="Link to the captured case and its evidence"></div>
+    <div class="full"><button class="btn pri">Add incident</button><span class="msg"></span></div>
+  </form></details>`;
+}
+
+function drawSettings(c) {
+  const isNew = !c;
+  c = c || { codename: '', brand: '', brand_terms: [], handles: [], hashtags: [], context_terms: [], categories: CATS, min_score: 6, max_scored: 40, every_hours: 12, active: false, notes: '' };
+  const host = isNew ? document.getElementById('main') : document.getElementById('body');
+  host.innerHTML = `${isNew ? '<div class="head"><h1>New client</h1></div>' : ''}
+  <form id="sf" class="form">
+    <div><label>Codename (shown on screens and reports)</label><input name="codename" value="${esc(c.codename)}" placeholder="e.g. Client CPG-1" required></div>
+    <div><label>Brand / company name (kept private)</label><input name="brand" value="${esc(c.brand)}" required></div>
+    <div class="full"><label>Brand and product names to watch — one per line</label><textarea name="brand_terms" placeholder="Company name&#10;Product line&#10;Product line">${esc(lines(c.brand_terms))}</textarea>
+      <div class="hint">Include each major product brand. These are what the monitor searches for.</div></div>
+    <div><label>Brand's own social accounts — one per line</label><textarea name="handles" placeholder="brandaccount">${esc(lines(c.handles))}</textarea></div>
+    <div><label>Campaign hashtags — one per line</label><textarea name="hashtags" placeholder="CampaignTag">${esc(lines(c.hashtags))}</textarea></div>
+    <div><label>Extra context words (optional)</label><textarea name="context_terms" placeholder="Words that narrow web discovery">${esc(lines(c.context_terms))}</textarea></div>
+    <div><label>Notes</label><textarea name="notes">${esc(c.notes)}</textarea></div>
+    <div class="full"><label>Risk categories the client cares about</label><div class="cats">${CATS.map(x => `<label><input type="checkbox" name="cat" value="${esc(x)}" ${(c.categories || CATS).includes(x) ? 'checked' : ''}>${esc(x)}</label>`).join('')}</div></div>
+    <div><label>Flag at or above (1–10)</label><input name="min_score" type="number" min="1" max="10" value="${c.min_score}"></div>
+    <div><label>AI checks per scan (cost control)</label><input name="max_scored" type="number" min="5" max="200" value="${c.max_scored}"><div class="hint">Each check is one short AI call, a fraction of a cent.</div></div>
+    <div><label>Scan every (hours)</label><input name="every_hours" type="number" min="1" max="168" value="${c.every_hours}"></div>
+    <div><label>Monitoring</label><select name="active"><option value="1" ${c.active ? 'selected' : ''}>On — scan on schedule</option><option value="0" ${!c.active ? 'selected' : ''}>Off — scan only when I click</option></select></div>
+    <div class="full"><button class="btn pri">${isNew ? 'Create client' : 'Save settings'}</button> ${isNew ? '<button type="button" class="btn" id="cancel">Cancel</button>' : '<button type="button" class="btn no" id="del">Delete client</button>'}<span class="msg"></span></div>
+  </form>`;
+  const f = host.querySelector('#sf');
+  const m = f.querySelector('.msg');
+  f.onsubmit = async ev => {
+    ev.preventDefault();
+    const fd = new FormData(f);
+    const body = { codename: fd.get('codename'), brand: fd.get('brand'), brand_terms: split(fd.get('brand_terms')), handles: split(fd.get('handles')),
+      hashtags: split(fd.get('hashtags')), context_terms: split(fd.get('context_terms')), notes: fd.get('notes'), categories: fd.getAll('cat'),
+      min_score: +fd.get('min_score'), max_scored: +fd.get('max_scored'), every_hours: +fd.get('every_hours'), active: fd.get('active') === '1' };
+    if (!isNew) body.id = c.id;
+    try { const t = await api('/api/brand/tenants', { method: 'POST', body: JSON.stringify(body) });
+      st.sel = t.id; m.className = 'msg okm'; m.textContent = 'Saved'; await loadClients(); st.tab = isNew ? 'candidate' : 'settings'; drawMain();
+    } catch (e) { m.className = 'msg err'; m.textContent = e.message; }
+  };
+  const cancel = host.querySelector('#cancel');
+  if (cancel) cancel.onclick = () => { st.sel = st.clients[0]?.id || null; drawClients(); drawMain(); };
+  const del = host.querySelector('#del');
+  if (del) del.onclick = async () => {
+    if (!st.delArm) { st.delArm = true; del.textContent = 'Click again to delete this client and all its incidents'; return; }
+    try { await api(`/api/brand/tenants/${encodeURIComponent(c.id)}/delete`, { method: 'POST' }); st.delArm = false; await loadClients(false); drawMain(); }
+    catch (e) { m.className = 'msg err'; m.textContent = e.message; }
+  };
+}
+
+function bars(obj) {
+  const e = Object.entries(obj || {}).sort((a, b) => b[1] - a[1]);
+  if (!e.length) return '<div class="hint">None in this period.</div>';
+  const max = Math.max(...e.map(x => x[1]));
+  return e.map(([k, v]) => `<div class="bar"><span>${esc(k)}</span><div class="b" style="width:${Math.max(4, v / max * 100)}%"></div><b>${v}</b></div>`).join('');
+}
+
+async function drawReport(c) {
+  const b = document.getElementById('body');
+  b.innerHTML = '<div class="empty">Building the report…</div>';
+  let r;
+  try { r = await api(`/api/brand/tenants/${encodeURIComponent(c.id)}/report?days=${st.days}`); }
+  catch (e) { b.innerHTML = `<div class="empty msg err">${esc(e.message)}</div>`; return; }
+  const name = st.showBrand ? r.client.brand : r.client.codename;
+  const conf = r.confirmed;
+  const kinds = { brand_reference: conf.filter(i => i.kind === 'brand_reference').length, context: conf.filter(i => i.kind === 'context').length, ad_adjacency: conf.filter(i => i.kind === 'ad_adjacency').length };
+  const topCat = Object.entries(r.by_category).sort((a, x) => x[1] - a[1])[0];
+  const summary = conf.length
+    ? `Over the last ${r.period_days} days, SPEAR screened ${r.screened.toLocaleString()} public posts connected to ${esc(name)}. ` +
+      `Analysts confirmed <b>${conf.length}</b> brand-safety incident${conf.length === 1 ? '' : 's'}, ${r.severity.high} of them high severity. ` +
+      (topCat ? `The leading risk was <b>${esc(topCat[0])}</b> (${topCat[1]}). ` : '') +
+      (kinds.brand_reference ? `${kinds.brand_reference} named the brand directly, ` : '') +
+      (kinds.context ? `${kinds.context} appeared in the brand's advertising context, ` : '') +
+      (kinds.ad_adjacency ? `${kinds.ad_adjacency} showed the brand's ads next to harmful content, ` : '') +
+      `and ${r.repeat_accounts.length} account${r.repeat_accounts.length === 1 ? '' : 's'} appeared more than once.`
+    : `Over the last ${r.period_days} days, SPEAR screened ${r.screened.toLocaleString()} public posts connected to ${esc(name)}. No incidents have been confirmed by an analyst in this period.`;
+  b.innerHTML = `<div class="noprint" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+      <label class="hint">Period <select id="days">${[7, 30, 90, 180].map(d => `<option value="${d}" ${d === st.days ? 'selected' : ''}>Last ${d} days</option>`).join('')}</select></label>
+      <label class="hint"><input type="checkbox" id="sb" ${st.showBrand ? 'checked' : ''}> Show brand name instead of codename</label>
+      <span style="flex:1"></span>
+      <button class="btn" id="csv">Download exclusion list (CSV)</button>
+      <button class="btn pri" id="pdf">Print / save as PDF</button></div>
+  <div class="rep">
+    <div class="rhead"><span class="wm">GIPEC AI<b>²</b></span><span class="hint">Project SPEAR · Brand Safety Report</span><span style="flex:1"></span><span class="hint">CONFIDENTIAL</span></div>
+    <h2>${esc(name)}</h2>
+    <div class="hint">Period: ${day(r.since)} – ${day(r.generated_at)} · Generated ${when(r.generated_at)}</div>
+    <h3>Executive summary</h3><p>${summary}</p>
+    <div class="kpis">
+      <div class="kpi"><div class="v">${r.screened.toLocaleString()}</div><div class="l">Public posts screened</div></div>
+      <div class="kpi"><div class="v">${(r.counts.candidate + r.counts.confirmed + r.counts.rejected).toLocaleString()}</div><div class="l">Flagged by AI for review</div></div>
+      <div class="kpi"><div class="v">${conf.length}</div><div class="l">Confirmed by an analyst</div></div>
+      <div class="kpi"><div class="v">${r.severity.high}</div><div class="l">High severity (8–10)</div></div>
+    </div>
+    <h3>Confirmed incidents by risk category</h3>${bars(r.by_category)}
+    <h3>By platform</h3>${bars(r.by_platform)}
+    ${r.repeat_accounts.length ? `<h3>Accounts appearing more than once</h3><table class="rt"><tr><th>Account</th><th>Confirmed incidents</th></tr>${r.repeat_accounts.map(a => `<tr><td>${esc(a[0])}</td><td>${a[1]}</td></tr>`).join('')}</table>` : ''}
+    <h3>Confirmed incidents</h3>
+    ${conf.length ? `<table class="rt"><tr><th>Date</th><th>Platform / account</th><th>Category</th><th>Severity</th><th>What it shows</th><th>Analyst note</th></tr>
+      ${conf.map(i => `<tr><td>${day(i.when || i.detected_at)}</td><td>${esc(i.platform || '')}<br>${esc(i.poster || '')}${i.url ? `<br><a href="${esc(i.url)}" target="_blank" rel="noopener noreferrer">link</a>` : ''}</td>
+        <td>${esc(i.risk_category || '')}<br><span class="hint">${esc((KIND[i.kind] || ['—'])[0])}</span></td><td>${i.score}/10</td>
+        <td>${esc((i.text || i.title || '').slice(0, 280))}</td><td>${esc(i.analyst_note || '')}</td></tr>`).join('')}</table>` : '<div class="hint">None confirmed in this period.</div>'}
+    <h3>Recommended exclusions</h3>
+    ${r.exclusions.length ? `<p class="hint">Add these to the brand's placement and keyword exclusion lists on each ad platform. The CSV download has the full list.</p><table class="rt"><tr><th>Type</th><th>Value</th><th>Incidents</th><th>Use</th></tr>
+      ${r.exclusions.slice(0, 40).map(x => `<tr><td>${esc(x.type)}</td><td>${esc(x.value)}</td><td>${x.incidents}</td><td>${esc(x.use)}</td></tr>`).join('')}</table>` : '<div class="hint">No exclusions recommended yet.</div>'}
+    <h3>Recommended actions</h3>
+    <ul>
+      <li>Apply the exclusion list to placement and keyword controls on every platform where the brand buys media.</li>
+      <li>Report confirmed incidents that break platform rules to that platform's trust and safety team, with the evidence links above.</li>
+      <li>Review repeat accounts with the brand's agency; consider blocking them across campaigns.</li>
+      <li>Keep monitoring on during active campaigns, and add new campaign hashtags as they launch.</li>
+    </ul>
+    <h3>How this was produced</h3>
+    <p style="font-size:12.5px">SPEAR searches public sources only — Bluesky, public Telegram channels and the open web index — for the brand's names, products, accounts and campaign hashtags. It never logs in to a platform, uses fake accounts or collects private content. News and research coverage and posts that read as counter-speech are set aside. An AI model guided by GIPEC's codebook of coded hate and extremist language triages each post; <b>every incident in this report was reviewed and confirmed by a human analyst</b>. Content from Meta platforms is included only when an analyst captured it directly.</p>
+    <div class="rfoot">© 2026 GIPEC AI². Patent pending. Confidential — prepared for the named client only.</div>
+  </div>`;
+  b.querySelector('#days').onchange = e => { st.days = +e.target.value; drawReport(c); };
+  b.querySelector('#sb').onchange = e => { st.showBrand = e.target.checked; drawReport(c); };
+  b.querySelector('#pdf').onclick = () => window.print();
+  b.querySelector('#csv').onclick = async () => {
+    try {
+      const r2 = await fetch(BASE + `/api/brand/tenants/${encodeURIComponent(c.id)}/exclusions.csv?days=${st.days}`, { headers: { 'X-Spear-Key': KEY } });
+      if (!r2.ok) throw new Error('HTTP ' + r2.status);
+      const blob = await r2.blob(); const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = (c.codename || 'client').replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-exclusion-list.csv';
+      document.body.appendChild(a); a.click(); a.remove();
+    } catch (e) { b.querySelector('#csv').textContent = 'Download failed: ' + e.message; }
+  };
+}
+
+document.getElementById('newClient').onclick = () => { st.sel = '__new'; drawClients(); drawMain(); };
+
+(async () => {
+  if (!KEY) { document.getElementById('main').innerHTML = '<div class="empty">This device is not set up yet. Open the setup link Tre sent you once, then come back to this page.</div>'; document.getElementById('clients').innerHTML = ''; return; }
+  try { await loadClients(false); drawMain(); if (st.clients.some(c => c.scanning)) watch(); }
+  catch (e) { document.getElementById('main').innerHTML = `<div class="empty msg err">Could not reach the SPEAR server: ${esc(e.message)}</div>`; }
+})();
+</script>
+</body>
+</html>
