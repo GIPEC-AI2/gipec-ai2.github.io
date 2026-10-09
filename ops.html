@@ -1619,7 +1619,7 @@ function qa(it,R){
 
 /* ---------- page body (used in the dashboard and in the downloaded file) ---------- */
 function hashtags(it,r){const src=[it.caption,it.ocr,it.visionDesc,(r&&joinList(r.images,im=>im.on_screen_text))].join(' ');
-  const h=[...new Set((src.match(/#[\p{L}\p{N}_]{2,40}/gu)||[]))];const ind=(it.indicators||[]).filter(x=>x&&x.length<40);
+  const h=[...new Set([...(it.hashtags||[]),...(src.match(/#[\p{L}\p{N}_]{2,40}/gu)||[])])];const ind=(it.indicators||[]).filter(x=>x&&x.length<40);
   return [...h,...ind].slice(0,14)}
 function priorFlags(it){const p=String(it.poster||'').trim().toLowerCase();if(!p||/unknown|not established/.test(p))return '—';
   return ITEMS.filter(x=>x!==it&&String(x.poster||'').trim().toLowerCase()===p&&(x.score||0)>=5).length}
@@ -1632,7 +1632,7 @@ function cfBody(it,D,live){
   const found=(it.captured||'').slice(0,10)||'—';
   const p=platOf(it);
   const capTxt=isCS(it)?'':(r&&r.images&&r.images[0]&&r.images[0].visual)||it.visionDesc||'';
-  const url=(it.url||'').split(' ')[0];
+  const url=(it.post_url||it.url||'').split(' ')[0];const leadLinks=(it.links||[]).filter(u=>u!==url);
   const more=(D.more||[]).map(u=>`<img src="${u}" alt="">`).join('');
   const img=isCS(it)?'<div class="noimg">Image withheld — child-safety material is routed to NCMEC and never stored.</div>'
     :D.img?`<img src="${D.img}" alt="Evidence for ${caseId(it)}">${more?`<div class="more">${more}</div>`:''}`
@@ -1656,6 +1656,7 @@ function cfBody(it,D,live){
   <div class="rowsx">
     <div class="rowx"><span>Account / user</span><span>${esc(it.poster||'—')}</span></div>
     <div class="rowx"><span>Source URL</span><span>${/^https?:/.test(url)?`<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(url)}</a>`:esc(url||'—')}</span></div>
+    ${leadLinks.length||(it.handles||[]).length?`<div class="rowx"><span>Links &amp; leads</span><span>${leadLinks.map(u=>`<a href="${esc(u)}" target="_blank" rel="noopener noreferrer">${esc(u)}</a>`).join('<br>')}${(it.handles||[]).length?`${leadLinks.length?'<br>':''}Accounts: ${(it.handles||[]).map(h=>'@'+esc(h)).join(', ')}`:''}</span></div>`:''}
     <div class="rowx"><span>Prior flagged posts</span><span>${priorFlags(it)}</span></div>
     <div class="rowx"><span>AI score (1–10, 10 = harmful)</span><span>${esc(conf)}</span></div>
     <div class="rowx"><span>Platform policy</span><span>${esc(POLICY[t]||'Platform Community Standards')}</span></div>
