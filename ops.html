@@ -1781,6 +1781,71 @@ window.spearCF.prewrite=prewrite;
 })();
 </script>
 
+<style id="ops-archive-css">
+.arcm{position:fixed;inset:0;background:rgba(15,25,40,.45);z-index:60;display:none;align-items:center;justify-content:center;padding:16px}
+.arcm.on{display:flex}
+.arcm .bx{background:#fff;border-radius:12px;max-width:460px;width:100%;padding:20px 22px;box-shadow:0 20px 50px rgba(0,0,0,.25);border-top:5px solid var(--m1,#2f74d0)}
+.arcm h3{margin:0 0 6px;font-size:17px}.arcm p{margin:0 0 12px;font-size:13.5px;color:#475467;line-height:1.5}
+.arcm label{font-size:12px;color:#6b7785;font-weight:600}.arcm input{width:100%;box-sizing:border-box;margin:4px 0 14px;padding:8px 10px;border:1px solid #c9d2df;border-radius:7px;font:14px Inter,Arial,sans-serif}
+.arcm .bt{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}
+.arcb{font:600 10.5px 'JetBrains Mono',monospace;color:#1f5bb0;background:#e8f0fb;border-radius:8px;padding:2px 7px;margin-left:6px;white-space:nowrap}
+</style>
+<div class="arcm" id="arcm"><div class="bx"><h3 id="arc-h">Clear the queue for a new group</h3><p id="arc-p"></p>
+<label>Name this group</label><input id="arc-name" maxlength="60">
+<div class="bt"><button class="btn ghost" id="arc-x">Cancel</button><button class="btn ghost" id="arc-only">Archive only</button><button class="btn pri" id="arc-dl">⬇ Download, then archive</button></div></div></div>
+<script id="ops-archive">
+/* Archive: "Clear for new group" moves every case out of the working queue into the Archive.
+   Nothing is deleted — pictures, reports, decisions and notes stay saved on the server and the
+   group can be opened, downloaded or restored at any time from Archive in the sidebar. */
+(function(){
+const isArc=it=>!!it.archived;
+// every working view leaves archived cases out
+for(const k in VIEWS){const V=VIEWS[k];if(V&&V.f){const f=V.f;V.f=it=>!isArc(it)&&f(it)}}
+VIEWS.archive={t:'Archive',s:'Finished groups — saved, out of the working queue. Open, download or restore any time.',sec:'v-ops',q:'Archived cases',f:isArc};
+// counts and KPIs use the working queue only
+const _rk=renderKpis;renderKpis=function(){const all=ITEMS;ITEMS=all.filter(x=>!isArc(x));try{_rk()}finally{ITEMS=all}const c=document.getElementById('c-arc');if(c)c.textContent=all.filter(isArc).length||''};
+// sidebar entry
+const ref=document.querySelector('.nav[data-v="meta"]')||document.querySelector('.nav[data-v="takedown"]');
+if(ref&&!document.querySelector('.nav[data-v="archive"]')){ref.insertAdjacentHTML('afterend','<a class="nav" data-v="archive" title="Finished groups — saved, out of the queue"><span class="ic">🗂</span>Archive<span class="ct" id="c-arc"></span></a>');
+  const n=document.querySelector('.nav[data-v="archive"]');n.addEventListener('click',()=>go('archive'))}
+// header button: clear (or restore all when looking at the archive)
+$('bcsv').insertAdjacentHTML('beforebegin','<button class="btn" id="barc" style="background:#fff;border:1.5px solid var(--m1,#2f74d0);color:var(--m3,#163f80);font-weight:700">🗂 Clear for new group</button>');
+const barc=$('barc');
+function working(){return loadItems().filter(x=>!isArc(x))}
+function label(){barc.textContent=VIEW==='archive'?'↩ Restore all to queue':'🗂 Clear for new group'}
+function stamp(list,name){const ids=new Set(list.map(x=>String(x.id)));const a=loadItems();const at=new Date().toISOString();
+  a.forEach(x=>{if(ids.has(String(x.id))){x.archived=true;x.archivedAt=at;x.batch=name}});saveItems(a);ITEMS=loadItems();renderAll()}
+function unstamp(list){const ids=new Set(list.map(x=>String(x.id)));const a=loadItems();
+  a.forEach(x=>{if(ids.has(String(x.id))){delete x.archived;delete x.archivedAt;delete x.batch}});saveItems(a);ITEMS=loadItems();renderAll()}
+let PENDING=[];
+function ask(list,title){PENDING=list;$('arc-h').textContent=title;
+  $('arc-p').innerHTML=`<b>${list.length} case${list.length>1?'s':''}</b> will move to the <b>Archive</b>. Nothing is deleted — pictures, Q1–Q4 reports, decisions and notes stay saved, and you can open, download or restore them any time from <b>Archive</b> in the sidebar.`;
+  $('arc-name').value='Group of '+new Date().toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});$('arcm').classList.add('on')}
+$('arc-x').onclick=()=>$('arcm').classList.remove('on');
+$('arc-only').onclick=()=>{const n=$('arc-name').value.trim()||'Archived';$('arcm').classList.remove('on');stamp(PENDING,n);toast(`${PENDING.length} case${PENDING.length>1?'s':''} archived as “${n}” — the queue is clear`)};
+$('arc-dl').onclick=async()=>{const n=$('arc-name').value.trim()||'Archived';$('arcm').classList.remove('on');
+  try{if(window.spearCF&&spearCF.zip)await spearCF.zip(PENDING)}catch(e){}
+  stamp(PENDING,n);toast(`Downloaded and archived ${PENDING.length} case${PENDING.length>1?'s':''} as “${n}”`)};
+barc.onclick=()=>{
+  if(VIEW==='archive'){const r=rows();if(!r.length){toast('Nothing in the archive view');return}
+    if(!confirm(`Put ${r.length} archived case${r.length>1?'s':''} back in the working queue?`))return;unstamp(r);toast('Restored to the queue');return}
+  const w=working();if(!w.length){toast('The queue is already clear');return}ask(w,'Clear the queue for a new group')};
+// bulk bar: archive or restore just the ticked cases
+$('bk-clr').insertAdjacentHTML('beforebegin','<button class="btn b-sm" id="bk-arc" style="background:#163f80;color:#fff">🗂 Archive selected</button>');
+const ticked=()=>[...document.querySelectorAll('#qbody [data-sel]:checked')].map(c=>ITEMS.find(x=>String(x.id)===String(c.dataset.sel))).filter(Boolean);
+$('bk-arc').onclick=()=>{const s=ticked();if(!s.length){toast('Tick some cases first');return}
+  if(VIEW==='archive'){unstamp(s);$('bk-clr').click();toast(`${s.length} restored to the queue`)}else{$('bk-clr').click();ask(s,'Archive the selected cases')}};
+// archive rows: show the group name and a Restore button
+const _rq=renderQueue;renderQueue=function(){_rq();label();const ba=$('bk-arc');if(ba)ba.textContent=VIEW==='archive'?'↩ Restore selected':'🗂 Archive selected';
+  if(VIEW!=='archive')return;
+  document.querySelectorAll('#qbody tr').forEach(tr=>{const b=tr.querySelector('[data-d]');if(!b)return;const it=ITEMS.find(x=>String(x.id)===String(b.dataset.d));if(!it)return;
+    const c0=tr.querySelector('td.mono');if(c0&&!c0.querySelector('.arcb'))c0.insertAdjacentHTML('beforeend',`<span class="arcb" title="Archived ${esc(new Date(it.archivedAt||Date.now()).toLocaleString())}">${esc(it.batch||'Archived')}</span>`);
+    const dec=[...tr.querySelectorAll('td')].find(td=>td.querySelector('[data-a]'));if(dec)dec.innerHTML=`<div class="dec"><button class="btn b-sm lnk" data-unarc="${esc(String(it.id))}">↩ Restore</button></div>`})};
+$('qbody').addEventListener('click',e=>{const b=e.target.closest('[data-unarc]');if(!b)return;e.stopPropagation();const it=ITEMS.find(x=>String(x.id)===b.dataset.unarc);if(it){unstamp([it]);toast(caseId(it)+' back in the queue')}},true);
+const _g=go;go=function(v){_g(v);label()};
+if(String(window.__spearHash||location.hash).slice(1)==='archive')go('archive');else renderAll();
+})();
+</script>
 <style id="ops-modes-css">
 /* Colour modes: the sidebar label, the page header and the table header share one colour,
    so the analyst always knows which mode he is in. */
@@ -1803,7 +1868,7 @@ thead th{background:var(--m3)!important}
 </style>
 <script id="ops-modes">
 (function(){
-const MODE={ops:'ops',exec:'exec',all:'cases',approved:'cases',specialist:'cases',reported:'cases',takedown:'cases',meta:'cases',cost:'agent',console:'agent',memory:'agent'};
+const MODE={ops:'ops',exec:'exec',all:'cases',approved:'cases',specialist:'cases',reported:'cases',takedown:'cases',meta:'cases',cost:'agent',console:'agent',memory:'agent',archive:'cases'};
 const NAME={ops:'Operational view',exec:'Executive view',cases:'Case management',agent:'Agent management'};
 function tag(){
   document.querySelectorAll('.side .nav').forEach(n=>{
