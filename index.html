@@ -1102,7 +1102,7 @@ summary{padding:3px 0}
       <div class="netlegend">● squares = posters/accounts · ● circles = URLs (colored by category, sized by risk) · ◆ diamonds = shared links/wallets/merch · lines = same poster, shared link, or reposted content. Click a node to open it in the detail panel. This is the Relationship layer (AI² layer 2): categorizing URLs is step one; connecting them is what reveals coordination.</div>
     </div>
     <div id="queuePane">
-    <h3><span class="hstep">STEP 2</span>Review &amp; flag — the scored queue</h3>
+    <h3 style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span class="hstep">STEP 2</span>Review &amp; flag — the scored queue<button type="button" id="clearGroup" onclick="spearClearGroup()" title="Move every case to the Archive. Nothing is deleted — everything keeps training SPEAR." style="margin-left:auto;font:700 12.5px/1 inherit;color:#163f80;background:#fff;border:1.5px solid #2f74d0;border-radius:8px;padding:8px 12px;cursor:pointer">🗂 Clear for new group</button><a href="ops.html#archive" style="font:600 12px/1 inherit;color:#2f74d0;text-decoration:none">Archive ↗</a></h3>
     <details class="vdrop" style="margin-bottom:10px">
       <summary><span class="di">⬇</span><span class="dt">Batch export</span><span class="dc">▾</span></summary>
       <div class="dbody row" style="gap:8px;align-items:center;flex-wrap:wrap">
@@ -6402,6 +6402,88 @@ if('serviceWorker' in navigator){window.addEventListener('load',function(){navig
 })();
 </script>
 
+<script id="spear-clear-group">
+/* "Clear for new group": moves every case in the queue to the Archive. Nothing is deleted —
+   pictures, reports, decisions and everything the analyst taught stay saved and keep training SPEAR. */
+function spearClearGroup(){
+  try{
+    var w=items.filter(function(i){return !i.archived});
+    if(!w.length){alert('The queue is already clear.');return}
+    var name='Group of '+new Date().toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});
+    if(!confirm('Clear the queue for a new group?\n\n'+w.length+' case'+(w.length>1?'s':'')+' will move to the Archive as "'+name+'".\n\nNothing is deleted. Pictures, reports, decisions and everything you taught stay saved and keep training SPEAR. You can open, download or restore them any time from Archive.'))return;
+    var at=new Date().toISOString();
+    w.forEach(function(i){i.archived=true;i.archivedAt=at;i.batch=name});
+    selId=null;itemsSave();render();
+  }catch(e){alert('Could not clear the queue: '+e.message)}
+}
+</script>
+<script id="spear-select">
+/* Tick cases in the review queue to delete or archive them; "Select duplicates" ticks the extra
+   copies of the same picture and keeps the strongest one. Deleting removes the case from the queue
+   on every device; pictures already saved and what the analyst taught SPEAR stay in the training record. */
+(function(){
+var SEL=new Set();
+function css(){var s=document.createElement('style');s.textContent=
+ '#selbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 10px;padding:8px 10px;border:1px solid #dfe5ee;border-radius:9px;background:#f7f9fc;font:600 12.5px/1 inherit}'+
+ '#selbar button{font:700 12px/1 inherit;border-radius:7px;padding:8px 11px;cursor:pointer;border:1.5px solid #c9d2df;background:#fff;color:#1b2533}'+
+ '#selbar button.del{border-color:#c0262d;color:#c0262d}#selbar button.del:not(:disabled):hover{background:#c0262d;color:#fff}'+
+ '#selbar button.arc{border-color:#2f74d0;color:#163f80}#selbar button:disabled{opacity:.45;cursor:default}'+
+ '#selbar .n{color:#475467;margin-left:auto}#rows input.rsel{width:16px;height:16px;margin:0 8px 0 0;vertical-align:middle;cursor:pointer;float:left}'+
+ '#rows tr.ticked td{background:#fff6e5!important}';document.head.appendChild(s)}
+function idOf(tr){var m=(tr.getAttribute('onclick')||'').match(/select\(([^)]+)\)/);return m?String(m[1]).replace(/['"]/g,''):null}
+function visibleIds(){return [].slice.call(document.querySelectorAll('#rows tr')).map(idOf).filter(Boolean)}
+function find(id){return items.find(function(i){return String(i.id)===String(id)})}
+function paint(){
+  [].slice.call(document.querySelectorAll('#rows tr')).forEach(function(tr){var id=idOf(tr);if(!id)return;var td=tr.querySelector('td');if(!td)return;
+    var cb=td.querySelector('input.rsel');if(!cb){cb=document.createElement('input');cb.type='checkbox';cb.className='rsel';cb.title='Select';cb.dataset.id=id;td.insertBefore(cb,td.firstChild)}
+    cb.checked=SEL.has(id);tr.classList.toggle('ticked',SEL.has(id))});
+  var ids=visibleIds();[...SEL].forEach(function(x){if(!find(x)||find(x).archived)SEL.delete(x)});
+  var all=document.getElementById('selAll');if(all){all.checked=ids.length>0&&ids.every(function(x){return SEL.has(x)});all.indeterminate=!all.checked&&ids.some(function(x){return SEL.has(x)})}
+  var n=SEL.size;document.getElementById('selN').textContent=n?n+' selected':'Nothing selected';
+  document.getElementById('selDel').disabled=!n;document.getElementById('selArc').disabled=!n;document.getElementById('selNone').disabled=!n;
+  document.getElementById('selDel').textContent='🗑 Delete selected'+(n?' ('+n+')':'');document.getElementById('selArc').textContent='🗂 Archive selected'+(n?' ('+n+')':'');
+}
+function bar(){
+  if(document.getElementById('selbar'))return;var t=document.querySelector('#rows');if(!t)return;var table=t.closest('table');
+  var d=document.createElement('div');d.id='selbar';
+  d.innerHTML='<label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="selAll"> Select all shown</label>'+
+   '<button type="button" id="selDup" title="Ticks the extra copies of the same picture and keeps the strongest one">⧉ Select duplicates</button>'+
+   '<button type="button" id="selNone">Clear selection</button>'+
+   '<button type="button" class="arc" id="selArc">🗂 Archive selected</button>'+
+   '<button type="button" class="del" id="selDel">🗑 Delete selected</button><span class="n" id="selN"></span>';
+  table.parentNode.insertBefore(d,table);
+  document.getElementById('selAll').onchange=function(){var ids=visibleIds();if(this.checked)ids.forEach(function(x){SEL.add(x)});else ids.forEach(function(x){SEL.delete(x)});paint()};
+  document.getElementById('selNone').onclick=function(){SEL.clear();paint()};
+  document.getElementById('selDup').onclick=selectDupes;
+  document.getElementById('selArc').onclick=function(){var list=[...SEL].map(find).filter(Boolean);if(!list.length)return;
+    var name='Group of '+new Date().toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});
+    if(!confirm('Move '+list.length+' case'+(list.length>1?'s':'')+' to the Archive?\n\nNothing is deleted — you can open, download or restore them any time from Archive.'))return;
+    var at=new Date().toISOString();list.forEach(function(i){i.archived=true;i.archivedAt=at;i.batch=name});SEL.clear();selId=null;itemsSave();render()};
+  document.getElementById('selDel').onclick=function(){var list=[...SEL].map(find).filter(Boolean);if(!list.length)return;
+    if(!confirm('Delete '+list.length+' case'+(list.length>1?'s':'')+'?\n\nThey are removed from the queue on every device. This cannot be undone from here.\n(Pictures already saved and what you taught SPEAR stay in the training record.)\n\nTip: use "Archive selected" instead if you may want them back.'))return;
+    var gone=new Set(list.map(function(i){return String(i.id)}));
+    items=items.filter(function(i){return !gone.has(String(i.id))});SEL.clear();if(gone.has(String(selId)))selId=null;itemsSave();render()};
+  document.getElementById('rows').addEventListener('click',function(e){var cb=e.target.closest('input.rsel');if(!cb)return;e.stopPropagation();
+    if(cb.checked)SEL.add(cb.dataset.id);else SEL.delete(cb.dataset.id);paint()},true);
+}
+function ham(a,b){if(!a||!b||a.length!==b.length)return 99;var d=0;for(var i=0;i<a.length;i++){var x=parseInt(a[i],16)^parseInt(b[i],16);while(x){d+=x&1;x>>=1}}return d}
+function selectDupes(){
+  var pool=items.filter(function(i){return !i.archived});var groups=[];
+  pool.forEach(function(i){var key=i.type==='image'?(i.name||i.url||''):(String(i.url||'').split(' ')[0].split('?')[0].toLowerCase());
+    var g=groups.find(function(g){var h=g[0];if(i.type==='image'&&h.type==='image'){if(i.dhash&&h.dhash)return ham(i.dhash,h.dhash)<=6;return key&&key===(h.name||h.url||'')}
+      return key&&i.type!=='image'&&h.type!=='image'&&key===String(h.url||'').split(' ')[0].split('?')[0].toLowerCase()});
+    if(g)g.push(i);else groups.push([i])});
+  var n=0,k=0;SEL.clear();
+  groups.forEach(function(g){if(g.length<2)return;k++;
+    g.sort(function(a,b){var da=(a.status&&a.status!=='Pending')?1:0,db=(b.status&&b.status!=='Pending')?1:0;return (b.score||0)-(a.score||0)||db-da||(Number(b.id)-Number(a.id))});
+    g.slice(1).forEach(function(i){SEL.add(String(i.id));n++})});
+  paint();
+  alert(n?('Selected '+n+' duplicate'+(n>1?'s':'')+' across '+k+' picture'+(k>1?'s':'')+'. The strongest copy of each is kept (not ticked).\n\nCheck the ticks, then press Delete selected or Archive selected.'):'No duplicates found in the queue.');
+}
+function hook(){if(typeof render!=='function'||render.__sel)return false;var r=render;render=function(){r.apply(this,arguments);try{bar();paint()}catch(e){}};render.__sel=1;css();try{render()}catch(e){}return true}
+if(!hook()){var t=setInterval(function(){if(hook())clearInterval(t)},400);setTimeout(function(){clearInterval(t)},120000)}
+})();
+</script>
 <script id="spear-nav">
 /* One navigation bar on every Project SPEAR page, same colours as the dashboard sidebar,
    so any page is one click from any other. */
