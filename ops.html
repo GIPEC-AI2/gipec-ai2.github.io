@@ -1886,5 +1886,36 @@ const _go=go;go=function(v){_go(v);tag();paint(VIEW)};
 tag();paint(typeof VIEW!=='undefined'?VIEW:'ops');
 })();
 </script>
+<script id="spear-update">
+/* Auto-update: every few minutes the page checks whether a new version of SPEAR has been published.
+   If so, a banner offers "Update now". When nothing is in progress (no upload or scan running, nothing
+   being typed, the page idle for two minutes or in the background) it refreshes by itself. */
+(function(){
+  if(window.__spearUpd)return;window.__spearUpd=1;
+  var base=null,ready=false,last=Date.now();
+  ['mousemove','keydown','click','scroll','touchstart'].forEach(function(e){window.addEventListener(e,function(){last=Date.now()},{passive:true})});
+  function h(s){var x=0;for(var i=0;i<s.length;i++)x=(x*31+s.charCodeAt(i))|0;return s.length+':'+x}
+  function fetchSelf(){return fetch(location.pathname+'?v='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null}).catch(function(){return null})}
+  function busy(){
+    var b=document.getElementById('busyBar');if(b&&b.style.display!=='none'&&b.offsetParent!==null)return true;
+    var a=document.activeElement;if(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)&&String(a.value||'').trim())return true;
+    if(document.querySelector('.drawer.on,.arcm.on'))return true;
+    return false}
+  function banner(){
+    if(document.getElementById('updbar'))return;
+    var d=document.createElement('div');d.id='updbar';
+    d.style.cssText='position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:99990;background:#0f1d33;color:#fff;border-radius:12px;padding:12px 16px;display:flex;gap:12px;align-items:center;box-shadow:0 10px 30px rgba(0,0,0,.25);font:600 14px/1.3 Inter,system-ui,Arial,sans-serif;max-width:92vw';
+    d.innerHTML='<span>✨ A new version of SPEAR is ready.</span><button type="button" style="font:700 13px Inter,Arial,sans-serif;background:#2f7d5b;color:#fff;border:0;border-radius:8px;padding:8px 14px;cursor:pointer">Update now</button><button type="button" aria-label="Later" style="background:none;border:0;color:#9fb0c8;font:600 13px Inter,Arial,sans-serif;cursor:pointer">Later</button>';
+    d.children[1].onclick=function(){location.reload()};d.children[2].onclick=function(){d.remove()};
+    document.body.appendChild(d)}
+  function tick(){
+    fetchSelf().then(function(t){if(!t)return;var v=h(t);if(base===null){base=v;return}
+      if(v!==base)ready=true;
+      if(!ready)return;banner();
+      if(!busy()&&(document.hidden||Date.now()-last>120000))location.reload()})}
+  setTimeout(tick,5000);setInterval(tick,180000);
+  document.addEventListener('visibilitychange',function(){if(!document.hidden)tick()});
+})();
+</script>
 </body>
 </html>
