@@ -5562,7 +5562,7 @@ function render(){
   renderWatch();
   fill('fCat',CATS);fill('fPlat',[...new Set(items.map(i=>i.platform))].sort());
   const q=document.getElementById('q').value.toLowerCase(),ft=fTier.value,fc=fCat.value,fp=fPlat.value,fs=fStatus.value;
-  let rows=items.filter(i=>(!q||i.url.toLowerCase().includes(q)||i.poster.toLowerCase().includes(q)||(i.ocr||'').toLowerCase().includes(q)||(i.caption||'').toLowerCase().includes(q))&&(!ft||i.tier===ft)&&(!fc||i.category===fc)&&(!fp||i.platform===fp)&&(!fs||i.status===fs));
+  let rows=items.filter(i=>!i.archived&&(!q||i.url.toLowerCase().includes(q)||i.poster.toLowerCase().includes(q)||(i.ocr||'').toLowerCase().includes(q)||(i.caption||'').toLowerCase().includes(q))&&(!ft||i.tier===ft)&&(!fc||i.category===fc)&&(!fp||i.platform===fp)&&(!fs||i.status===fs));
   const tierRank=t=>TIERS.indexOf(t),gradeRank=g=>GRADES.indexOf(g);
   rows.sort((a,b)=>{let x=a[sortKey],y=b[sortKey];if(sortKey==='tier'){x=tierRank(x);y=tierRank(y)}if(sortKey==='grade'){x=gradeRank(x);y=gradeRank(y)}return (x>y?1:x<y?-1:0)*sortDir});
   document.getElementById('rows').innerHTML=rows.map(i=>`<tr class="${i.id===selId?'sel':''}" onclick="select(${i.id})">
@@ -5571,12 +5571,13 @@ function render(){
     <td class="score">${i.score}/10</td><td><span class="badge tier-${i.tier}">${i.tier}</span></td>
     <td><span class="badge grade">${i.grade}</span></td><td class="status">${i.status}</td></tr>`).join('');
   document.getElementById('empty').style.display=rows.length?'none':'block';
+  {const na=items.filter(i=>i.archived).length,em=document.getElementById('empty');if(!rows.length&&na)em.innerHTML='<b>Queue is clear.</b> '+na+' case'+(na>1?'s are':' is')+' saved in the Archive — open <a href="ops.html#archive">Archive</a> on the dashboard to view, download or restore them.';else if(!rows.length)em.textContent='No items match. Submit URLs above or load the sample batch.'}
   
-  document.getElementById('k-queue').textContent=items.filter(i=>i.status==='Pending').length;
-  document.getElementById('k-crit').textContent=items.filter(i=>i.tier==='CRITICAL'&&i.status==='Pending').length;
-  document.getElementById('k-high').textContent=items.filter(i=>i.tier==='HIGH'&&i.status==='Pending').length;
-  document.getElementById('k-rev').textContent=items.filter(i=>i.status!=='Pending').length;
-  document.getElementById('k-esc').textContent=items.filter(i=>i.status==='Escalated').length;
+  document.getElementById('k-queue').textContent=items.filter(i=>!i.archived).filter(i=>i.status==='Pending').length;
+  document.getElementById('k-crit').textContent=items.filter(i=>!i.archived).filter(i=>i.tier==='CRITICAL'&&i.status==='Pending').length;
+  document.getElementById('k-high').textContent=items.filter(i=>!i.archived).filter(i=>i.tier==='HIGH'&&i.status==='Pending').length;
+  document.getElementById('k-rev').textContent=items.filter(i=>!i.archived).filter(i=>i.status!=='Pending').length;
+  document.getElementById('k-esc').textContent=items.filter(i=>!i.archived).filter(i=>i.status==='Escalated').length;
   
   
   try{const rf=items.filter(i=>(i.score||0)>=7&&i.status&&i.status!=='Pending');const ok=rf.filter(i=>i.status==='Confirmed'||i.status==='Escalated'||/NCMEC/.test(i.status)).length;
@@ -5839,6 +5840,7 @@ function captureLinkBox(){const el=document.getElementById('linkQ');const v=(el.
   if(!/https?:\/\//i.test(v)){toast('That is not a link — use Hashtag search for #tags');return}
   const u=document.getElementById('urls');if(u)u.value=v;el.value='';toast('Capturing…');ingest();}
 function openBrief(id){try{itemsSave()}catch(e){}window.open('brief.html?id='+encodeURIComponent(id),'_blank')}
+window.addEventListener('storage',function(e){if(e.key!=='spear_items'||!e.newValue)return;try{const m={};JSON.parse(e.newValue).forEach(x=>{m[x.id]=x});let ch=false;items.forEach(i=>{const x=m[i.id];if(!x)return;['archived','archivedAt','batch'].forEach(k=>{if(x[k]!==i[k]){if(x[k]===undefined)delete i[k];else i[k]=x[k];ch=true}})});if(ch)render()}catch(_){}});
 window.addEventListener('storage',function(e){if(e.key==='spear_key'&&e.newValue){SPEAR_KEY=e.newValue;SPEAR_KEY_REFUSED=false;try{checkBackendVision().then(function(ok){if(ok)recheckUnseen()})}catch(_){}}});
 async function recheckUnseen(){
   var todo=items.filter(function(i){return i.visionFailed&&(i.media||i.thumb)}).slice(0,10);
