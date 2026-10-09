@@ -6402,5 +6402,32 @@ if('serviceWorker' in navigator){window.addEventListener('load',function(){navig
 })();
 </script>
 
+<script id="spear-nav">
+/* One navigation bar on every Project SPEAR page, same colours as the dashboard sidebar,
+   so any page is one click from any other. */
+(function(){
+  if(document.getElementById('spnav'))return;
+  var P=location.pathname.split('/').pop()||'index.html';
+  var here=/brand\.html$/.test(P)?'brand':/(report|brief)\.html$/.test(P)?'reports':/ops\.html$/.test(P)?'ops':'analysis';
+  var L=[
+    ['ops','ops.html#ops','▦','Operational view','#2f7d5b'],
+    ['exec','ops.html#exec','↗','Executive view','#e07a1f'],
+    ['cases','ops.html#all','☰','Cases','#2f74d0'],
+    ['archive','ops.html#archive','🗂','Archive','#2f74d0'],
+    ['analysis','./','✳','Agent analysis · upload','#5b8def'],
+    ['brand','brand.html','◆','Brand safety','#9b6be0'],
+    ['memory','ops.html#memory','◈','Agent memory','#d4568f']];
+  var css='#spnav{background:#0f1d33;display:flex;align-items:center;gap:6px;padding:7px 14px;overflow-x:auto;white-space:nowrap;font:600 12.5px/1 Inter,system-ui,Arial,sans-serif;position:relative;z-index:50}'+
+    '#spnav b{color:#fff;font-weight:800;letter-spacing:.3px;margin-right:8px;font-size:13px}'+
+    '#spnav a{display:inline-flex;align-items:center;gap:6px;color:#dfe6f1;text-decoration:none;padding:7px 11px;border-radius:7px;border:1px solid rgba(255,255,255,.12)}'+
+    '#spnav a i{font-style:normal;color:var(--c)}#spnav a:hover{background:rgba(255,255,255,.08)}'+
+    '#spnav a.on{background:var(--c);border-color:var(--c);color:#fff}#spnav a.on i{color:#fff}'+
+    '@media print{#spnav{display:none!important}}';
+  var st=document.createElement('style');st.textContent=css;document.head.appendChild(st);
+  var n=document.createElement('nav');n.id='spnav';n.setAttribute('aria-label','Project SPEAR pages');
+  n.innerHTML='<b>Project SPEAR</b>'+L.map(function(x){return '<a href="'+x[1]+'" style="--c:'+x[4]+'"'+(x[0]===here?' class="on" aria-current="page"':'')+'><i>'+x[2]+'</i>'+x[3]+'</a>'}).join('');
+  document.body.insertBefore(n,document.body.firstChild);
+})();
+</script>
 </body>
 </html>
