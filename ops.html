@@ -1687,7 +1687,7 @@ async function mount(id,mode){
   const D=await caseData(it);paintCF(it,D);
   if(!D.rep&&it.uid&&KEY&&!isCS(it)){
     D.writing=true;paintCF(it,D);
-    try{if(mode==='report'||!D.img){D.rep=await writeReport(it)}
+    try{if(mode==='report'||!D.img||WRITING[it.uid]){D.rep=await writeReport(it)}
       else{for(let i=0;i<16&&!D.rep&&OPEN===String(id);i++){await new Promise(r=>setTimeout(r,i?12000:4000));D.rep=await getReport(it,true)}}}
     catch(e){toast('Q1–Q4 not written: '+e.message)}
     D.writing=false;paintCF(it,D)}}
@@ -1757,8 +1757,66 @@ const bz=$('bzip');if(bz){bz.textContent='⬇ Download case reports (.zip)';bz.t
 const bk=$('bk-zip');if(bk)bk.onclick=()=>zipCF([...document.querySelectorAll('#qbody [data-sel]:checked')].map(c=>ITEMS.find(x=>String(x.id)===String(c.dataset.sel))).filter(Boolean));
 if(window.spearDl){window.spearDl.report=download;window.spearDl.zip=zipCF}
 window.spearCF={download,print:printCF,copy:copyQA,reported,zip:zipCF,open:openReport};
+/* Pre-write: new uploads get their Q1–Q4 report written in the background (two at a time) as soon as
+   this page is open, so a batch of uploads is ready to open and download without waiting per case. */
+const PRE={running:false,done:new Set()};
+async function prewrite(){
+  if(PRE.running||!KEY)return;PRE.running=true;
+  try{
+    const since=Date.now()-3*864e5;
+    const todo=ITEMS.filter(it=>it.uid&&!isCS(it)&&!PRE.done.has(it.uid)&&(it.type||'image')!=='url'&&((capDate(it)||new Date(0)).getTime()>=since));
+    const need=[];
+    for(const it of todo){if(await getReport(it)){PRE.done.add(it.uid)}else if(await getImage(it))need.push(it)}
+    if(!need.length)return;
+    toast(`Writing Q1–Q4 reports for ${need.length} new case${need.length>1?'s':''} in the background…`);
+    let ok=0;const q=need.slice();
+    async function w(){while(q.length){const it=q.shift();try{if(await writeReport(it)){ok++;PRE.done.add(it.uid)}}catch(e){PRE.done.add(it.uid)}}}
+    await Promise.all([w(),w()]);
+    toast(`Q1–Q4 reports ready for ${ok} of ${need.length} new case${need.length>1?'s':''}`);
+  }finally{PRE.running=false}}
+setTimeout(()=>{prewrite().catch(()=>{})},6000);
+setInterval(()=>{ITEMS=loadItems();prewrite().catch(()=>{})},120000);
+window.addEventListener('storage',e=>{if(e.key===ITEMS_KEY)setTimeout(()=>prewrite().catch(()=>{}),3000)});
+window.spearCF.prewrite=prewrite;
 })();
 </script>
 
+<style id="ops-modes-css">
+/* Colour modes: the sidebar label, the page header and the table header share one colour,
+   so the analyst always knows which mode he is in. */
+body{--m1:#2f7d5b;--m2:#1f5e45;--m3:#143f30;--mt:#e8f4ee}
+body[data-mode=exec]{--m1:#e8892b;--m2:#c96a12;--m3:#9a4f0c;--mt:#fdf0e3}
+body[data-mode=cases]{--m1:#2f74d0;--m2:#1f5bb0;--m3:#163f80;--mt:#e8f0fb}
+body[data-mode=agent]{--m1:#c0397a;--m2:#9c2a62;--m3:#6f1d46;--mt:#fbeaf2}
+.banner{background:linear-gradient(120deg,var(--m1) 0%,var(--m2) 55%,var(--m3) 100%)!important;box-shadow:0 6px 18px rgba(0,0,0,.14)!important;transition:background .2s}
+thead th{background:var(--m3)!important}
+.dh{border-top:5px solid var(--m1)}
+.nav[data-mode] .ic{opacity:1;font-weight:700}
+.nav[data-mode=ops] .ic{color:#2f7d5b}.nav[data-mode=exec] .ic{color:#e07a1f}.nav[data-mode=cases] .ic{color:#2f74d0}
+.nav[data-mode=agent] .ic{color:#c0397a}.nav[data-mode=analysis] .ic{color:#0f2a5c}.nav[data-mode=brand] .ic{color:#6a3fb5}
+.nav.on[data-mode]{background:var(--mt);color:var(--m3);box-shadow:inset 4px 0 0 var(--m1);font-weight:700}
+.grp[data-mode]{display:flex;align-items:center;gap:6px}
+.grp[data-mode]::before{content:"";width:8px;height:8px;border-radius:2px;background:var(--gc)}
+.vmode{display:inline-block;font:700 10.5px/1 'JetBrains Mono',monospace;letter-spacing:1px;text-transform:uppercase;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);border-radius:10px;padding:4px 9px;margin-bottom:6px}
+</style>
+<script id="ops-modes">
+(function(){
+const MODE={ops:'ops',exec:'exec',all:'cases',approved:'cases',specialist:'cases',reported:'cases',takedown:'cases',meta:'cases',cost:'agent',console:'agent',memory:'agent'};
+const NAME={ops:'Operational view',exec:'Executive view',cases:'Case management',agent:'Agent management'};
+function tag(){
+  document.querySelectorAll('.side .nav').forEach(n=>{
+    const v=n.dataset.v,h=n.getAttribute('href')||'';
+    n.dataset.mode=v?(MODE[v]||'cases'):/brand\.html/.test(h)?'brand':'analysis'});
+  const g=[...document.querySelectorAll('.side .grp')];
+  const gc={'case management':'#2f74d0','agent management':'#c0397a','analyst workspace':'#0f2a5c'};
+  g.forEach(x=>{const k=x.textContent.trim().toLowerCase();if(gc[k]){x.dataset.mode='1';x.style.setProperty('--gc',gc[k])}})}
+function paint(v){const m=MODE[v]||'ops';document.body.dataset.mode=m;
+  const t=document.getElementById('vtitle');if(!t)return;
+  let b=document.getElementById('vmode');if(!b){t.insertAdjacentHTML('beforebegin','<div class="vmode" id="vmode"></div>');b=document.getElementById('vmode')}
+  b.textContent=NAME[m]}
+const _go=go;go=function(v){_go(v);tag();paint(VIEW)};
+tag();paint(typeof VIEW!=='undefined'?VIEW:'ops');
+})();
+</script>
 </body>
 </html>
