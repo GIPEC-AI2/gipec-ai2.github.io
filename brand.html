@@ -13,7 +13,7 @@
   --amber:#c27a00; --amber-bg:#fff4e0; --violet:#6a3fb5; --violet-bg:#f0eafb;
 }
 *{box-sizing:border-box}
-body{margin:0;font:14px/1.5 Inter,system-ui,Segoe UI,Arial,sans-serif;color:var(--ink);background:var(--bg)}
+body{margin:0;font:15px/1.55 Inter,system-ui,Segoe UI,Arial,sans-serif;color:var(--ink);background:var(--bg)}
 button,input,select,textarea{font:inherit}
 a{color:var(--blue)}
 .top{background:var(--navy);color:#fff;display:flex;align-items:center;gap:14px;padding:12px 20px;flex-wrap:wrap}
@@ -67,7 +67,8 @@ a{color:var(--blue)}
 .form textarea{min-height:90px}
 .form .full{grid-column:1/-1}
 .cats{display:flex;flex-wrap:wrap;gap:6px 14px}
-.cats label{font-weight:500;color:var(--ink);display:flex;gap:6px;align-items:center;margin:0}
+.cats label{font-weight:500;color:var(--ink);display:flex;gap:6px;align-items:center;margin:0;font-size:14px}
+.form .cats input{width:auto;margin:0}
 .hint{font-size:12px;color:var(--muted)}
 .msg{font-size:13px;margin-left:8px}
 .msg.err{color:var(--red)} .msg.okm{color:var(--green)}
@@ -86,6 +87,18 @@ a{color:var(--blue)}
 .guide .gf{font-size:12.5px;color:var(--muted);margin-top:10px}
 .top .help{cursor:pointer;background:none;border:1px solid #7fd3f2;color:#7fd3f2;border-radius:6px;padding:3px 9px;font-size:12px}
 @media print{.guide{display:none!important}}
+.watch{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:8px 0 0}
+.watch .lbl{font-size:12.5px;color:var(--muted);font-weight:600;margin-right:2px}
+.bchip{display:inline-flex;align-items:center;gap:6px;background:#e9f0fd;color:var(--navy);border-radius:20px;padding:4px 6px 4px 12px;font-weight:600;font-size:13.5px}
+.bchip.ro{padding-right:12px}
+.bchip button{border:none;background:#fff;color:var(--red);border-radius:50%;width:22px;height:22px;cursor:pointer;font-weight:800;line-height:1}
+.chipbox{display:flex;flex-wrap:wrap;gap:6px;min-height:40px;border:1px solid var(--line);border-radius:8px;padding:6px;background:#fff}
+.addrow{display:flex;gap:6px;margin-top:6px}
+.addrow input{flex:1}
+.danger{border:1px solid #f3c4c4;background:#fff8f8;border-radius:10px;padding:12px 14px;margin-top:18px}
+.danger h3{margin:0 0 4px;font-size:15px;color:var(--red)}
+.lastscan{font-size:14px}
+.lastscan .more{margin-left:8px}
 /* report */
 .rep{background:#fff;border:1px solid var(--line);border-radius:12px;padding:26px 30px}
 .rep .rhead{display:flex;align-items:center;gap:12px;border-bottom:3px solid var(--navy);padding-bottom:10px}
@@ -174,7 +187,7 @@ async function api(path, opt = {}) {
 
 async function loadClients(keepSel = true) {
   st.clients = await api('/api/brand/tenants');
-  if (!keepSel || !st.clients.find(c => c.id === st.sel)) st.sel = st.clients[0]?.id || null;
+  if (st.sel !== '__new' && (!keepSel || !st.clients.find(c => c.id === st.sel))) st.sel = st.clients[0]?.id || null;
   drawClients();
 }
 
@@ -191,14 +204,12 @@ const cur = () => st.clients.find(c => c.id === st.sel);
 
 function lastScanText(c) {
   const r = c.last_result || {};
-  if (c.scanning) return '<b>Scan running…</b> This page refreshes on its own. A scan takes a few minutes.';
-  if (!c.last_scan && !r.error) return 'Not scanned yet. Click <b>Scan now</b> to run the first pass.';
-  if (r.error) return `<b>Last scan stopped:</b> ${esc(r.error)}`;
-  return `<b>Last scan ${when(c.last_scan)}:</b> ${r.queries || 0} searches · ${r.found || 0} public posts found · ${r.new || 0} new · ` +
-    `${r.scored || 0} checked by AI · <b>${r.flagged || 0} flagged for review</b> · ${r.cleared || 0} cleared` +
-    (r.skipped_reference ? ` · ${r.skipped_reference} news/research items set aside` : '') +
-    (r.skipped_counter_speech ? ` · ${r.skipped_counter_speech} counter-speech set aside` : '') +
-    (r.deferred ? ` · ${r.deferred} waiting for the next scan` : '') + (r.errors ? ` · ${r.errors} errors` : '');
+  if (c.scanning) return '<b>Scanning now…</b> You can keep working while it runs: review posts, add another client or change settings. This page updates on its own.';
+  if (!c.last_scan && !r.error) return 'Not scanned yet. Click <b>Scan now</b> to run the first check.';
+  if (r.error) return `<b>The last scan stopped:</b> ${esc(r.error)}`;
+  return `<b>Last scan ${when(c.last_scan)}:</b> ${r.found || 0} public posts found · ${r.scored || 0} checked by the AI · ` +
+    `<b>${r.flagged || 0} need your review</b>` +
+    (r.deferred ? ` · ${r.deferred} not checked yet <button class="btn sm more" id="more">Check the remaining ${r.deferred}</button>` : '');
 }
 
 async function drawMain() {
@@ -211,8 +222,11 @@ async function drawMain() {
       <div style="flex:1;min-width:240px"><h1>${esc(c.codename)}</h1>
       <div class="meta">${c.active ? '<span class="dot live"></span> Monitoring on · scans every ' + c.every_hours + ' h' : '<span class="dot"></span> Monitoring off'} · flags at ${c.min_score}/10 and above</div></div>
       <button class="btn" id="tog">${c.active ? 'Pause monitoring' : 'Turn monitoring on'}</button>
+      <button class="btn no" id="delc">Delete client</button>
       <button class="btn pri" id="scan" ${c.scanning ? 'disabled' : ''}>${c.scanning ? 'Scanning…' : 'Scan now'}</button></div>
-    <div class="lastscan">${lastScanText(c)}</div>
+    <div class="watch" id="watchrow"><span class="lbl">Watching:</span>${(c.brand_terms || []).map(t => `<span class="bchip ro">${esc(t)}</span>`).join('') || '<span class="hint">no brands yet</span>'}
+      <button class="btn sm" id="editb">+ Add or remove brands</button></div>
+    <div class="lastscan" id="lastscan" style="margin-top:10px">${lastScanText(c)}</div>
     <div class="tabs">
       <button class="tab ${st.tab === 'candidate' ? 'on' : ''}" data-t="candidate">To review<span class="ct">${ct.candidate}</span></button>
       <button class="tab ${st.tab === 'confirmed' ? 'on' : ''}" data-t="confirmed">Confirmed<span class="ct">${ct.confirmed}</span></button>
@@ -222,6 +236,15 @@ async function drawMain() {
     <div id="body"><div class="empty">Loading…</div></div>`;
   m.querySelectorAll('.tab').forEach(b => b.onclick = () => { st.tab = b.dataset.t; st.delArm = false; drawMain(); });
   m.querySelector('#scan').onclick = startScan;
+  const more = m.querySelector('#more'); if (more) more.onclick = startScan;
+  m.querySelector('#editb').onclick = () => { st.tab = 'settings'; drawMain(); };
+  const delc = m.querySelector('#delc');
+  delc.onclick = async () => {
+    if (!st.delArm) { st.delArm = true; delc.textContent = 'Click again to delete ' + c.codename; setTimeout(() => { st.delArm = false; if (delc.isConnected) delc.textContent = 'Delete client'; }, 6000); return; }
+    st.delArm = false;
+    try { await api(`/api/brand/tenants/${encodeURIComponent(c.id)}/delete`, { method: 'POST' }); await loadClients(false); drawMain(); }
+    catch (e) { delc.textContent = 'Could not delete: ' + e.message; }
+  };
   m.querySelector('#tog').onclick = async () => { await api('/api/brand/tenants', { method: 'POST', body: JSON.stringify({ id: c.id, active: !c.active }) }); await loadClients(); drawMain(); };
   if (st.tab === 'settings') return drawSettings(c);
   if (st.tab === 'report') return drawReport(c);
@@ -238,10 +261,16 @@ function watch() {
   clearInterval(st.poll);
   st.poll = setInterval(async () => {
     const before = cur()?.scanning;
-    await loadClients();
-    const now = cur()?.scanning;
+    try { await loadClients(); } catch (e) { return; }
     if (!st.clients.some(c => c.scanning)) clearInterval(st.poll);
-    if (before !== now) drawMain(); else drawClients();
+    const c = cur();
+    if (!c || st.sel === '__new') return;               // never interrupt the new-client form
+    const ls = document.getElementById('lastscan');
+    if (ls) { ls.innerHTML = lastScanText(c); const more = ls.querySelector('#more'); if (more) more.onclick = startScan; }
+    const sb = document.getElementById('scan');
+    if (sb) { sb.disabled = !!c.scanning; sb.textContent = c.scanning ? 'Scanning…' : 'Scan now'; }
+    // when a scan finishes, refresh the review list (but never the settings form the analyst may be typing in)
+    if (before && !c.scanning && (st.tab === 'candidate' || st.tab === 'confirmed' || st.tab === 'rejected')) drawMain();
   }, 6000);
 }
 
@@ -314,48 +343,91 @@ function addForm() {
   </form></details>`;
 }
 
+function chipEditor(key, label, hint, placeholder, values) {
+  return `<div class="full" data-chips="${key}"><label>${label}</label>
+    <div class="chipbox">${values.map((v, i) => `<span class="bchip">${esc(v)}<button type="button" title="Remove ${esc(v)}" data-rm="${i}">✕</button></span>`).join('') || '<span class="hint" style="padding:6px">None yet</span>'}</div>
+    <div class="addrow"><input data-add placeholder="${placeholder}"><button type="button" class="btn" data-addbtn>Add</button></div>
+    <div class="hint">${hint}</div></div>`;
+}
+
 function drawSettings(c) {
   const isNew = !c;
-  c = c || { codename: '', brand: '', brand_terms: [], handles: [], hashtags: [], context_terms: [], categories: CATS, min_score: 6, max_scored: 40, every_hours: 12, active: false, notes: '' };
+  c = c || { codename: '', brand: '', brand_terms: [], handles: [], hashtags: [], context_terms: [], categories: CATS, min_score: 6, max_scored: 100, every_hours: 12, active: false, notes: '' };
   const host = isNew ? document.getElementById('main') : document.getElementById('body');
-  host.innerHTML = `${isNew ? '<div class="head"><h1>New client</h1></div>' : ''}
+  const lists = { brand_terms: [...(c.brand_terms || [])], handles: [...(c.handles || [])], hashtags: [...(c.hashtags || [])] };
+  const paint = () => {
+    host.innerHTML = `${isNew ? '<div class="head"><h1>New client</h1></div><p class="hint" style="margin-top:-6px">Fill in the codename and company name, add every brand to watch, then click <b>Create client</b>.</p>' : ''}
   <form id="sf" class="form">
     <div><label>Codename (shown on screens and reports)</label><input name="codename" value="${esc(c.codename)}" placeholder="e.g. Client CPG-1" required></div>
-    <div><label>Brand / company name (kept private)</label><input name="brand" value="${esc(c.brand)}" required></div>
-    <div class="full"><label>Brand and product names to watch — one per line</label><textarea name="brand_terms" placeholder="Company name&#10;Product line&#10;Product line">${esc(lines(c.brand_terms))}</textarea>
-      <div class="hint">Include each major product brand. These are what the monitor searches for.</div></div>
-    <div><label>Brand's own social accounts — one per line</label><textarea name="handles" placeholder="brandaccount">${esc(lines(c.handles))}</textarea></div>
-    <div><label>Campaign hashtags — one per line</label><textarea name="hashtags" placeholder="CampaignTag">${esc(lines(c.hashtags))}</textarea></div>
-    <div><label>Extra context words (optional)</label><textarea name="context_terms" placeholder="Words that narrow web discovery">${esc(lines(c.context_terms))}</textarea></div>
-    <div><label>Notes</label><textarea name="notes">${esc(c.notes)}</textarea></div>
+    <div><label>Company name (kept private)</label><input name="brand" value="${esc(c.brand)}" required></div>
+    ${chipEditor('brand_terms', 'Brands and products to watch', isNew ? 'Type a brand and click Add (or press Enter). You can paste several separated by commas. Click ✕ to remove one.' : 'Changes here save right away. Click ✕ to stop watching a brand.', 'e.g. a product brand', lists.brand_terms)}
+    ${chipEditor('handles', "The brand's own social accounts (optional)", 'Posts that tag these accounts are checked.', '@account', lists.handles)}
+    ${chipEditor('hashtags', 'Campaign hashtags (optional)', 'Harmful posts inside these hashtags are flagged as "In brand ad context".', '#CampaignTag', lists.hashtags)}
     <div class="full"><label>Risk categories the client cares about</label><div class="cats">${CATS.map(x => `<label><input type="checkbox" name="cat" value="${esc(x)}" ${(c.categories || CATS).includes(x) ? 'checked' : ''}>${esc(x)}</label>`).join('')}</div></div>
-    <div><label>Flag at or above (1–10)</label><input name="min_score" type="number" min="1" max="10" value="${c.min_score}"></div>
-    <div><label>AI checks per scan (cost control)</label><input name="max_scored" type="number" min="5" max="200" value="${c.max_scored}"><div class="hint">Each check is one short AI call, a fraction of a cent.</div></div>
+    <div><label>Flag posts scoring at or above (1–10)</label><input name="min_score" type="number" min="1" max="10" value="${c.min_score}"></div>
+    <div><label>Posts the AI checks per scan</label><input name="max_scored" type="number" min="5" max="200" value="${c.max_scored}"><div class="hint">Each check costs a fraction of a cent. Anything not checked is picked up by the next scan.</div></div>
     <div><label>Scan every (hours)</label><input name="every_hours" type="number" min="1" max="168" value="${c.every_hours}"></div>
-    <div><label>Monitoring</label><select name="active"><option value="1" ${c.active ? 'selected' : ''}>On — scan on schedule</option><option value="0" ${!c.active ? 'selected' : ''}>Off — scan only when I click</option></select></div>
-    <div class="full"><button class="btn pri">${isNew ? 'Create client' : 'Save settings'}</button> ${isNew ? '<button type="button" class="btn" id="cancel">Cancel</button>' : '<button type="button" class="btn no" id="del">Delete client</button>'}<span class="msg"></span></div>
-  </form>`;
-  const f = host.querySelector('#sf');
-  const m = f.querySelector('.msg');
-  f.onsubmit = async ev => {
-    ev.preventDefault();
-    const fd = new FormData(f);
-    const body = { codename: fd.get('codename'), brand: fd.get('brand'), brand_terms: split(fd.get('brand_terms')), handles: split(fd.get('handles')),
-      hashtags: split(fd.get('hashtags')), context_terms: split(fd.get('context_terms')), notes: fd.get('notes'), categories: fd.getAll('cat'),
-      min_score: +fd.get('min_score'), max_scored: +fd.get('max_scored'), every_hours: +fd.get('every_hours'), active: fd.get('active') === '1' };
-    if (!isNew) body.id = c.id;
-    try { const t = await api('/api/brand/tenants', { method: 'POST', body: JSON.stringify(body) });
-      st.sel = t.id; m.className = 'msg okm'; m.textContent = 'Saved'; await loadClients(); st.tab = isNew ? 'candidate' : 'settings'; drawMain();
+    <div><label>Monitoring</label><select name="active"><option value="1" ${c.active ? 'selected' : ''}>On — scan on a schedule</option><option value="0" ${!c.active ? 'selected' : ''}>Off — scan only when I click</option></select></div>
+    <div class="full"><label>Notes</label><textarea name="notes" style="min-height:60px">${esc(c.notes)}</textarea></div>
+    <div class="full"><button class="btn pri">${isNew ? 'Create client' : 'Save settings'}</button> ${isNew ? '<button type="button" class="btn" id="cancel">Cancel</button>' : ''}<span class="msg"></span></div>
+  </form>
+  ${isNew ? '' : `<div class="danger"><h3>Delete this client</h3><div class="hint">Removes ${esc(c.codename)} and every incident saved for it. This cannot be undone.</div>
+    <button type="button" class="btn no" id="del" style="margin-top:8px">Delete client</button></div>`}`;
+    wire();
+  };
+  const formVals = () => { const f = host.querySelector('#sf'); const fd = new FormData(f);
+    return { codename: fd.get('codename'), brand: fd.get('brand'), notes: fd.get('notes'), categories: fd.getAll('cat'),
+      min_score: +fd.get('min_score'), max_scored: +fd.get('max_scored'), every_hours: +fd.get('every_hours'), active: fd.get('active') === '1' }; };
+  const keepTyped = () => { const v = formVals(); Object.assign(c, v); };
+  const saveLists = async (msgText) => {
+    if (isNew) return;
+    const m = host.querySelector('.msg');
+    try { await api('/api/brand/tenants', { method: 'POST', body: JSON.stringify({ id: c.id, ...lists }) });
+      await loadClients(); m.className = 'msg okm'; m.textContent = msgText;
+      const wr = document.querySelector('#watchrow'); const cc = cur();
+      if (wr && cc) wr.querySelectorAll('.bchip').forEach(x => x.remove()), wr.querySelector('.lbl').insertAdjacentHTML('afterend', cc.brand_terms.map(t => `<span class="bchip ro">${esc(t)}</span>`).join(''));
     } catch (e) { m.className = 'msg err'; m.textContent = e.message; }
   };
-  const cancel = host.querySelector('#cancel');
-  if (cancel) cancel.onclick = () => { st.sel = st.clients[0]?.id || null; drawClients(); drawMain(); };
-  const del = host.querySelector('#del');
-  if (del) del.onclick = async () => {
-    if (!st.delArm) { st.delArm = true; del.textContent = 'Click again to delete this client and all its incidents'; return; }
-    try { await api(`/api/brand/tenants/${encodeURIComponent(c.id)}/delete`, { method: 'POST' }); st.delArm = false; await loadClients(false); drawMain(); }
-    catch (e) { m.className = 'msg err'; m.textContent = e.message; }
-  };
+  function wire() {
+    const f = host.querySelector('#sf');
+    const m = f.querySelector('.msg');
+    host.querySelectorAll('[data-chips]').forEach(box => {
+      const key = box.dataset.chips; const inp = box.querySelector('[data-add]');
+      const add = async () => {
+        const vals = split(inp.value); if (!vals.length) return;
+        vals.forEach(v => { if (!lists[key].some(x => x.toLowerCase() === v.toLowerCase())) lists[key].push(v); });
+        keepTyped(); paint(); await saveLists('Added ' + vals.join(', '));
+        host.querySelector(`[data-chips="${key}"] [data-add]`)?.focus();
+      };
+      box.querySelector('[data-addbtn]').onclick = add;
+      inp.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); add(); } };
+      box.querySelectorAll('[data-rm]').forEach(btn => btn.onclick = async () => {
+        const v = lists[key][+btn.dataset.rm]; lists[key].splice(+btn.dataset.rm, 1);
+        keepTyped(); paint(); await saveLists('Removed ' + v);
+      });
+    });
+    f.onsubmit = async ev => {
+      ev.preventDefault();
+      host.querySelectorAll('[data-chips]').forEach(box => { const v = split(box.querySelector('[data-add]').value); v.forEach(x => { if (!lists[box.dataset.chips].includes(x)) lists[box.dataset.chips].push(x); }); });
+      const body = { ...formVals(), ...lists };
+      if (!isNew) body.id = c.id;
+      if (!body.brand_terms.length) { m.className = 'msg err'; m.textContent = 'Add at least one brand to watch.'; return; }
+      try { const t = await api('/api/brand/tenants', { method: 'POST', body: JSON.stringify(body) });
+        st.sel = t.id; await loadClients(); st.tab = isNew ? 'candidate' : 'settings'; drawMain();
+        if (!isNew) { const mm = document.querySelector('#sf .msg'); if (mm) { mm.className = 'msg okm'; mm.textContent = 'Saved'; } }
+      } catch (e) { m.className = 'msg err'; m.textContent = e.message; }
+    };
+    const cancel = host.querySelector('#cancel');
+    if (cancel) cancel.onclick = () => { st.sel = st.clients[0]?.id || null; drawClients(); drawMain(); };
+    const del = host.querySelector('#del');
+    if (del) del.onclick = async () => {
+      if (!st.delArm) { st.delArm = true; del.textContent = 'Click again to permanently delete ' + c.codename; return; }
+      st.delArm = false;
+      try { await api(`/api/brand/tenants/${encodeURIComponent(c.id)}/delete`, { method: 'POST' }); await loadClients(false); drawMain(); }
+      catch (e) { m.className = 'msg err'; m.textContent = e.message; }
+    };
+  }
+  paint();
 }
 
 function bars(obj) {
