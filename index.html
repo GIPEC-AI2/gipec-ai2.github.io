@@ -6318,8 +6318,8 @@ if('serviceWorker' in navigator){window.addEventListener('load',function(){navig
    "Why it's bad" is the analyst's own reasoning in his words; the report is built on it.
    Reports are written on the server from the archived originals and saved with the cases. */
 (function () {
-  var KEY_MODE = 'spear_batch_mode';
-  function mode() { try { return localStorage.getItem(KEY_MODE) || 'one'; } catch (e) { return 'one'; } }
+  var KEY_MODE = 'spear_batch_mode_v2';  // v2: everyone starts on 'Separate posts' (one report per screenshot)
+  function mode() { try { return localStorage.getItem(KEY_MODE) || 'each'; } catch (e) { return 'each'; } }
   function setMode(v) { try { localStorage.setItem(KEY_MODE, v); } catch (e) {} paint(); }
   function api() { var b = (typeof API_BASE !== 'undefined' && API_BASE) || localStorage.getItem('spear_api') || ''; return String(b).replace(/\/$/, ''); }
   function key() { return localStorage.getItem('spear_key') || ''; }
@@ -6636,6 +6636,45 @@ if(!hook()){var t=setInterval(function(){if(hook())clearInterval(t)},400);setTim
       if(!busy()&&(document.hidden||Date.now()-last>120000))location.reload()})}
   setTimeout(tick,5000);setInterval(tick,180000);
   document.addEventListener('visibilitychange',function(){if(!document.hidden)tick()});
+})();
+</script>
+<script id="spear-aimode">
+/* AI mode switch (top of the side menu on every page): 🧪 Test = free Gemini, no charge — for testing
+   and teaching. ✅ Official = paid Gemini from the prepaid balance — for real cases. One click switches;
+   the server keeps the setting, so every page and device follows it. */
+(function(){
+  if(window.__spearMode)return;window.__spearMode=1;
+  var API=(localStorage.getItem('spear_api')||'https://project-spear-backend.onrender.com').replace(/\/$/,'');
+  function key(){return localStorage.getItem('spear_key')||''}
+  var S=null;
+  var css='#aimode{margin:4px 6px 10px;border-radius:10px;padding:9px 10px;font:600 12px/1.3 Inter,system-ui,Arial,sans-serif;cursor:pointer;border:1.5px solid;user-select:none}'+
+    '#aimode b{display:block;font-size:12.5px;letter-spacing:.3px}#aimode small{display:block;font-weight:500;opacity:.85;margin-top:2px}'+
+    '#aimode{display:flex;align-items:center;gap:10px}#aimode .sw{flex:none;width:38px;height:22px;border-radius:11px;background:rgba(255,255,255,.35);position:relative}#aimode .sw i{position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .15s}#aimode.official .sw i{left:19px}'+
+    '#aimode.test,#aimode.official{background:#c0262d;border-color:#c0262d;color:#fff}#aimode.official{background:#a11d23;border-color:#a11d23}#aimode.off{background:#f1f3f6;border-color:#c9d2df;color:#5b6678}'+
+    '#aimribbon{position:fixed;top:0;left:0;right:0;height:4px;background:repeating-linear-gradient(45deg,#e8a33d 0 12px,#f5c46b 12px 24px);z-index:99991}';
+  var st=document.createElement('style');st.textContent=css;document.head.appendChild(st);
+  function host(){return document.querySelector('#spside .sb')||document.querySelector('aside.side .brand')}
+  function paint(){
+    var h=host();if(!h)return false;var el=document.getElementById('aimode');
+    if(!el){el=document.createElement('div');el.id='aimode';el.setAttribute('role','button');el.title='Switch between Test (free) and Official (paid) AI';h.insertAdjacentElement('afterend',el);el.onclick=toggle}
+    if(!S){el.className='off';el.innerHTML='<b>AI mode</b><small>'+(key()?'checking…':'open the setup link on this device')+'</small>';return true}
+    if(S.mode==='test'){el.className='test';el.innerHTML='<span class="sw"><i></i></span><span><b>🧪 TEST MODE · free</b><small>Paid AI is OFF. For testing &amp; teaching. Click to turn ON.</small></span>'}
+    else{el.className='official';el.innerHTML='<span class="sw"><i></i></span><span><b>✅ OFFICIAL · paid ON</b><small>For real cases. Uses the prepaid balance. Click to turn OFF.</small></span>'}
+    var rb=document.getElementById('aimribbon');if(S.mode==='test'&&!rb){rb=document.createElement('div');rb.id='aimribbon';rb.title='Test mode — free AI';document.body.appendChild(rb)}else if(S.mode!=='test'&&rb)rb.remove();
+    return true}
+  function load(){if(!key())return paint();fetch(API+'/api/ai-mode',{headers:{'X-Spear-Key':key()}}).then(function(r){return r.ok?r.json():null}).then(function(j){if(j&&j.mode){S=j}paint()}).catch(function(){paint()})}
+  function toggle(){
+    if(!S){load();return}
+    var to=S.mode==='test'?'official':'test';
+    if(to==='test'&&!S.free_ready){alert('Test mode is not set up yet: a free Gemini key (GEMINI_FREE_API_KEY) has to be added on the server first.');return}
+    var msg=to==='official'?'Switch to OFFICIAL (paid)?\n\nUse this for real cases. AI calls are paid from the prepaid Gemini balance.'
+      :'Switch to TEST mode (free)?\n\nUse this for testing and teaching SPEAR. No charge.\nNote: on Google’s free tier, uploaded content may be used to improve Google’s products — switch back to Official for real client or Meta evidence.';
+    if(!confirm(msg))return;
+    fetch(API+'/api/ai-mode',{method:'POST',headers:{'X-Spear-Key':key(),'Content-Type':'application/json'},body:JSON.stringify({mode:to,by:localStorage.getItem('spear_author')||''})})
+      .then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j}})}).then(function(x){if(!x.ok){alert('Not switched: '+((x.j&&x.j.detail)||'server error'));return}S=x.j;paint()})
+      .catch(function(){alert('Could not reach the SPEAR server — try again in a moment.')})}
+  var n=0,t=setInterval(function(){if(paint()||++n>60){clearInterval(t);load()}},250);
+  setInterval(load,120000);document.addEventListener('visibilitychange',function(){if(!document.hidden)load()});
 })();
 </script>
 </body>
