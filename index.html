@@ -5983,10 +5983,13 @@ if('serviceWorker' in navigator){window.addEventListener('load',function(){navig
         if (!r.ok) throw new Error('save ' + r.status);
         batch.forEach(function (p) { sent[p[0].uid] = p[1]; });
       }
-      var gone = Object.keys(sent).filter(function (u) { return !live[u]; });
+      /* Only cases the analyst deliberately deleted leave the server. A case that merely went missing from this
+      browser (cleared storage, a full queue, another device) is never deleted; it comes back on the next pull. */
+      var tomb = {}; try { tomb = JSON.parse(localStorage.getItem('spear_deleted_uids') || '{}'); } catch (e) {}
+      var gone = Object.keys(sent).filter(function (u) { return !live[u] && tomb[u]; });
       for (var j = 0; j < gone.length; j++) {
         var rr = await fetch(api() + '/api/cases/' + encodeURIComponent(gone[j]) + '/delete', { method: 'POST', headers: hdr() });
-        if (rr.ok) delete sent[gone[j]];
+        if (rr.ok) { delete sent[gone[j]]; delete tomb[gone[j]]; try { localStorage.setItem('spear_deleted_uids', JSON.stringify(tomb)); } catch (e) {} }
       }
       saveSent();
       if (changed.length || gone.length) console.log('[case-sync] saved', changed.length, 'removed', gone.length);
@@ -6483,6 +6486,8 @@ function bar(){
   document.getElementById('selDel').onclick=function(){var list=[...SEL].map(find).filter(Boolean);if(!list.length)return;
     if(!confirm('Delete '+list.length+' case'+(list.length>1?'s':'')+'?\n\nThey are removed from the queue on every device. This cannot be undone from here.\n(Pictures already saved and what you taught SPEAR stay in the training record.)\n\nTip: use "Archive selected" instead if you may want them back.'))return;
     var gone=new Set(list.map(function(i){return String(i.id)}));
+    /* a deliberate delete: remember it so the server copy is removed too (nothing else ever deletes from the server) */
+    try{var tb=JSON.parse(localStorage.getItem('spear_deleted_uids')||'{}');list.forEach(function(i){if(i.uid)tb[i.uid]=Date.now()});localStorage.setItem('spear_deleted_uids',JSON.stringify(tb))}catch(e){}
     items=items.filter(function(i){return !gone.has(String(i.id))});SEL.clear();if(gone.has(String(selId)))selId=null;itemsSave();render()};
   document.getElementById('rows').addEventListener('click',function(e){var cb=e.target.closest('input.rsel');if(!cb)return;e.stopPropagation();
     if(cb.checked)SEL.add(cb.dataset.id);else SEL.delete(cb.dataset.id);paint()},true);
@@ -6835,7 +6840,12 @@ function L(){try{return (typeof items!=='undefined'&&Array.isArray(items))?items
 function when(t){if(!t)return '';var d=new Date(t);return d.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' · '+d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}
 function cls(s){return s>=7?'':s>=4?' m2':' lo'}
 var API='',KEY='';try{API=(localStorage.getItem('spear_api')||'https://project-spear-backend.onrender.com').replace(/\/$/,'');KEY=localStorage.getItem('spear_key')||''}catch(e){}
-var reports=null,repErr='',showAll=false,lastArchived=[];
+var reports=null,repErr='',showAll=false,lastArchived=[],delCases=[];
+/* Cases that left the server without anyone deleting them (the old sync rule): offer to bring them back. */
+function checkDeleted(){if(!KEY)return;var tb={};try{tb=JSON.parse(localStorage.getItem('spear_deleted_uids')||'{}')}catch(e){}
+  fetch(API+'/api/cases?tenant=gipec&include_deleted=1',{headers:{'X-Spear-Key':KEY}}).then(function(r){return r.json()}).then(function(j){
+    delCases=(j.cases||[]).filter(function(c){return c.deleted&&c.data&&c.data.category&&!/^(TEST|test-|synctest)/.test(c.id)&&!tb[c.id]});
+    var b=$('cbRestore');if(b){b.style.display=delCases.length?'':'none';b.textContent='\u21ba Restore '+delCases.length+' case'+(delCases.length===1?'':'s')+' removed by mistake'}}).catch(function(){})}
 function hidden(){try{return JSON.parse(localStorage.getItem('spear_reports_done')||'{}')}catch(e){return {}}}
 function saveHidden(h){try{localStorage.setItem('spear_reports_done',JSON.stringify(h))}catch(e){}}
 function say(t,undo){var m=$('cbmsg');if(!m)return;m.innerHTML=t+(undo?'<a id="cbundo">Undo</a>':'');var u=$('cbundo');if(u)u.onclick=function(){restore()};clearTimeout(say._t);say._t=setTimeout(function(){m.innerHTML=''},12000)}
@@ -6850,7 +6860,7 @@ function build(){
   if($('casebox'))return true;
   var hero=$('heroBox');if(!hero||!hero.parentNode)return false;
   var b=document.createElement('section');b.id='casebox';
-  b.innerHTML='<div class="ch"><h2>Case management</h2><div class="s">Every case and every SPEAR Dossier — tap to open</div></div><div class="ql" id="cbql"></div><div class="tb"><button type="button" id="cbClear">Clear the queue</button><span class="msg" id="cbmsg"></span></div>'+
+  b.innerHTML='<div class="ch"><h2>Case management</h2><div class="s">Every case and every SPEAR Dossier — tap to open</div></div><div class="ql" id="cbql"></div><div class="tb"><button type="button" id="cbClear">Clear the queue</button><button type="button" id="cbRestore" style="display:none;border-color:#c9d6f3;background:#f5f8ff;color:#1f5bb0"></button><span class="msg" id="cbmsg"></span></div>'+
     '<h3>Recent cases</h3><div class="list" id="cblist"></div><h3>Saved SPEAR Dossiers</h3><div class="list" id="cbrep"></div><span class="shw" id="cbshow"></span>';
   hero.parentNode.insertBefore(b,hero.nextSibling);
   b.addEventListener('click',function(e){
@@ -6861,6 +6871,12 @@ function build(){
     if(!confirm('Move all '+live.length+' case'+(live.length===1?'':'s')+' to the Archive?\n\nNothing is deleted \u2014 pictures, reports and decisions stay saved and can be opened, downloaded or restored from Archive.'))return;
     archive(live.map(function(i){return String(i.id)}))};
   $('cbshow').onclick=function(){showAll=!showAll;draw(true)};
+  $('cbRestore').onclick=function(){if(!delCases.length)return;
+    if(!confirm('Bring back '+delCases.length+' case'+(delCases.length===1?'':'s')+' that were removed from the server without being deleted on purpose?'))return;
+    var bt=$('cbRestore');bt.disabled=true;bt.textContent='Restoring\u2026';
+    fetch(API+'/api/cases',{method:'POST',headers:{'X-Spear-Key':KEY,'Content-Type':'application/json'},body:JSON.stringify({tenant:'gipec',cases:delCases.map(function(c){var d={};for(var k in c.data)d[k]=c.data[k];d.id=c.id;return d})})})
+      .then(function(r){if(!r.ok)throw new Error('error '+r.status);say('\u2713 Restored '+delCases.length+' case'+(delCases.length===1?'':'s')+' \u2014 they appear here within a few seconds.');delCases=[];checkDeleted()})
+      .catch(function(e){say('Could not restore: '+e.message)}).then(function(){bt.disabled=false})};
   return true;
 }
 function loadReports(){
@@ -6890,7 +6906,7 @@ function draw(force){
     :(reports.length?'<div class="none">All dossiers are cleared from this list.</div>':'<div class="none">No dossiers saved yet. Tap SPEAR Dossier on a case to write one.</div>');
 }
 function go(){try{draw(false)}catch(e){console.warn('[cases]',e)}}
-function start(){go();loadReports()}
+function start(){go();loadReports();setTimeout(checkDeleted,1500)}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 setInterval(go,3000);setInterval(loadReports,60000);
 document.addEventListener('visibilitychange',function(){if(!document.hidden)loadReports()});
