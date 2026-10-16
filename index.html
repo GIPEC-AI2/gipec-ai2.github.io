@@ -702,12 +702,12 @@ summary{padding:3px 0}
 <div class="hero" id="heroBox">
   <div class="herorow">
     <button class="bigphoto" onclick="document.getElementById('heroFile').click()">
-      📷 Upload a photo
-      <span>See exactly what it is</span>
+      📷 Upload images
+      <span>One or many at once</span>
     </button>
     <input type="file" id="heroFile" accept="image/*" multiple style="display:none" onchange="heroPick(this.files)">
     <div class="herotext">
-      <b>Drop an image here, click the button, or press Ctrl+V to paste a screenshot.</b>
+      <b>Drop one or many images here — each one becomes its own case.</b> <span style="font-weight:500;color:#5b6678">Or click the green button, or press Ctrl+V to paste a screenshot.</span>
       <input id="heroPoster" placeholder="Who posted it? (optional — helps the report)" style="margin-top:9px;width:100%;max-width:390px;border:1px solid var(--line);border-radius:8px;padding:9px 11px;font-size:13.5px;font-family:inherit">
       <div class="herostat" id="heroStat"></div>
     </div>
@@ -6719,12 +6719,15 @@ if(!hook()){var t=setInterval(function(){if(hook())clearInterval(t)},400);setTim
 #hitl .ac button.d{background:#0f2a5c;border-color:#0f2a5c;color:#fff}
 #hitl .empty{padding:18px;text-align:center;color:#5b6678;font:500 13.5px Inter,Arial,sans-serif}
 @media (max-width:760px){#hitl .kp{grid-template-columns:repeat(2,minmax(0,1fr))}}
+/* one simple upload: every image is its own case (screenshots of the same post can be combined inside the SPEAR Dossier) */
+#bModeRow{display:none!important}
 </style>
 <script id="spear-hitl">
 /* Human-in-the-loop front page (Eric's layout): the live HITL review queue comes first, with queue
 health on top; Upload is a button. Every case opens the SPEAR Dossier. Reads the same cases as the
 rest of the dashboard; changes nothing about how cases are scored or stored. */
 (function(){
+try{localStorage.setItem('spear_batch_mode_v2','each')}catch(e){}
 function $(id){return document.getElementById(id)}
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
 function ts(v){if(!v)return 0;var n=typeof v==='number'?v:Date.parse(v);return isNaN(n)?0:n}
