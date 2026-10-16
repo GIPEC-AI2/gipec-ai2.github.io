@@ -57,6 +57,15 @@ a{color:var(--blue)}
 .chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
 .chip{font-size:11.5px;background:var(--red-bg);color:var(--red);border-radius:12px;padding:1px 8px}
 .chip.g{background:#eef1f6;color:var(--ink)}
+.simg{max-width:260px;max-height:220px;border-radius:8px;border:1px solid var(--line);display:block;margin-top:8px;background:#f3f5f9}
+.bwhere{font-size:13px;margin-top:6px;background:#fff8e6;border-left:3px solid var(--amber);padding:6px 10px;border-radius:0 8px 8px 0}
+.sp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.sp{border:1px solid var(--line);border-radius:12px;padding:10px;background:#fff}
+.sp .simg{max-width:100%;max-height:170px;margin:0 0 8px}
+.sp .bn{font-weight:800;font-size:15px}.sp .pc{font-size:12.5px;color:var(--muted)}
+.us{display:inline-block;font:700 10.5px/1 sans-serif;background:#0f2a5c;color:#fff;border-radius:4px;padding:3px 5px;margin-left:6px;vertical-align:2px}
+table.par{width:100%;border-collapse:collapse;font-size:13.5px;margin:6px 0 16px}table.par th{text-align:left;font-size:11.5px;color:var(--muted);border-bottom:1px solid var(--line);padding:6px}
+table.par td{border-bottom:1px solid #eef1f6;padding:7px 6px;vertical-align:top}
 .act{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
 .act textarea{flex:1;min-width:220px;min-height:36px;border:1px solid var(--line);border-radius:8px;padding:6px 8px}
 .act select{border:1px solid var(--line);border-radius:8px;padding:6px}
@@ -168,7 +177,8 @@ const BASE = (LS('spear_api') || 'https://project-spear-backend.onrender.com').r
 const KEY = LS('spear_key') || '';
 const CATS = ["Hate speech","Violent extremism and terrorism","Violence and threats","Harassment and targeted abuse",
   "Misinformation and coordinated manipulation","Adult and sexual content","Self-harm","Illegal goods and drugs","Other sensitive content"];
-const KIND = { brand_reference: ['Names the brand', 'k1'], context: ['In brand ad context', 'k2'], ad_adjacency: ['Ad next to harmful content', 'k3'] };
+const KIND = { brand_reference: ['Names the brand', 'k1'], context: ['In brand ad context', 'k2'], ad_adjacency: ['Ad next to harmful content', 'k3'],
+  counterfeit: ['Counterfeit / copycat packaging', 'k3'], brand_in_image: ['Brand in the picture', 'k1'] };
 const st = { clients: [], sel: null, tab: 'candidate', incidents: [], poll: null, delArm: false, days: 30, showBrand: false };
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -187,7 +197,7 @@ async function api(path, opt = {}) {
 
 async function loadClients(keepSel = true) {
   st.clients = await api('/api/brand/tenants');
-  if (st.sel !== '__new' && (!keepSel || !st.clients.find(c => c.id === st.sel))) st.sel = st.clients[0]?.id || null;
+  if (st.sel !== '__new' && st.sel !== '__spotted' && (!keepSel || !st.clients.find(c => c.id === st.sel))) st.sel = st.clients[0]?.id || null;
   drawClients();
 }
 
@@ -197,6 +207,8 @@ function drawClients() {
   el.innerHTML = st.clients.map(c => `<button class="client ${c.id === st.sel ? 'on' : ''}" data-id="${esc(c.id)}">
     <div class="nm"><span class="dot ${c.active ? 'live' : ''}"></span>${esc(c.codename)}</div>
     <div class="sub">${c.counts.candidate} to review · ${c.counts.confirmed} confirmed${c.scanning ? ' · scanning…' : ''}</div></button>`).join('');
+  el.innerHTML += `<button class="client ${st.sel === '__spotted' ? 'on' : ''}" data-id="__spotted" style="border-style:dashed">
+    <div class="nm">\u2605 Brands spotted</div><div class="sub">Every brand the AI sees in harmful content</div></button>`;
   el.querySelectorAll('.client').forEach(b => b.onclick = () => { st.sel = b.dataset.id; st.tab = 'candidate'; st.delArm = false; drawClients(); drawMain(); });
 }
 
@@ -216,6 +228,7 @@ async function drawMain() {
   const m = document.getElementById('main');
   const c = cur();
   if (st.sel === '__new') return drawSettings(null);
+  if (st.sel === '__spotted') return drawSpotted();
   if (!c) { m.innerHTML = '<div class="empty">Add a client to start monitoring.</div>'; return; }
   const ct = c.counts;
   m.innerHTML = `<div class="head">
@@ -286,9 +299,11 @@ function incCard(i, c) {
       <span style="font-weight:600">${esc(i.poster || '')}</span><span class="hint" style="margin-left:auto">${when(i.when || i.detected_at)}</span></div>
     ${i.title && i.title !== '@' + i.poster ? `<div style="font-weight:600;margin-top:6px">${esc(i.title)}</div>` : ''}
     <div class="txt">${esc(i.text || '')}</div>
+    ${i.brand_snippet ? `<div class="bwhere"><b>Where the brand appears:</b> ${esc(i.brand_snippet)}</div>` : ''}
+    ${i.image_sha ? `<img class="simg" data-sha="${esc(i.image_sha)}" alt="the flagged picture">` : ''}
     ${i.threat ? `<div class="why"><b>Why it was flagged:</b> ${esc(i.threat)}${i.policy && i.policy !== 'none' ? `<br><b>Rule:</b> ${esc(i.policy)}` : ''}</div>` : ''}
     <div class="chips">${(i.brand_hits || []).map(b => `<span class="chip g">brand: ${esc(b)}</span>`).join('')}${(i.codebook_hits || []).map(b => `<span class="chip">${esc(b)}</span>`).join('')}${(i.indicators || []).filter(x => !(i.codebook_hits || []).some(h => String(h).toLowerCase() === String(x).toLowerCase())).slice(0, 6).map(b => `<span class="chip g">${esc(b)}</span>`).join('')}</div>
-    ${i.url ? `<div style="margin-top:6px;font-size:12.5px"><a href="${esc(i.url)}" target="_blank" rel="noopener noreferrer">Open the post ↗</a> <span class="hint">· found by searching “${esc(i.query || '')}” · ${esc(i.note || '')}</span></div>` : ''}
+    ${i.url ? `<div style="margin-top:6px;font-size:12.5px"><a href="${esc(i.url)}" target="_blank" rel="noopener noreferrer">Open the post ↗</a> <span class="hint">· found by searching “${esc(i.query || '')}” · ${esc(i.note || '')}</span></div>` : (i.note ? `<div class="hint" style="margin-top:6px">${esc(i.note)}</div>` : '')}
     ${i.analyst_note && i.status !== 'candidate' ? `<div style="margin-top:6px;font-size:13px"><b>Analyst note:</b> ${esc(i.analyst_note)}</div>` : ''}
     <div class="act"><textarea data-note placeholder="Analyst note (why it is or isn't a brand-safety risk)">${esc(i.analyst_note || '')}</textarea>${actions}<span class="msg" data-msg></span></div>
   </div>`;
@@ -507,6 +522,53 @@ async function drawReport(c) {
       document.body.appendChild(a); a.click(); a.remove();
     } catch (e) { b.querySelector('#csv').textContent = 'Download failed: ' + e.message; }
   };
+}
+
+/* Pictures come from the server's permanent image archive (sent with the key, so they are fetched here). */
+const IMGC = {};
+async function loadShaImgs() {
+  for (const im of document.querySelectorAll('img[data-sha]:not([src])')) {
+    const sha = im.dataset.sha; im.src = IMGC[sha] || 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
+    if (IMGC[sha]) continue;
+    try { const r = await fetch(BASE + '/api/brand/image/' + sha, { headers: { 'X-Spear-Key': KEY } });
+      if (r.ok) { IMGC[sha] = URL.createObjectURL(await r.blob()); document.querySelectorAll(`img[data-sha="${sha}"]`).forEach(x => x.src = IMGC[sha]); }
+      else im.replaceWith(Object.assign(document.createElement('div'), { className: 'hint', textContent: 'Picture not in the archive' }));
+    } catch (e) {}
+  }
+}
+setInterval(loadShaImgs, 1500);
+
+/* Brands spotted: every brand SPEAR's AI saw in content it flagged as harmful, with the company that owns
+   it. U.S. companies first. This is the list of brands being pulled next to extremist, drug and hate content. */
+async function drawSpotted() {
+  const m = document.getElementById('main');
+  st.spDays = st.spDays || 90; st.spUS = st.spUS ?? true;
+  m.innerHTML = `<div class="head"><div style="flex:1;min-width:240px"><h1>Brands spotted in harmful content</h1>
+    <div class="meta">Every brand SPEAR’s AI sees in a picture or post it flags as harmful — logos, packaging, products, clothing, ads beside it — with the company that owns it.
+    If the brand or its parent company is one of your clients’ watched brands, it also goes to that client’s <b>To review</b>.</div></div>
+    <label class="hint"><input type="checkbox" id="spus" ${st.spUS ? 'checked' : ''}> U.S. companies only</label>
+    <select id="spdays" style="margin-left:8px">${[30, 90, 365].map(d => `<option value="${d}" ${d === st.spDays ? 'selected' : ''}>Last ${d} days</option>`).join('')}</select></div>
+    <div id="spbody"><div class="empty">Loading…</div></div>`;
+  m.querySelector('#spus').onchange = e => { st.spUS = e.target.checked; drawSpotted(); };
+  m.querySelector('#spdays').onchange = e => { st.spDays = +e.target.value; drawSpotted(); };
+  const b = m.querySelector('#spbody');
+  let r;
+  try { r = await api('/api/brand/sightings?days=' + st.spDays); } catch (e) { b.innerHTML = `<div class="empty msg err">${esc(e.message)}</div>`; return; }
+  const items = (r.items || []).filter(i => !st.spUS || i.us), groups = (r.by_parent || []).filter(g => !st.spUS || g.country === 'United States');
+  if (!items.length) { b.innerHTML = `<div class="empty">No ${st.spUS ? 'U.S. ' : ''}brands seen in flagged content yet. Every image SPEAR flags from now on is checked for brands automatically.</div>`; return; }
+  const us = g => g === 'United States' ? '<span class="us">U.S.</span>' : '';
+  b.innerHTML = `<h3 style="margin:4px 0 6px">By company</h3><table class="par"><tr><th>Company</th><th>Brands seen</th><th>Times</th><th>Counterfeit / copycat</th><th>Worst score</th></tr>
+    ${groups.map(g => `<tr><td><b>${esc(g.parent)}</b>${us(g.country)}<div class="hint">${esc(g.country || 'country not identified')}</div></td>
+      <td>${Object.entries(g.brands).map(([k, n]) => esc(k) + (n > 1 ? ' ×' + n : '')).join(', ')}</td><td>${g.count}</td><td>${g.counterfeit || '—'}</td>
+      <td><span class="score ${sev(g.top_score)}">${g.top_score}/10</span></td></tr>`).join('')}</table>
+    <h3 style="margin:4px 0 8px">Every sighting</h3><div class="sp-grid">${items.map(i => `<div class="sp">
+      ${i.image_sha ? `<img class="simg" data-sha="${esc(i.image_sha)}" alt="">` : ''}
+      <div class="bn">${esc(i.brand)}${us(i.country)}</div><div class="pc">${esc(i.parent || 'owner not identified')}</div>
+      <div style="margin:6px 0"><span class="pill k3">${esc(i.how_label || 'Seen')}</span> <span class="score ${sev(i.score || 0)}">${i.score || 0}/10</span> <span class="pill">${esc(i.risk_category || '')}</span></div>
+      <div style="font-size:13px">${esc(i.evidence || '')}</div>
+      ${i.description ? `<div class="hint" style="margin-top:4px">${esc(i.description)}</div>` : ''}
+      <div class="hint" style="margin-top:4px">${when(i.seen_at)}${i.context ? ' · ' + esc(i.context) : ''}</div></div>`).join('')}</div>`;
+  loadShaImgs();
 }
 
 const GKEY = 'spear_brand_guide_hidden';
