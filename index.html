@@ -5856,6 +5856,9 @@ function captureLinkBox(){const el=document.getElementById('linkQ');const v=(el.
   if(!/https?:\/\//i.test(v)){toast('That is not a link — use Hashtag search for #tags');return}
   const u=document.getElementById('urls');if(u)u.value=v;el.value='';toast('Capturing…');ingest();}
 function openBrief(id){try{itemsSave()}catch(e){}window.open('brief.html?id='+encodeURIComponent(id),'_blank')}
+/* brief.html reads the case from this tab when the browser could not save it locally (Safari storage limits) */
+window.spearGetItem=function(id){const it=items.find(x=>String(x.id)===String(id));return it?JSON.parse(JSON.stringify(it)):null};window.spearPutItem=function(id,patch){const it=items.find(x=>String(x.id)===String(id));if(it){Object.assign(it,JSON.parse(JSON.stringify(patch)));try{itemsSave()}catch(e){}}};
+
 window.addEventListener('storage',function(e){if(e.key!=='spear_items'||!e.newValue)return;try{const m={};JSON.parse(e.newValue).forEach(x=>{m[x.id]=x});let ch=false;items.forEach(i=>{const x=m[i.id];if(!x)return;['archived','archivedAt','batch'].forEach(k=>{if(x[k]!==i[k]){if(x[k]===undefined)delete i[k];else i[k]=x[k];ch=true}})});if(ch)render()}catch(_){}});
 window.addEventListener('storage',function(e){if(e.key==='spear_key'&&e.newValue){SPEAR_KEY=e.newValue;SPEAR_KEY_REFUSED=false;try{checkBackendVision().then(function(ok){if(ok)recheckUnseen()})}catch(_){}}});
 async function recheckUnseen(){
