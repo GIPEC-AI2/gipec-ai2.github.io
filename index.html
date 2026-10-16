@@ -6793,5 +6793,84 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 setInterval(go,3000);
 })();
 </script>
+<style id="spear-cases-css">
+#casebox{background:#fff;border:1px solid #dfe5ee;border-radius:14px;margin:18px 0;overflow:hidden;box-shadow:0 1px 3px rgba(15,42,92,.06);font-family:Inter,system-ui,"Segoe UI",Arial,sans-serif}
+#casebox .ch{background:#0f2a5c;color:#fff;padding:13px 16px}
+#casebox .ch h2{margin:0;font:800 18px/1.2 Inter,Arial,sans-serif;color:#fff}
+#casebox .ch .s{font:500 12.5px/1.35 Inter,Arial,sans-serif;opacity:.85;margin-top:3px}
+#casebox .ql{display:flex;flex-wrap:wrap;gap:8px;padding:12px 16px 4px}
+#casebox .ql a{font:700 13px/1 Inter,Arial,sans-serif;text-decoration:none;color:#1f5bb0;border:1px solid #c9d6f3;border-radius:20px;padding:9px 13px;background:#f8fafd}
+#casebox .ql a b{color:#0f2a5c;margin-left:4px}
+#casebox h3{font:800 14px Inter,Arial,sans-serif;color:#0f2a5c;margin:14px 16px 8px}
+#casebox .list{padding:0 16px 8px}
+#casebox .cc{display:flex;gap:12px;align-items:center;border:1px solid #e3e8ef;border-radius:11px;padding:10px;margin:0 0 9px;background:#fff}
+#casebox .cc img,#casebox .cc .ph{width:58px;height:58px;border-radius:8px;object-fit:cover;flex:none;background:#eef1f6}
+#casebox .cc .ph{display:flex;align-items:center;justify-content:center;font-size:22px}
+#casebox .cc .bd{flex:1;min-width:0}
+#casebox .cc .t{font:800 14px/1.25 Inter,Arial,sans-serif;color:#0f1d33;text-transform:capitalize}
+#casebox .cc .m{font:600 12px/1.3 Inter,Arial,sans-serif;color:#5b6678;margin-top:2px}
+#casebox .cc .r{font:500 12.5px/1.35 Inter,Arial,sans-serif;color:#41506a;margin-top:3px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+#casebox .cc .sc{display:inline-block;font:800 11px Inter,Arial,sans-serif;padding:2px 7px;border-radius:9px;background:#fdecea;color:#b42318;margin-left:6px;text-transform:none}
+#casebox .cc .sc.m2{background:#fff6e5;color:#a15c07}#casebox .cc .sc.lo{background:#eef1f6;color:#5b6678}
+#casebox .cc button,#casebox .cc a.go{flex:none;font:800 13px/1 Inter,Arial,sans-serif;border:0;border-radius:9px;padding:12px 13px;background:#0f2a5c;color:#fff;cursor:pointer;text-decoration:none;white-space:nowrap}
+#casebox .none{color:#5b6678;font:500 13px Inter,Arial,sans-serif;padding:4px 0 10px}
+#casebox .more{display:block;text-align:center;font:700 13px Inter,Arial,sans-serif;color:#1f5bb0;padding:4px 0 14px;text-decoration:none}
+@media (max-width:760px){#hitl .tw{display:none}#hitl .qh .c::after{content:" \2014 open them below in Case management"}#casebox .cc .r{display:none}}
+</style>
+<script id="spear-cases">
+/* Case management box under the upload area: every case and every saved SPEAR Dossier one tap away,
+laid out for a phone. Cases come from this device; saved dossiers come from the server, so a
+dossier written on the Mac can be opened on the phone. */
+(function(){
+function $(id){return document.getElementById(id)}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function ts(v){if(!v)return 0;var n=typeof v==='number'?v:Date.parse(v);return isNaN(n)?0:n}
+function L(){try{return (typeof items!=='undefined'&&Array.isArray(items))?items:[]}catch(e){return []}}
+function when(t){if(!t)return '';var d=new Date(t);return d.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' · '+d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}
+function cls(s){return s>=7?'':s>=4?' m2':' lo'}
+var API='',KEY='';try{API=(localStorage.getItem('spear_api')||'https://project-spear-backend.onrender.com').replace(/\/$/,'');KEY=localStorage.getItem('spear_key')||''}catch(e){}
+var reports=null,repErr='';
+function build(){
+  if($('casebox'))return true;
+  var hero=$('heroBox');if(!hero||!hero.parentNode)return false;
+  var b=document.createElement('section');b.id='casebox';
+  b.innerHTML='<div class="ch"><h2>Case management</h2><div class="s">Every case and every SPEAR Dossier — tap to open</div></div><div class="ql" id="cbql"></div>'+
+    '<h3>Recent cases</h3><div class="list" id="cblist"></div><h3>Saved SPEAR Dossiers</h3><div class="list" id="cbrep"></div>';
+  hero.parentNode.insertBefore(b,hero.nextSibling);
+  b.addEventListener('click',function(e){var x=e.target.closest('button[data-id]');if(!x)return;var id=x.getAttribute('data-id');if(typeof openBrief==='function')openBrief(isNaN(+id)?id:+id)});
+  return true;
+}
+function loadReports(){
+  if(!KEY){repErr='This device is not connected to the server yet — open your Project SPEAR setup link once on it.';draw(true);return}
+  fetch(API+'/api/deep-reports',{headers:{'X-Spear-Key':KEY}}).then(function(r){if(!r.ok)throw new Error('error '+r.status);return r.json()})
+    .then(function(j){reports=(j.reports||[]).slice(0,12);repErr='';draw(true)}).catch(function(e){repErr='Could not load saved dossiers right now ('+e.message+').';draw(true)});
+}
+var last='';
+function draw(force){
+  if(!build())return;
+  var all=L(),live=all.filter(function(i){return !i.archived});
+  var n={open:live.filter(function(i){return !i.status||i.status==='Pending'}).length,ok:live.filter(function(i){return i.status==='Confirmed'}).length,
+    rep:live.filter(function(i){return i.reportedAt}).length,arc:all.filter(function(i){return i.archived}).length};
+  var recent=live.slice().sort(function(a,b){return ts(b.captured)-ts(a.captured)}).slice(0,12);
+  var sig=JSON.stringify(n)+recent.map(function(i){return i.id+':'+i.score+':'+i.category+':'+i.status}).join('|')+(reports?reports.length+':'+(reports[0]||{}).id:'')+repErr;
+  if(!force&&sig===last)return;last=sig;
+  $('cbql').innerHTML='<a href="ops.html#all">Open cases<b>'+n.open+'</b></a><a href="ops.html#approved">Human approved<b>'+n.ok+'</b></a><a href="ops.html#reported">Reported to Meta<b>'+n.rep+'</b></a><a href="ops.html#archive">Archive<b>'+n.arc+'</b></a>';
+  $('cblist').innerHTML=recent.length?recent.map(function(it){var s=Number(it.score)||0,img=/^data:image\//.test(String(it.thumb||''))?'<img src="'+it.thumb+'" alt="">':'<div class="ph">🔗</div>';
+    var r=String(it.recommendation||it.visionDesc||it.reasoning||it.title||it.caption||'').replace(/\s+/g,' ').trim();
+    return '<div class="cc">'+img+'<div class="bd"><div class="t">'+esc(String(it.category||'unclassified').replace(/_/g,' '))+'<span class="sc'+cls(s)+'">'+(it.visionFailed?'not checked':s.toFixed(1)+'/10')+'</span></div>'+
+      '<div class="m">'+esc(when(ts(it.captured)))+(it.status&&it.status!=='Pending'?' · '+esc(it.status):'')+'</div><div class="r">'+esc(r)+'</div></div>'+
+      '<button type="button" data-id="'+esc(it.id)+'">SPEAR Dossier</button></div>'}).join('')+(live.length>12?'<a class="more" href="ops.html#all">See all cases</a>':'')
+    :'<div class="none">No cases yet on this device. Upload images above — each one appears here.</div>';
+  $('cbrep').innerHTML=repErr?'<div class="none">'+esc(repErr)+'</div>':reports===null?'<div class="none">Loading…</div>':reports.length?reports.map(function(r){
+      return '<div class="cc"><div class="ph">📄</div><div class="bd"><div class="t" style="text-transform:none">'+esc(r.title||'SPEAR Dossier')+'</div><div class="m">'+esc(when(ts(r.created_at)))+'</div></div><a class="go" href="report.html?id='+encodeURIComponent(r.id)+'" target="_blank" rel="noopener">Open</a></div>'}).join('')
+    :'<div class="none">No dossiers saved yet. Tap SPEAR Dossier on a case to write one.</div>';
+}
+function go(){try{draw(false)}catch(e){console.warn('[cases]',e)}}
+function start(){go();loadReports()}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
+setInterval(go,3000);setInterval(loadReports,60000);
+document.addEventListener('visibilitychange',function(){if(!document.hidden)loadReports()});
+})();
+</script>
 </body>
 </html>
