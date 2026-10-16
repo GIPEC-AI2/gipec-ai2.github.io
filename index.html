@@ -6813,6 +6813,12 @@ setInterval(go,3000);
 #casebox .cc .sc{display:inline-block;font:800 11px Inter,Arial,sans-serif;padding:2px 7px;border-radius:9px;background:#fdecea;color:#b42318;margin-left:6px;text-transform:none}
 #casebox .cc .sc.m2{background:#fff6e5;color:#a15c07}#casebox .cc .sc.lo{background:#eef1f6;color:#5b6678}
 #casebox .cc button,#casebox .cc a.go{flex:none;font:800 13px/1 Inter,Arial,sans-serif;border:0;border-radius:9px;padding:12px 13px;background:#0f2a5c;color:#fff;cursor:pointer;text-decoration:none;white-space:nowrap}
+#casebox .bt{display:flex;flex-direction:column;gap:6px;flex:none}
+#casebox .cc button.dn,#casebox .cc a.dn{background:#fff;color:#1f7a4d;border:1.5px solid #9fd3b6;padding:9px 12px}
+#casebox .tb{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 16px 0}
+#casebox .tb button{font:700 12.5px Inter,Arial,sans-serif;border:1px solid #f3c9c3;background:#fff4f2;color:#b42318;border-radius:8px;padding:8px 11px;cursor:pointer}
+#casebox .msg{font:600 12.5px Inter,Arial,sans-serif;color:#1f7a4d}#casebox .msg a{color:#1f5bb0;margin-left:6px;cursor:pointer;text-decoration:underline}
+#casebox .shw{font:600 12px Inter,Arial,sans-serif;color:#5b6678;cursor:pointer;text-decoration:underline;margin:0 16px 12px;display:inline-block}
 #casebox .none{color:#5b6678;font:500 13px Inter,Arial,sans-serif;padding:4px 0 10px}
 #casebox .more{display:block;text-align:center;font:700 13px Inter,Arial,sans-serif;color:#1f5bb0;padding:4px 0 14px;text-decoration:none}
 @media (max-width:760px){#hitl .tw{display:none}#hitl .qh .c::after{content:" \2014 open them below in Case management"}#casebox .cc .r{display:none}}
@@ -6829,15 +6835,32 @@ function L(){try{return (typeof items!=='undefined'&&Array.isArray(items))?items
 function when(t){if(!t)return '';var d=new Date(t);return d.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' · '+d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}
 function cls(s){return s>=7?'':s>=4?' m2':' lo'}
 var API='',KEY='';try{API=(localStorage.getItem('spear_api')||'https://project-spear-backend.onrender.com').replace(/\/$/,'');KEY=localStorage.getItem('spear_key')||''}catch(e){}
-var reports=null,repErr='';
+var reports=null,repErr='',showAll=false,lastArchived=[];
+function hidden(){try{return JSON.parse(localStorage.getItem('spear_reports_done')||'{}')}catch(e){return {}}}
+function saveHidden(h){try{localStorage.setItem('spear_reports_done',JSON.stringify(h))}catch(e){}}
+function say(t,undo){var m=$('cbmsg');if(!m)return;m.innerHTML=t+(undo?'<a id="cbundo">Undo</a>':'');var u=$('cbundo');if(u)u.onclick=function(){restore()};clearTimeout(say._t);say._t=setTimeout(function(){m.innerHTML=''},12000)}
+/* "Done" moves a case to the Archive the same way "Clear for new group" does: nothing is deleted. */
+function archive(ids){var at=new Date().toISOString(),name='Reviewed '+new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'}),n=0;lastArchived=[];
+  L().forEach(function(i){if(ids.indexOf(String(i.id))>=0&&!i.archived){i.archived=true;i.archivedAt=at;i.batch=name;lastArchived.push(i);n++}});
+  try{if(typeof selId!=='undefined')selId=null}catch(e){}try{itemsSave()}catch(e){}try{if(typeof render==='function')render()}catch(e){}
+  draw(true);if(n)say('\u2713 '+n+' case'+(n===1?'':'s')+' moved to the Archive.',true)}
+function restore(){lastArchived.forEach(function(i){i.archived=false;delete i.archivedAt;delete i.batch});var n=lastArchived.length;lastArchived=[];
+  try{itemsSave()}catch(e){}try{if(typeof render==='function')render()}catch(e){}draw(true);say('Restored '+n+' case'+(n===1?'':'s')+'.')}
 function build(){
   if($('casebox'))return true;
   var hero=$('heroBox');if(!hero||!hero.parentNode)return false;
   var b=document.createElement('section');b.id='casebox';
-  b.innerHTML='<div class="ch"><h2>Case management</h2><div class="s">Every case and every SPEAR Dossier — tap to open</div></div><div class="ql" id="cbql"></div>'+
-    '<h3>Recent cases</h3><div class="list" id="cblist"></div><h3>Saved SPEAR Dossiers</h3><div class="list" id="cbrep"></div>';
+  b.innerHTML='<div class="ch"><h2>Case management</h2><div class="s">Every case and every SPEAR Dossier — tap to open</div></div><div class="ql" id="cbql"></div><div class="tb"><button type="button" id="cbClear">Clear the queue</button><span class="msg" id="cbmsg"></span></div>'+
+    '<h3>Recent cases</h3><div class="list" id="cblist"></div><h3>Saved SPEAR Dossiers</h3><div class="list" id="cbrep"></div><span class="shw" id="cbshow"></span>';
   hero.parentNode.insertBefore(b,hero.nextSibling);
-  b.addEventListener('click',function(e){var x=e.target.closest('button[data-id]');if(!x)return;var id=x.getAttribute('data-id');if(typeof openBrief==='function')openBrief(isNaN(+id)?id:+id)});
+  b.addEventListener('click',function(e){
+    var d=e.target.closest('[data-done]');if(d){archive([d.getAttribute('data-done')]);return}
+    var h=e.target.closest('[data-hide]');if(h){var hid=hidden();hid[h.getAttribute('data-hide')]=Date.now();saveHidden(hid);draw(true);return}
+    var x=e.target.closest('button[data-id]');if(!x)return;var id=x.getAttribute('data-id');if(typeof openBrief==='function')openBrief(isNaN(+id)?id:+id)});
+  $('cbClear').onclick=function(){var live=L().filter(function(i){return !i.archived});if(!live.length){say('The queue is already clear.');return}
+    if(!confirm('Move all '+live.length+' case'+(live.length===1?'':'s')+' to the Archive?\n\nNothing is deleted \u2014 pictures, reports and decisions stay saved and can be opened, downloaded or restored from Archive.'))return;
+    archive(live.map(function(i){return String(i.id)}))};
+  $('cbshow').onclick=function(){showAll=!showAll;draw(true)};
   return true;
 }
 function loadReports(){
@@ -6859,11 +6882,12 @@ function draw(force){
     var r=String(it.recommendation||it.visionDesc||it.reasoning||it.title||it.caption||'').replace(/\s+/g,' ').trim();
     return '<div class="cc">'+img+'<div class="bd"><div class="t">'+esc(String(it.category||'unclassified').replace(/_/g,' '))+'<span class="sc'+cls(s)+'">'+(it.visionFailed?'not checked':s.toFixed(1)+'/10')+'</span></div>'+
       '<div class="m">'+esc(when(ts(it.captured)))+(it.status&&it.status!=='Pending'?' · '+esc(it.status):'')+'</div><div class="r">'+esc(r)+'</div></div>'+
-      '<button type="button" data-id="'+esc(it.id)+'">SPEAR Dossier</button></div>'}).join('')+(live.length>12?'<a class="more" href="ops.html#all">See all cases</a>':'')
+      '<div class="bt"><button type="button" data-id="'+esc(it.id)+'">SPEAR Dossier</button><button type="button" class="dn" data-done="'+esc(it.id)+'" title="Finished \u2014 move this case to the Archive (nothing is deleted)">\u2713 Done</button></div></div>'}).join('')+(live.length>12?'<a class="more" href="ops.html#all">See all cases</a>':'')
     :'<div class="none">No cases yet on this device. Upload images above — each one appears here.</div>';
-  $('cbrep').innerHTML=repErr?'<div class="none">'+esc(repErr)+'</div>':reports===null?'<div class="none">Loading…</div>':reports.length?reports.map(function(r){
-      return '<div class="cc"><div class="ph">📄</div><div class="bd"><div class="t" style="text-transform:none">'+esc(r.title||'SPEAR Dossier')+'</div><div class="m">'+esc(when(ts(r.created_at)))+'</div></div><a class="go" href="report.html?id='+encodeURIComponent(r.id)+'" target="_blank" rel="noopener">Open</a></div>'}).join('')
-    :'<div class="none">No dossiers saved yet. Tap SPEAR Dossier on a case to write one.</div>';
+  $('cbrep').innerHTML=repErr?'<div class="none">'+esc(repErr)+'</div>':reports===null?'<div class="none">Loading…</div>':(function(){var hid=hidden(),vis=reports.filter(function(r){return showAll||!hid[r.id]}),nh=reports.length-reports.filter(function(r){return !hid[r.id]}).length;
+      $('cbshow').textContent=nh?(showAll?'Hide cleared dossiers':'Show '+nh+' cleared dossier'+(nh===1?'':'s')):'';return vis})().length?(function(){var hid=hidden();return reports.filter(function(r){return showAll||!hid[r.id]})})().map(function(r){
+      return '<div class="cc"><div class="ph">📄</div><div class="bd"><div class="t" style="text-transform:none">'+esc(r.title||'SPEAR Dossier')+'</div><div class="m">'+esc(when(ts(r.created_at)))+'</div></div><div class="bt"><a class="go" href="report.html?id='+encodeURIComponent(r.id)+'" target="_blank" rel="noopener">Open</a>'+(hidden()[r.id]?'':'<a class="go dn" data-hide="'+esc(r.id)+'" title="Finished \u2014 take it off this list (the dossier stays saved)">\u2713 Done</a>')+'</div></div>'}).join('')
+    :(reports.length?'<div class="none">All dossiers are cleared from this list.</div>':'<div class="none">No dossiers saved yet. Tap SPEAR Dossier on a case to write one.</div>');
 }
 function go(){try{draw(false)}catch(e){console.warn('[cases]',e)}}
 function start(){go();loadReports()}
