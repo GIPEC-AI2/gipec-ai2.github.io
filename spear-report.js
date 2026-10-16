@@ -108,6 +108,12 @@
 
     /* 4 FLAG */
     h += '<section class="stage">' + stage(4, 'FLAG', 'Policy &amp; audit mapping');
+  /* Eric's question for Meta, answered up front with the summary he files */
+  if (onMeta) {
+    var pol = (r.policies || []).filter(Boolean);
+    h += '<h3>Does this violate Meta’s Terms of Service?</h3><div class="verdict ' + vcls(v.answer) + '">' + esc(v.answer || '') + '</div>';
+    if (pol.length || r.recommended_action) h += '<div class="kv"><div>Primary violation</div><div>' + esc(pol[0] || '—') + '</div>' + (pol.length > 1 ? '<div>Secondary</div><div>' + esc(pol.slice(1).join(', ')) + '</div>' : '') + '<div>Enforcement action</div><div>' + esc(r.recommended_action || '—') + '</div></div>';
+  }
     h += '<h3>' + E('vq', esc(v.question || 'Is this a violation?'), 'span') + '</h3>' + E('vwhy', '<ol class="n">' + items(v.reasons, function (c) { return '<li><b>' + esc(c.title) + ':</b> ' + esc(c.text) + '</li>'; }) + '</ol>');
     if ((r.policy_mapping || []).length) h += '<h3>Rules it breaks</h3>' + E('pmap', li(r.policy_mapping, function (x) { return '<li><b>' + esc(x.framework) + ':</b> ' + esc(x.finding) + '</li>'; }));
     if (v.platform_context) h += E('vplat', esc(v.platform_context), 'p');
@@ -123,7 +129,7 @@
     h += '<p><span class="lab">Recommended action:</span> ' + E('rec', esc(r.recommended_action || '—'), 'span') + '</p></section>';
 
     /* 5 TEACH */
-    h += '<section class="stage">' + stage(5, 'TEACH', 'How ' + (onMeta ? 'Meta’s' : 'the platform’s') + ' AI could learn to catch it');
+    h += '<section class="stage">' + stage(5, 'TEACH', onMeta ? 'How can Meta learn from Project SPEAR?' : 'How the platform’s AI could learn to catch it');
     h += items(r.countermeasures, function (c, i) { return E('cm' + i, '<div class="t">' + String.fromCharCode(65 + i) + '. ' + esc(c.title) + '</div><div><span class="lab">The fix:</span> ' + esc(c.fix) + '</div><div><span class="lab">How:</span> ' + esc(c.execution) + '</div>' + (c.pattern ? '<div><span class="lab">Detection template:</span> <span class="mono">' + esc(c.pattern) + '</span></div>' : ''), 'div', 'tac') + (c.pattern && (c.lid || c.known) ? '<div class="note" style="margin:-4px 0 10px 14px">Add this template to team memory? ' + chip(c) + '</div>' : ''); });
     h += '<p class="note">Recommendations for the platform’s own engineering and trust-and-safety teams. SPEAR supplies the labelled examples and the analysis; it does not access or retrain the platform’s systems.</p>';
     h += learnHtml(r, opts).replace('<section class="lrn"><h2>Slurs &amp; coded language found</h2>', '<div class="lrn"><h3>Slurs &amp; coded language found</h3>').replace(/<\/section>$/, '</div>');
