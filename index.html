@@ -6728,6 +6728,12 @@ if(!hook()){var t=setInterval(function(){if(hook())clearInterval(t)},400);setTim
 #bModeRow{display:none!important}
 </style>
 <script id="spear-hitl">
+/* Delete one case on purpose: gone from this device and from the server (pictures already archived stay in the training record). */
+window.spearDeleteCase=function(id){var it=(typeof items!=='undefined'?items:[]).find(function(i){return String(i.id)===String(id)});if(!it)return false;
+  if(!confirm('Delete this case?\n\nIt is removed from this device and from the server. Pictures already saved stay in the training record.\n\nTip: use \u201c\u2713 Done\u201d instead if you may want it back.'))return false;
+  try{var tb=JSON.parse(localStorage.getItem('spear_deleted_uids')||'{}');if(it.uid)tb[it.uid]=Date.now();localStorage.setItem('spear_deleted_uids',JSON.stringify(tb))}catch(e){}
+  items=items.filter(function(i){return String(i.id)!==String(id)});try{if(String(selId)===String(id))selId=null}catch(e){}try{itemsSave()}catch(e){}try{render()}catch(e){}return true};
+
 /* Human-in-the-loop front page (Eric's layout): the live HITL review queue comes first, with queue
 health on top; Upload is a button. Every case opens the SPEAR Dossier. Reads the same cases as the
 rest of the dashboard; changes nothing about how cases are scored or stored. */
@@ -6764,6 +6770,7 @@ function build(){
   $('hitlUp').onclick=function(){var f=$('heroFile');if(f)f.click();else hero.scrollIntoView({behavior:'smooth'})};
   $('htw').addEventListener('click',function(e){var b=e.target.closest('button[data-a]');if(!b)return;var id=b.getAttribute('data-id');
     if(b.getAttribute('data-a')==='dossier'){if(typeof openBrief==='function')openBrief(isNaN(+id)?id:+id);return}
+    if(b.getAttribute('data-a')==='del'){if(window.spearDeleteCase&&window.spearDeleteCase(isNaN(+id)?id:+id)){last='';draw()}return}
     try{if(typeof select==='function')select(isNaN(+id)?id:+id)}catch(err){}
     var t=document.querySelector('.decide,#decide,#detail,[id*="detail"]');(t||hero).scrollIntoView({behavior:'smooth',block:'start'});});
   return true;
@@ -6790,7 +6797,7 @@ function draw(){
       return '<tr><td class="id">SP-'+esc(String(it.id).padStart(4,'0'))+'</td><td>'+(d?esc(new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric'})):'—')+'</td>'+
       '<td><span class="ty'+(t==='medium'?' m':t==='low'||t==='minimal'?' lo':'')+'">'+esc(String(it.category||'unclassified').replace(/_/g,' '))+'</span></td><td>'+esc(plat(it))+'</td>'+
       '<td>'+esc(rec(it))+'</td><td class="cf">'+(it.visionFailed?'<span title="The AI did not run — check again">—</span>':sc.toFixed(1)+'/10')+'</td>'+
-      '<td><span class="tl '+lf[1]+'">'+esc(lf[0])+'</span></td><td class="ac"><button type="button" class="d" data-a="dossier" data-id="'+esc(it.id)+'">SPEAR Dossier</button><button type="button" data-a="review" data-id="'+esc(it.id)+'">Review</button></td></tr>'}).join('')+
+      '<td><span class="tl '+lf[1]+'">'+esc(lf[0])+'</span></td><td class="ac"><button type="button" class="d" data-a="dossier" data-id="'+esc(it.id)+'">SPEAR Dossier</button><button type="button" data-a="review" data-id="'+esc(it.id)+'">Review</button><button type="button" class="x" data-a="del" data-id="'+esc(it.id)+'" title="Delete this case">\ud83d\uddd1</button></td></tr>'}).join('')+
     '</tbody></table>'+(q.length>25?'<div class="empty"><a href="ops.html#all">See all '+q.length+' open cases</a></div>':'');
 }
 function go(){try{draw()}catch(e){console.warn('[hitl]',e)}}
@@ -6820,6 +6827,8 @@ setInterval(go,3000);
 #casebox .cc button,#casebox .cc a.go{flex:none;font:800 13px/1 Inter,Arial,sans-serif;border:0;border-radius:9px;padding:12px 13px;background:#0f2a5c;color:#fff;cursor:pointer;text-decoration:none;white-space:nowrap}
 #casebox .bt{display:flex;flex-direction:column;gap:6px;flex:none}
 #casebox .cc button.dn,#casebox .cc a.dn{background:#fff;color:#1f7a4d;border:1.5px solid #9fd3b6;padding:9px 12px}
+#casebox .cc button.del{background:#fff;color:#b42318;border:1px solid #f3c9c3;padding:7px 10px;font-size:12px}
+#hitl .ac button.x{color:#b42318;border-color:#f3c9c3}
 #casebox .tb{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 16px 0}
 #casebox .tb button{font:700 12.5px Inter,Arial,sans-serif;border:1px solid #f3c9c3;background:#fff4f2;color:#b42318;border-radius:8px;padding:8px 11px;cursor:pointer}
 #casebox .msg{font:600 12.5px Inter,Arial,sans-serif;color:#1f7a4d}#casebox .msg a{color:#1f5bb0;margin-left:6px;cursor:pointer;text-decoration:underline}
@@ -6865,6 +6874,7 @@ function build(){
   hero.parentNode.insertBefore(b,hero.nextSibling);
   b.addEventListener('click',function(e){
     var d=e.target.closest('[data-done]');if(d){archive([d.getAttribute('data-done')]);return}
+    var dl=e.target.closest('[data-del]');if(dl){if(window.spearDeleteCase&&window.spearDeleteCase(dl.getAttribute('data-del'))){draw(true);say('Case deleted.')}return}
     var h=e.target.closest('[data-hide]');if(h){var hid=hidden();hid[h.getAttribute('data-hide')]=Date.now();saveHidden(hid);draw(true);return}
     var x=e.target.closest('button[data-id]');if(!x)return;var id=x.getAttribute('data-id');if(typeof openBrief==='function')openBrief(isNaN(+id)?id:+id)});
   $('cbClear').onclick=function(){var live=L().filter(function(i){return !i.archived});if(!live.length){say('The queue is already clear.');return}
@@ -6898,7 +6908,7 @@ function draw(force){
     var r=String(it.recommendation||it.visionDesc||it.reasoning||it.title||it.caption||'').replace(/\s+/g,' ').trim();
     return '<div class="cc">'+img+'<div class="bd"><div class="t">'+esc(String(it.category||'unclassified').replace(/_/g,' '))+'<span class="sc'+cls(s)+'">'+(it.visionFailed?'not checked':s.toFixed(1)+'/10')+'</span></div>'+
       '<div class="m">'+esc(when(ts(it.captured)))+(it.status&&it.status!=='Pending'?' · '+esc(it.status):'')+'</div><div class="r">'+esc(r)+'</div></div>'+
-      '<div class="bt"><button type="button" data-id="'+esc(it.id)+'">SPEAR Dossier</button><button type="button" class="dn" data-done="'+esc(it.id)+'" title="Finished \u2014 move this case to the Archive (nothing is deleted)">\u2713 Done</button></div></div>'}).join('')+(live.length>12?'<a class="more" href="ops.html#all">See all cases</a>':'')
+      '<div class="bt"><button type="button" data-id="'+esc(it.id)+'">SPEAR Dossier</button><button type="button" class="dn" data-done="'+esc(it.id)+'" title="Finished \u2014 move this case to the Archive (nothing is deleted)">\u2713 Done</button><button type="button" class="del" data-del="'+esc(it.id)+'" title="Delete this case for good">\ud83d\uddd1 Delete</button></div></div>'}).join('')+(live.length>12?'<a class="more" href="ops.html#all">See all cases</a>':'')
     :'<div class="none">No cases yet on this device. Upload images above — each one appears here.</div>';
   $('cbrep').innerHTML=repErr?'<div class="none">'+esc(repErr)+'</div>':reports===null?'<div class="none">Loading…</div>':(function(){var hid=hidden(),vis=reports.filter(function(r){return showAll||!hid[r.id]}),nh=reports.length-reports.filter(function(r){return !hid[r.id]}).length;
       $('cbshow').textContent=nh?(showAll?'Hide cleared dossiers':'Show '+nh+' cleared dossier'+(nh===1?'':'s')):'';return vis})().length?(function(){var hid=hidden();return reports.filter(function(r){return showAll||!hid[r.id]})})().map(function(r){
