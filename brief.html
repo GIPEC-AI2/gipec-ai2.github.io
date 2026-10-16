@@ -118,8 +118,10 @@ try{
 }catch(e){}
 const ID=new URLSearchParams(location.search).get('id');
 function items(){try{const a=JSON.parse(localStorage.getItem('spear_items')||'[]');return Array.isArray(a)?a:[]}catch(e){return []}}
-function mutate(fn){try{const a=items();const it=a.find(x=>String(x.id)===String(ID));if(!it)return;fn(it);localStorage.setItem('spear_items',JSON.stringify(a))}catch(e){}}
-let IT=items().find(x=>String(x.id)===String(ID));
+function mutate(fn){let it=null;try{const a=items();it=a.find(x=>String(x.id)===String(ID));if(it){fn(it);try{localStorage.setItem('spear_items',JSON.stringify(a))}catch(e){}}else if(IT){fn(IT);it=IT}}catch(e){}
+/* keep the dashboard tab in step even when this browser could not save the case locally (Safari storage limits) */
+try{if(it&&window.opener&&window.opener.spearPutItem)window.opener.spearPutItem(ID,it)}catch(e){}}
+let IT=items().find(x=>String(x.id)===String(ID))||(function(){try{return window.opener&&window.opener.spearGetItem?window.opener.spearGetItem(ID):null}catch(e){return null}})();
 
 function acct(it){
   let p=String(it.poster||'').trim();
@@ -139,7 +141,7 @@ function month(){return new Date().toLocaleString('en-US',{month:'long',year:'nu
 function author(){try{return localStorage.getItem('spear_author')||'Eric Feinberg'}catch(e){return 'Eric Feinberg'}}
 
 async function write(force){
-  if(!IT){$('root').innerHTML='<div class="msg"><b>Case not found in this browser.</b><br>Open this from a case in the Project Spear dashboard on the computer where the case was captured.<br><br><a href="./">Back to the dashboard</a></div>';return}
+  if(!IT){$('root').innerHTML='<div class="msg"><b>Case not found in this browser.</b><br>Keep the Project Spear dashboard tab open and click the brief button on the case again.<br><br><a href="./">Back to the dashboard</a></div>';return}
   const b0=IT.brief;
   if(b0&&!force&&(b0.assessment||b0.edits)){render(b0);return}
   if(!KEY){$('root').innerHTML='<div class="msg"><b>This browser isn’t connected to the Project Spear server yet.</b><br>Open your Project Spear setup link once on this computer, then reopen this page.</div>';return}
