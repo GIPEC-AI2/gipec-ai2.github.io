@@ -197,7 +197,7 @@ async function api(path, opt = {}) {
 
 async function loadClients(keepSel = true) {
   st.clients = await api('/api/brand/tenants');
-  if (st.sel !== '__new' && st.sel !== '__spotted' && (!keepSel || !st.clients.find(c => c.id === st.sel))) st.sel = st.clients[0]?.id || null;
+  if (st.sel !== '__new' && st.sel !== '__spotted' && st.sel !== '__teach' && (!keepSel || !st.clients.find(c => c.id === st.sel))) st.sel = st.clients[0]?.id || null;
   drawClients();
 }
 
@@ -209,6 +209,8 @@ function drawClients() {
     <div class="sub">${c.counts.candidate} to review · ${c.counts.confirmed} confirmed${c.scanning ? ' · scanning…' : ''}</div></button>`).join('');
   el.innerHTML += `<button class="client ${st.sel === '__spotted' ? 'on' : ''}" data-id="__spotted" style="border-style:dashed">
     <div class="nm">\u2605 Brands spotted</div><div class="sub">Every brand the AI sees in harmful content</div></button>`;
+  el.innerHTML += `<button class="client ${st.sel === '__teach' ? 'on' : ''}" data-id="__teach" style="border-style:dashed">
+    <div class="nm">\u2b06 Upload examples \u00b7 Teach SPEAR</div><div class="sub">Pictures and videos of harmful content with American brands</div></button>`;
   el.querySelectorAll('.client').forEach(b => b.onclick = () => { st.sel = b.dataset.id; st.tab = 'candidate'; st.delArm = false; drawClients(); drawMain(); });
 }
 
@@ -229,6 +231,7 @@ async function drawMain() {
   const c = cur();
   if (st.sel === '__new') return drawSettings(null);
   if (st.sel === '__spotted') return drawSpotted();
+  if (st.sel === '__teach') return drawTeach();
   if (!c) { m.innerHTML = '<div class="empty">Add a client to start monitoring.</div>'; return; }
   const ct = c.counts;
   m.innerHTML = `<div class="head">
@@ -569,6 +572,112 @@ async function drawSpotted() {
       ${i.description ? `<div class="hint" style="margin-top:4px">${esc(i.description)}</div>` : ''}
       <div class="hint" style="margin-top:4px">${when(i.seen_at)}${i.context ? ' · ' + esc(i.context) : ''}</div></div>`).join('')}</div>`;
   loadShaImgs();
+}
+
+/* Teach SPEAR with brand-safety examples: Eric uploads pictures or screen recordings he captured
+   (Telegram, YouTube, Instagram, TikTok...) of extremist content or illegal drug sales next to American
+   brands. Each picture, and four frames across each video, go to the server: the vision AI reads it,
+   the original is kept in the permanent archive, every brand and its owner is found, and matches to a
+   client's watched brands land in that client's To review. Codes and emojis can be taught directly. */
+function shrinkImage(file) {
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => { const s = Math.min(1, 1800 / Math.max(img.naturalWidth, img.naturalHeight));
+      const c = document.createElement('canvas'); c.width = Math.round(img.naturalWidth * s); c.height = Math.round(img.naturalHeight * s);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url); res(c.toDataURL('image/jpeg', 0.88)); };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('this picture format could not be read')); };
+    img.src = url;
+  });
+}
+async function videoFrames(file) {
+  const url = URL.createObjectURL(file), v = document.createElement('video');
+  v.muted = true; v.playsInline = true; v.preload = 'auto'; v.src = url;
+  await new Promise((res, rej) => { v.onloadeddata = res; v.onerror = () => rej(new Error('this video could not be opened in the browser')); setTimeout(() => rej(new Error('the video took too long to open')), 20000); });
+  const d = isFinite(v.duration) && v.duration > 0 ? v.duration : 1, out = [];
+  for (const f of [0.05, 0.3, 0.55, 0.8]) {
+    v.currentTime = Math.min(Math.max(0, d - 0.1), d * f);
+    await new Promise(res => { v.onseeked = res; setTimeout(res, 4000); });
+    const s = Math.min(1, 1280 / Math.max(v.videoWidth || 1, v.videoHeight || 1)), c = document.createElement('canvas');
+    c.width = Math.round((v.videoWidth || 640) * s); c.height = Math.round((v.videoHeight || 360) * s);
+    c.getContext('2d').drawImage(v, 0, 0, c.width, c.height); out.push(c.toDataURL('image/jpeg', 0.85));
+  }
+  URL.revokeObjectURL(url);
+  return out;
+}
+function teachResult(r) {
+  if (r.child_safety) return `<div class="msg err">${esc(r.message)}</div>`;
+  const us = c => c === 'United States' ? '<span class="us">U.S.</span>' : '';
+  return `<div style="margin:4px 0"><span class="score ${sev(+r.score || 0)}">${+r.score || 0}/10</span> <span class="pill">${esc(r.risk_category || r.category || '')}</span></div>
+    ${r.description ? `<div style="font-size:13px">${esc(r.description)}</div>` : ''}
+    ${r.threat ? `<div class="why" style="margin-top:6px"><b>Why it matters:</b> ${esc(r.threat)}</div>` : ''}
+    <div style="margin-top:6px">${(r.brands || []).length ? r.brands.map(b => `<div class="bwhere"><b>${esc(b.brand)}</b>${us(b.country)} — ${esc(b.parent || 'owner not identified')} · ${esc(b.how_label || '')}<div class="hint">${esc(b.evidence || '')}</div></div>`).join('')
+      : '<div class="hint">No brand found in this one.</div>'}</div>`;
+}
+async function teachFiles(files) {
+  const box = document.getElementById('tres'); if (!box) return;
+  const note = document.getElementById('tnote').value.trim(), platform = document.getElementById('tplat').value, url = document.getElementById('turl').value.trim();
+  for (const file of files) {
+    const isVid = (file.type || '').startsWith('video/');
+    const card = document.createElement('div'); card.className = 'inc';
+    card.innerHTML = `<div class="row1"><span class="pill ${isVid ? 'k2' : 'k1'}">${isVid ? 'Video' : 'Picture'}</span><b>${esc(file.name || 'upload')}</b><span class="hint" style="margin-left:auto" data-st>Reading…</span></div><div data-out></div>`;
+    box.prepend(card);
+    const st2 = card.querySelector('[data-st]'), out = card.querySelector('[data-out]');
+    let frames;
+    try { frames = isVid ? await videoFrames(file) : [await shrinkImage(file)]; }
+    catch (e) { st2.textContent = 'Could not read: ' + e.message; continue; }
+    for (let i = 0; i < frames.length; i++) {
+      st2.textContent = isVid ? `Checking frame ${i + 1} of ${frames.length}… (about 20 s each)` : 'Checking… (about 20 s)';
+      const part = document.createElement('div'); part.style.cssText = 'display:flex;gap:12px;align-items:flex-start;margin-top:10px;flex-wrap:wrap';
+      part.innerHTML = `<img src="${frames[i]}" class="simg" style="margin:0;max-width:220px"><div style="flex:1;min-width:220px" data-r><div class="hint">Checking…</div></div>`;
+      out.appendChild(part);
+      try {
+        const r = await api('/api/brand/teach', { method: 'POST', body: JSON.stringify({ image: frames[i], note, platform, url,
+          label: (file.name || 'upload') + (isVid ? `, frame ${i + 1} of ${frames.length}` : '') }) });
+        part.querySelector('[data-r]').innerHTML = (isVid ? `<div class="hint">Frame ${i + 1} of ${frames.length}</div>` : '') + teachResult(r);
+      } catch (e) { part.querySelector('[data-r]').innerHTML = `<div class="msg err">Not checked: ${esc(e.message)}</div>`; }
+    }
+    st2.textContent = '✓ Saved to the archive · brands added to Brands spotted';
+  }
+  try { await loadClients(); } catch (e) {}
+}
+function drawTeach() {
+  const m = document.getElementById('main');
+  m.innerHTML = `<div class="head"><div style="flex:1;min-width:240px"><h1>Teach SPEAR: brand-safety examples</h1>
+    <div class="meta">Upload pictures or videos you captured — ISIS or extremist content, illegal drug sales, counterfeit packaging — where an American brand appears.
+    SPEAR reads each one, names every brand and the company that owns it, keeps the original in the permanent archive, and learns what to watch for.
+    If a brand or its parent company belongs to one of your clients, it also goes to that client’s <b>To review</b>.</div></div></div>
+    <div id="tdrop" style="border:2px dashed #b9c6dd;border-radius:14px;text-align:center;padding:22px;background:#f8fafd">
+      <div style="font-weight:800;font-size:16px">Drop pictures or videos here</div>
+      <button class="btn pri" id="tpick" style="margin-top:8px">Choose pictures or videos</button>
+      <input type="file" id="tfile" accept="image/*,video/*" multiple style="display:none">
+      <div class="hint" style="margin-top:8px">Screenshots or screen recordings from Telegram, YouTube, Instagram, TikTok, Snapchat… One or many at once. Videos are checked at four points across the clip.</div></div>
+    <div class="form" style="margin-top:12px;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px">
+      <div><label>Where it came from</label><select id="tplat">${['Telegram', 'YouTube', 'Instagram', 'Facebook', 'TikTok', 'Snapchat', 'X', 'Other'].map(p => `<option>${p}</option>`).join('')}</select></div>
+      <div><label>Link to the post (optional)</label><input id="turl" placeholder="https://t.me/… or https://youtube.com/…"></div>
+      <div style="grid-column:1/-1"><label>Why it’s harmful / what to watch for (optional, applies to this batch)</label>
+        <textarea id="tnote" rows="2" placeholder="e.g. ISIS nasheed video with a soft-drink bottle on the table; or a dealer menu using plug, snowflake and pill emojis next to a sneaker logo"></textarea></div></div>
+    <div id="tres" style="margin-top:12px"></div>
+    <details class="card" style="margin-top:14px"><summary style="cursor:pointer;font-weight:700">Teach a code, emoji or pattern</summary>
+      <div class="hint" style="margin-top:6px">Drug-sale and extremist codes change fast. Add one in your words — SPEAR uses it in every scan and report from now on.</div>
+      <div class="form" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;margin-top:8px">
+        <div><label>Code, emoji or phrase</label><input id="ccode" maxlength="120" placeholder="e.g. 🔌 or blues or M30"></div>
+        <div><label>What kind</label><select id="ckind"><option value="coded_term">Code / slang / emoji</option><option value="pattern">Visual pattern or tactic</option><option value="exception">Not harmful (a false alarm)</option></select></div>
+        <div style="grid-column:1/-1"><label>What it means and why it matters</label><textarea id="cwhy" rows="2" maxlength="1000" placeholder="e.g. plug = the dealer; blues / M30 = counterfeit oxycodone pills pressed with fentanyl"></textarea></div></div>
+      <button class="btn pri" id="cgo" style="margin-top:8px">Teach SPEAR</button> <span class="msg" id="cmsg"></span></details>`;
+  const f = m.querySelector('#tfile'), drop = m.querySelector('#tdrop');
+  m.querySelector('#tpick').onclick = () => f.click();
+  f.onchange = () => { const list = [...f.files]; f.value = ''; if (list.length) teachFiles(list); };
+  drop.ondragover = e => { e.preventDefault(); drop.style.background = '#eef4ff'; };
+  drop.ondragleave = () => { drop.style.background = '#f8fafd'; };
+  drop.ondrop = e => { e.preventDefault(); drop.style.background = '#f8fafd'; const list = [...(e.dataTransfer.files || [])].filter(x => /^(image|video)\//.test(x.type)); if (list.length) teachFiles(list); };
+  m.querySelector('#cgo').onclick = async () => {
+    const term = m.querySelector('#ccode').value.trim(), why = m.querySelector('#cwhy').value.trim(), msg = m.querySelector('#cmsg');
+    if (term.length < 1) { msg.className = 'msg err'; msg.textContent = 'Enter the code, emoji or phrase.'; return; }
+    if (why.length < 5) { msg.className = 'msg err'; msg.textContent = 'Say what it means, in your words.'; return; }
+    try { await api('/api/teach', { method: 'POST', body: JSON.stringify({ kind: m.querySelector('#ckind').value, term, variants: '', why, by: 'analyst', case_ids: [], report_id: '' }) });
+      msg.className = 'msg okm'; msg.textContent = '✓ Saved — SPEAR uses “' + term + '” from the next scan.'; m.querySelector('#ccode').value = ''; m.querySelector('#cwhy').value = ''; }
+    catch (e) { msg.className = 'msg err'; msg.textContent = 'Not saved: ' + e.message; }
+  };
 }
 
 const GKEY = 'spear_brand_guide_hidden';
