@@ -203,8 +203,7 @@ async function loadClients(keepSel = true) {
 
 function drawClients() {
   const el = document.getElementById('clients');
-  if (!st.clients.length) { el.innerHTML = '<div class="hint">No clients yet.</div>'; return; }
-  el.innerHTML = st.clients.map(c => `<button class="client ${c.id === st.sel ? 'on' : ''}" data-id="${esc(c.id)}">
+  el.innerHTML = (st.clients.length ? '' : '<div class="hint" style="margin-bottom:8px">No clients yet. Click <b>+ New client</b>.</div>') + st.clients.map(c => `<button class="client ${c.id === st.sel ? 'on' : ''}" data-id="${esc(c.id)}">
     <div class="nm"><span class="dot ${c.active ? 'live' : ''}"></span>${esc(c.codename)}</div>
     <div class="sub">${c.counts.candidate} to review · ${c.counts.confirmed} confirmed${c.scanning ? ' · scanning…' : ''}</div></button>`).join('');
   el.innerHTML += `<button class="client ${st.sel === '__spotted' ? 'on' : ''}" data-id="__spotted" style="border-style:dashed">
