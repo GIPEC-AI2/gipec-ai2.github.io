@@ -172,6 +172,13 @@ table.par td{border-bottom:1px solid #eef1f6;padding:7px 6px;vertical-align:top}
   </aside>
 
   <main>
+    <div class="card" id="quickdrop" role="button" tabindex="0" style="border:3px dashed #1f4fb3;background:#f3f7ff;text-align:center;padding:24px 16px;margin-bottom:14px;cursor:pointer">
+      <div style="font-size:24px;font-weight:800;color:#10213f">🎬 Drop a video or picture here</div>
+      <div style="font-size:17px;margin-top:8px;color:#2d3748">SPEAR watches the whole video for hidden terrorist logos and finds every brand in it.</div>
+      <button class="btn pri" style="margin-top:12px;font-size:17px;padding:12px 22px" type="button">Choose a video or picture</button>
+      <input type="file" id="qfile" accept="image/*,video/*" multiple style="display:none">
+      <div class="tlegend" style="justify-content:center"><b>Colors:</b><span><i style="background:var(--red)"></i><b>Red</b> = dangerous</span><span><i style="background:var(--amber)"></i><b>Orange</b> = brand found</span><span><i style="background:var(--green)"></i><b>Green</b> = nothing found / finished</span><span><i style="background:#1f4fb3"></i><b>Blue</b> = still working</span></div>
+    </div>
     <div class="card guide" id="guide">
       <div class="gh"><h2>How Brand Safety works</h2><button class="btn sm" id="hideGuide">Hide guide</button></div>
       <div class="steps">
@@ -223,7 +230,7 @@ function drawClients() {
     <div class="sub">${c.counts.candidate} to review · ${c.counts.confirmed} confirmed${c.scanning ? ' · scanning…' : ''}</div></button>`).join('');
   el.innerHTML += `<button class="client ${st.sel === '__spotted' ? 'on' : ''}" data-id="__spotted" style="border-style:dashed">
     <div class="nm">\u2605 Brands spotted</div><div class="sub">Every brand the AI sees in harmful content</div></button>`;
-  el.innerHTML += `<button class="client ${st.sel === '__teach' ? 'on' : ''}" data-id="__teach" style="border-style:dashed">
+  el.innerHTML += `<button class="client ${st.sel === '__teach' ? 'on' : ''}" data-id="__teach" style="border:3px dashed #1f4fb3;background:#f3f7ff">
     <div class="nm">\u2b06 Upload examples \u00b7 Teach SPEAR</div><div class="sub">Pictures and videos of harmful content with American brands</div></button>`;
   el.querySelectorAll('.client').forEach(b => b.onclick = () => { st.sel = b.dataset.id; st.tab = 'candidate'; st.delArm = false; drawClients(); drawMain(); });
 }
@@ -245,6 +252,7 @@ async function drawMain() {
   const c = cur();
   if (st.sel === '__new') return drawSettings(null);
   if (st.sel === '__spotted') return drawSpotted();
+  const qd = document.getElementById('quickdrop'); if (qd) qd.style.display = st.sel === '__teach' ? 'none' : '';
   if (st.sel === '__teach') return drawTeach();
   if (!c) { m.innerHTML = '<div class="empty">Add a client to start monitoring.</div>'; return; }
   const ct = c.counts;
@@ -789,9 +797,9 @@ function drawTeach() {
     <div class="meta">Upload pictures or videos you captured — ISIS or extremist content, illegal drug sales, counterfeit packaging — where an American brand appears.
     SPEAR reads each one, names every brand and the company that owns it, keeps the original in the permanent archive, and learns what to watch for.
     If a brand or its parent company belongs to one of your clients, it also goes to that client’s <b>To review</b>.</div></div></div>
-    <div id="tdrop" style="border:2px dashed #b9c6dd;border-radius:14px;text-align:center;padding:22px;background:#f8fafd">
-      <div style="font-weight:800;font-size:16px">Drop pictures or videos here</div>
-      <button class="btn pri" id="tpick" style="margin-top:8px">Choose pictures or videos</button>
+    <div id="tdrop" style="border:3px dashed #1f4fb3;border-radius:14px;text-align:center;padding:24px;background:#f3f7ff;cursor:pointer">
+      <div style="font-weight:800;font-size:24px;color:#10213f">🎬 Drop videos or pictures here</div>
+      <button class="btn pri" id="tpick" style="margin-top:12px;font-size:17px;padding:12px 22px">Choose videos or pictures</button>
       <input type="file" id="tfile" accept="image/*,video/*" multiple style="display:none">
       <div class="hint" style="margin-top:8px">Screenshots or screen recordings from Telegram, YouTube, Instagram, TikTok, Snapchat… One or many at once. Videos are swept frame by frame — every corner, every quarter second — so a logo that flashes on screen for only a second is still caught. No rewinding needed.</div>
       <div class="tlegend" style="justify-content:center"><b>What the colors mean:</b><span><i style="background:var(--red)"></i><b>Red</b> = dangerous (terrorist or extremist)</span><span><i style="background:var(--amber)"></i><b>Orange</b> = a brand was found</span><span><i style="background:var(--green)"></i><b>Green</b> = nothing found / finished</span><span><i style="background:#1f4fb3"></i><b>Blue</b> = still working</span></div></div>
@@ -809,11 +817,12 @@ function drawTeach() {
         <div style="grid-column:1/-1"><label>What it means and why it matters</label><textarea id="cwhy" rows="2" maxlength="1000" placeholder="e.g. plug = the dealer; blues / M30 = counterfeit oxycodone pills pressed with fentanyl"></textarea></div></div>
       <button class="btn pri" id="cgo" style="margin-top:8px">Teach SPEAR</button> <span class="msg" id="cmsg"></span></details>`;
   const f = m.querySelector('#tfile'), drop = m.querySelector('#tdrop');
-  m.querySelector('#tpick').onclick = () => f.click();
+  m.querySelector('#tpick').onclick = e => { e.stopPropagation(); f.click(); };
+  drop.onclick = e => { if (e.target === drop || e.target.parentNode === drop && e.target.tagName === 'DIV') f.click(); };
   f.onchange = () => { const list = [...f.files]; f.value = ''; if (list.length) teachFiles(list); };
-  drop.ondragover = e => { e.preventDefault(); drop.style.background = '#eef4ff'; };
-  drop.ondragleave = () => { drop.style.background = '#f8fafd'; };
-  drop.ondrop = e => { e.preventDefault(); drop.style.background = '#f8fafd'; const list = [...(e.dataTransfer.files || [])].filter(x => /^(image|video)\//.test(x.type)); if (list.length) teachFiles(list); };
+  drop.ondragover = e => { e.preventDefault(); drop.style.background = '#e6f0ff'; drop.style.borderColor = '#17784a'; };
+  drop.ondragleave = () => { drop.style.background = '#f3f7ff'; drop.style.borderColor = '#1f4fb3'; };
+  drop.ondrop = e => { e.preventDefault(); drop.style.background = '#f3f7ff'; drop.style.borderColor = '#1f4fb3'; const list = [...(e.dataTransfer.files || [])].filter(x => /^(image|video)\//.test(x.type)); if (list.length) teachFiles(list); };
   m.querySelector('#cgo').onclick = async () => {
     const term = m.querySelector('#ccode').value.trim(), why = m.querySelector('#cwhy').value.trim(), msg = m.querySelector('#cmsg');
     if (term.length < 1) { msg.className = 'msg err'; msg.textContent = 'Enter the code, emoji or phrase.'; return; }
@@ -830,6 +839,17 @@ document.getElementById('hideGuide').onclick = () => setGuide(false);
 document.getElementById('showGuide').onclick = () => { setGuide(true); window.scrollTo({ top: 0, behavior: 'smooth' }); };
 if (LS(GKEY) === '1') document.getElementById('guide').style.display = 'none';
 document.getElementById('newClient').onclick = () => { st.sel = '__new'; drawClients(); drawMain(); };
+/* The big drop box at the top: anything dropped here goes straight to Teach SPEAR and starts. */
+(() => {
+  const q = document.getElementById('quickdrop'), f = document.getElementById('qfile'); if (!q || !f) return;
+  const go = async list => { if (!list.length) return; st.sel = '__teach'; drawClients(); await drawMain(); window.scrollTo({ top: 0, behavior: 'smooth' }); teachFiles(list); };
+  q.onclick = e => { if (e.target !== f) f.click(); };
+  q.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); f.click(); } };
+  f.onchange = () => { const l = [...f.files]; f.value = ''; go(l); };
+  q.ondragover = e => { e.preventDefault(); q.style.background = '#e6f0ff'; q.style.borderColor = '#17784a'; };
+  q.ondragleave = () => { q.style.background = '#f3f7ff'; q.style.borderColor = '#1f4fb3'; };
+  q.ondrop = e => { e.preventDefault(); q.style.background = '#f3f7ff'; q.style.borderColor = '#1f4fb3'; go([...(e.dataTransfer.files || [])].filter(x => /^(image|video)\//.test(x.type))); };
+})();
 
 (async () => {
   if (!KEY) { document.getElementById('main').innerHTML = '<div class="empty">This device is not set up yet. Open the setup link Tre sent you once, then come back to this page.</div>'; document.getElementById('clients').innerHTML = ''; return; }
