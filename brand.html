@@ -134,6 +134,21 @@ table.par td{border-bottom:1px solid #eef1f6;padding:7px 6px;vertical-align:top}
   .rep{border:none;padding:0}
   .rt tr{break-inside:avoid}
 }
+/* Teach SPEAR colour code: where an upload is in the process, and what was found */
+.tstage{display:inline-flex;align-items:center;gap:8px;font:700 15px/1.3 system-ui,sans-serif;border-radius:999px;padding:7px 14px;margin-left:auto}
+.tstage::before{content:'';width:11px;height:11px;border-radius:50%;background:currentColor;flex:none}
+.ts-read{background:#eef1f6;color:#4a5568}.ts-sweep{background:#e6f0ff;color:#1f4fb3}.ts-ai{background:#e6f0ff;color:#1f4fb3}
+.ts-check{background:#e6f0ff;color:#1f4fb3}.ts-done{background:var(--green-bg);color:#17784a}.ts-err{background:var(--red-bg);color:var(--red)}
+.ts-run::before{animation:tspulse 1s ease-in-out infinite}@keyframes tspulse{50%{opacity:.25}}
+.mk{border-radius:8px;padding:10px 12px;margin-top:8px;font-size:15px;line-height:1.45;border-left:6px solid}
+.mk-red{background:var(--red-bg);border-color:var(--red)}.mk-amber{background:var(--amber-bg);border-color:var(--amber)}.mk-green{background:var(--green-bg);border-color:var(--green)}
+.fbox{display:flex;gap:12px;align-items:flex-start;margin-top:10px;flex-wrap:wrap;border:1px solid var(--line);border-left:6px solid #cbd5e1;border-radius:10px;padding:8px;background:#fff}
+.fbox.f-red{border-left-color:var(--red)}.fbox.f-amber{border-left-color:var(--amber)}.fbox.f-green{border-left-color:var(--green)}.fbox.f-blue{border-left-color:#1f4fb3}
+.ftag{display:inline-block;font:700 14px/1.2 system-ui,sans-serif;border-radius:6px;padding:6px 10px;color:#fff;margin-bottom:4px}
+.ftag.red{background:var(--red)}.ftag.amber{background:var(--amber)}.ftag.green{background:var(--green)}.ftag.gray{background:#6b7785}
+.tlegend{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:12px;font-size:15px;color:#2d3748;align-items:center}
+.tlegend .tstage{margin-left:0;padding:5px 12px;font-size:14px}
+.tlegend i{display:inline-block;width:16px;height:16px;border-radius:3px;vertical-align:-2px;margin-right:4px}
 </style>
 </head>
 <body>
@@ -714,9 +729,11 @@ async function videoFrames(file, say) {
 function sweepSummary(sw, fm) {
   if (!sw) return '';
   const ml = sw.marks || [];
-  if (!ml.length) return `<div class="hint" style="margin-top:8px">\u{1F6A9} ${sw.error || (sw.errors || []).length ? 'Frame-by-frame sweep did not finish: ' + esc(sw.error || sw.errors.join('; ')) : `Frame-by-frame sweep: every corner checked every ${sw.step} s \u2014 no flashing logo or mark found.`}</div>`;
-  return `<div class="bwhere" style="margin-top:8px"><b>\u{1F6A9} Frame-by-frame sweep caught ${ml.length} mark${ml.length > 1 ? 's' : ''} on screen</b> (every corner checked every ${sw.step} s)
-    ${ml.map(m => `<div style="margin-top:4px">${m.extremist ? '\u26A0\uFE0F ' : ''}<b>${fm(m.t)}</b> \u00b7 ${esc(m.corner)} corner${m.until - m.t < 4 ? ' \u00b7 on screen about ' + Math.max(1, Math.round(m.until - m.t)) + ' s' : ''} \u2014 ${esc(m.what)}${m.org ? ' <b>(' + esc(m.org) + ')</b>' : ''}</div>`).join('')}</div>`;
+  if (!ml.length) return (sw.error || (sw.errors || []).length)
+    ? `<div class="mk mk-red"><b>The hidden-logo check did not finish</b> (${esc(sw.error || sw.errors.join('; '))}). The pictures below were still checked.</div>`
+    : `<div class="mk mk-green"><b>\u2713 No hidden logo found.</b> SPEAR watched the whole video.</div>`;
+  return `<div style="margin-top:8px"><b style="font-size:16px">\u{1F6A9} SPEAR caught ${ml.length} logo${ml.length > 1 ? 's' : ''} that flashed on screen</b>
+    ${ml.map(m => `<div class="mk ${m.extremist ? 'mk-red' : 'mk-amber'}">${m.extremist ? '<b>\u26A0 Terrorist or extremist logo</b><br>' : '<b>Logo or brand</b><br>'}${m.org ? '<b>' + esc(m.org) + '</b> \u2014 ' : ''}${esc(m.what)}<br>At <b>${fm(m.t)}</b> in the video, ${esc(m.corner.replace('-', ' '))} corner${m.until - m.t < 4 ? ', on screen about ' + Math.max(1, Math.round(m.until - m.t)) + ' second' + (Math.round(m.until - m.t) > 1 ? 's' : '') : ''}</div>`).join('')}</div>`;
 }
 function teachResult(r) {
   if (r.child_safety) return `<div class="msg err">${esc(r.message)}</div>`;
@@ -733,27 +750,36 @@ async function teachFiles(files) {
   for (const file of files) {
     const isVid = (file.type || '').startsWith('video/');
     const card = document.createElement('div'); card.className = 'inc';
-    card.innerHTML = `<div class="row1"><span class="pill ${isVid ? 'k2' : 'k1'}">${isVid ? 'Video' : 'Picture'}</span><b>${esc(file.name || 'upload')}</b><span class="hint" style="margin-left:auto" data-st>Reading…</span></div><div data-out></div>`;
+    card.innerHTML = `<div class="row1"><span class="pill ${isVid ? 'k2' : 'k1'}">${isVid ? 'Video' : 'Picture'}</span><b>${esc(file.name || 'upload')}</b><span class="tstage ts-read ts-run" data-st>Reading the file…</span></div><div data-out></div>`;
     box.prepend(card);
     const st2 = card.querySelector('[data-st]'), out = card.querySelector('[data-out]');
-    let frames;
+    const setSt = (cls, txt, run) => { st2.className = 'tstage ' + cls + (run ? ' ts-run' : ''); st2.textContent = txt; };
+    let frames, bad = 0, found = 0, ext = false;
     try {
-      if (isVid) { const vf = await videoFrames(file, msg => { st2.textContent = msg; }); frames = vf.frames; out.insertAdjacentHTML('beforeend', sweepSummary(vf.sweep, vf.fm)); }
+      if (isVid) { setSt('ts-sweep', 'Watching the video for hidden logos…', true);
+        const vf = await videoFrames(file, msg => /AI is reading/.test(msg) ? setSt('ts-ai', 'Almost there — the AI is looking at what it found…', true) : setSt('ts-sweep', 'Watching the video for hidden logos… ' + ((msg.match(/\d+:\d\d of \d+:\d\d/) || [''])[0]), true));
+        ext = (vf.sweep.marks || []).some(m => m.extremist); frames = vf.frames; out.insertAdjacentHTML('beforeend', sweepSummary(vf.sweep, vf.fm)); }
       else frames = [{ du: await shrinkImage(file), label: '', why: '' }];
     }
-    catch (e) { st2.textContent = 'Could not read: ' + e.message; continue; }
+    catch (e) { setSt('ts-err', '✗ This file could not be opened. Try saving it as MP4 or a screenshot.'); continue; }
     for (let i = 0; i < frames.length; i++) {
-      st2.textContent = isVid ? `Checking frame ${i + 1} of ${frames.length}… (about 20 s each)` : 'Checking… (about 20 s)';
-      const part = document.createElement('div'); part.style.cssText = 'display:flex;gap:12px;align-items:flex-start;margin-top:10px;flex-wrap:wrap';
+      setSt('ts-check', isVid ? `Checking picture ${i + 1} of ${frames.length} for brands…` : 'Checking the picture for brands…', true);
+      const part = document.createElement('div'); part.className = 'fbox f-blue';
       part.innerHTML = `<img src="${frames[i].du}" class="simg" style="margin:0;max-width:220px"><div style="flex:1;min-width:220px" data-r><div class="hint">Checking…</div></div>`;
       out.appendChild(part);
       try {
         const r = await api('/api/brand/teach', { method: 'POST', body: JSON.stringify({ image: frames[i].du, note: ((frames[i].why || '') + note).slice(0, 1500), platform, url,
           label: (file.name || 'upload') + (isVid ? ` ${frames[i].label}` : '') }) });
-        part.querySelector('[data-r]').innerHTML = (isVid ? `<div class="hint">${frames[i].mark ? '\u{1F6A9} Mark caught ' : 'Frame '}${esc(frames[i].label)}</div>` : '') + teachResult(r);
-      } catch (e) { part.querySelector('[data-r]').innerHTML = `<div class="msg err">Not checked: ${esc(e.message)}</div>`; }
+        const nb = (r.brands || []).length, mk = frames[i].mark, red = r.child_safety || (mk && mk.extremist) || (+r.score || 0) >= 7;
+        found += nb;
+        part.className = 'fbox ' + (red ? 'f-red' : nb ? 'f-amber' : 'f-green');
+        const tag = r.child_safety ? '<span class="ftag red">Not stored · child safety</span>'
+          : `${mk ? `<span class="ftag ${mk.extremist ? 'red' : 'amber'}">\u{1F6A9} Hidden logo caught here</span> ` : ''}${nb ? `<span class="ftag amber">${nb} brand${nb > 1 ? 's' : ''} found</span>` : '<span class="ftag green">No brand here</span>'}`;
+        part.querySelector('[data-r]').innerHTML = `<div>${tag}</div>` + (isVid ? `<div class="hint" style="font-size:14px">In the video ${esc(frames[i].label.replace(/, flashing mark.*$/, ''))}</div>` : '') + teachResult(r);
+      } catch (e) { bad++; part.className = 'fbox f-red'; part.querySelector('[data-r]').innerHTML = `<span class="ftag red">Not checked</span><div class="msg err">${esc(e.message)}</div>`; }
     }
-    st2.textContent = '✓ Saved to the archive · brands added to Brands spotted';
+    if (bad) setSt('ts-err', `✗ Finished, but ${bad} picture${bad > 1 ? 's' : ''} could not be checked. Please upload it again.`);
+    else setSt(ext ? 'ts-err' : 'ts-done', `✓ Finished${ext ? ' — ⚠ terrorist or extremist logo found' : ''}${found ? ' — ' + found + ' brand' + (found > 1 ? 's' : '') + ' found' : ' — no brand found'}. Saved.`);
   }
   try { await loadClients(); } catch (e) {}
 }
@@ -767,7 +793,8 @@ function drawTeach() {
       <div style="font-weight:800;font-size:16px">Drop pictures or videos here</div>
       <button class="btn pri" id="tpick" style="margin-top:8px">Choose pictures or videos</button>
       <input type="file" id="tfile" accept="image/*,video/*" multiple style="display:none">
-      <div class="hint" style="margin-top:8px">Screenshots or screen recordings from Telegram, YouTube, Instagram, TikTok, Snapchat… One or many at once. Videos are swept frame by frame — every corner, every quarter second — so a logo, brand or ISIS mark that flashes on screen for a second is caught without rewinding.</div></div>
+      <div class="hint" style="margin-top:8px">Screenshots or screen recordings from Telegram, YouTube, Instagram, TikTok, Snapchat… One or many at once. Videos are swept frame by frame — every corner, every quarter second — so a logo that flashes on screen for only a second is still caught. No rewinding needed.</div>
+      <div class="tlegend" style="justify-content:center"><b>What the colors mean:</b><span><i style="background:var(--red)"></i><b>Red</b> = dangerous (terrorist or extremist)</span><span><i style="background:var(--amber)"></i><b>Orange</b> = a brand was found</span><span><i style="background:var(--green)"></i><b>Green</b> = nothing found / finished</span><span><i style="background:#1f4fb3"></i><b>Blue</b> = still working</span></div></div>
     <div class="form" style="margin-top:12px;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px">
       <div><label>Where it came from</label><select id="tplat">${['Telegram', 'YouTube', 'Instagram', 'Facebook', 'TikTok', 'Snapchat', 'X', 'Other'].map(p => `<option>${p}</option>`).join('')}</select></div>
       <div><label>Link to the post (optional)</label><input id="turl" placeholder="https://t.me/… or https://youtube.com/…"></div>
