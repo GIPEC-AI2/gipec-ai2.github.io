@@ -702,12 +702,12 @@ summary{padding:3px 0}
 <div class="hero" id="heroBox">
   <div class="herorow">
     <button class="bigphoto" onclick="document.getElementById('heroFile').click()">
-      📷 Upload images
+      📷 Upload images or videos
       <span>One or many at once</span>
     </button>
-    <input type="file" id="heroFile" accept="image/*" multiple style="display:none" onchange="heroPick(this.files)">
+    <input type="file" id="heroFile" accept="image/*,video/*" multiple style="display:none" onchange="heroPick(this.files)">
     <div class="herotext">
-      <b>Drop one or many images here — each one becomes its own case.</b> <span style="font-weight:500;color:#5b6678">Or click the green button, or press Ctrl+V to paste a screenshot.</span>
+      <b>Drop one or many images or videos here — each one becomes its own case.</b> <span style="font-weight:500;color:#5b6678">Or click the green button, or press Ctrl+V to paste a screenshot.</span>
       <input id="heroPoster" placeholder="Who posted it? (optional — helps the report)" style="margin-top:9px;width:100%;max-width:390px;border:1px solid var(--line);border-radius:8px;padding:9px 11px;font-size:13.5px;font-family:inherit">
       <div class="herostat" id="heroStat"></div>
     </div>
@@ -1826,8 +1826,13 @@ function selectedLabels(){return [...document.querySelectorAll('#visChips .chip.
 
 
 async function heroPick(files){
-  const list=[...(files||[])].filter(f=>/^image\//.test(f.type));
-  if(!list.length){toast('Choose an image file');return}
+  const all=[...(files||[])];
+  const vids=all.filter(f=>/^video\//.test(f.type)||/\.(mp4|mov|m4v|webm|3gp)$/i.test(f.name||''));
+  const list=all.filter(f=>/^image\//.test(f.type));
+  if(!list.length&&!vids.length){toast('Choose an image or video file');return}
+  /* Videos: the whole clip is scanned, including a frame-by-frame sweep of the corners for marks that flash on and off. */
+  for(const vf of vids){try{await ingestVideo(vf)}catch(e){const hs=document.getElementById('heroStat');if(hs){hs.className='herostat err';hs.textContent='Could not scan that video: '+String(e.message||e).slice(0,120)}}}
+  if(!list.length){setBusy(false);document.getElementById('heroFile').value='';return}
   const stat=document.getElementById('heroStat');
   const out=document.getElementById('heroResults');
   const poster=((document.getElementById('heroPoster')||{}).value||(document.getElementById('photoPoster')||{}).value||'').trim();
@@ -2971,11 +2976,114 @@ async function ingestAudio(){
   const c=document.querySelector('#heroResults .vcard');if(c)c.scrollIntoView({behavior:'smooth',block:'center'});
 }
 
-async function ingestVideo(){
-  const inp=document.getElementById('videoFile');const f=inp.files&&inp.files[0];
+/* Flash-watermark sweep. Some videos show a group's mark (e.g. the ISIS black-flag logo) for only a second and
+   then hide it, so an analyst has to keep rewinding to catch it. This steps through the WHOLE clip every
+   quarter to half second, finds the picture inside any black bars of a phone screen recording, cuts out its
+   four corners, keeps a corner only when it changes, and has the AI read the kept corners as numbered contact
+   sheets. Every moment a mark is on screen is found and its full frame is pulled out as evidence. */
+async function watermarkSweep(v,dur,say){
+  say=say||function(){};
+  const VW=v.videoWidth||0,VH=v.videoHeight||0;if(!VW||!VH||!dur)return {error:'video size unknown'};
+  const seek=t=>new Promise(res=>{let done=false;const h=()=>{if(done)return;done=true;v.removeEventListener('seeked',h);res()};
+    v.addEventListener('seeked',h);setTimeout(h,4000);try{v.currentTime=t}catch(e){h()}});
+  const step=Math.min(1,Math.max(0.25,dur/600)),times=[];
+  for(let t=0.05;t<dur-0.02;t+=step)times.push(Math.round(t*1000)/1000);
+  if(!times.length)times.push(0);
+  /* 1. Where is the picture? Rows and columns that are lit in at least one of six sample frames. */
+  const aw=160,ah=Math.max(8,Math.round(VH*aw/VW)),ac=document.createElement('canvas');ac.width=aw;ac.height=ah;
+  const ag=ac.getContext('2d',{willReadFrequently:true}),rowF=new Float32Array(ah),colF=new Float32Array(aw);
+  const probe=[...new Set([0.08,0.24,0.4,0.56,0.72,0.9].map(f=>times[Math.floor(f*(times.length-1))]))];
+  const lit=(d,i)=>d[i]*0.3+d[i+1]*0.59+d[i+2]*0.11>28;
+  for(const t of probe){await seek(t);try{ag.drawImage(v,0,0,aw,ah)}catch(e){continue}
+    const d=ag.getImageData(0,0,aw,ah).data;
+    for(let y=0;y<ah;y++){let n=0;for(let x=0;x<aw;x++)if(lit(d,(y*aw+x)*4))n++;rowF[y]=Math.max(rowF[y],n/aw)}}
+  const longest=(a,thr)=>{let b=null,s=-1,lo=-1;const close=()=>{if(s>=0&&(!b||lo-s>b[1]-b[0]))b=[s,lo]};
+    for(let i=0;i<a.length;i++)if(a[i]>thr){if(s<0||i-lo>3){close();s=i}lo=i}close();return b};
+  let rb=longest(rowF,0.45);if(!rb||rb[1]-rb[0]<ah*0.15||rb[1]-rb[0]>ah*0.92)rb=[0,ah-1];
+  for(const t of probe.slice(0,3)){await seek(t);try{ag.drawImage(v,0,0,aw,ah)}catch(e){continue}
+    const d=ag.getImageData(0,0,aw,ah).data,h=rb[1]-rb[0]+1;
+    for(let x=0;x<aw;x++){let n=0;for(let y=rb[0];y<=rb[1];y++)if(lit(d,(y*aw+x)*4))n++;colF[x]=Math.max(colF[x],n/h)}}
+  let cb=longest(colF,0.45);if(!cb||cb[1]-cb[0]<aw*0.15||cb[1]-cb[0]>aw*0.92)cb=[0,aw-1];
+  const bx=Math.round(cb[0]*VW/aw),by=Math.round(rb[0]*VH/ah),bw=Math.round((cb[1]-cb[0]+1)*VW/aw),bh=Math.round((rb[1]-rb[0]+1)*VH/ah);
+  /* 2. Step through the clip and keep each corner whenever it changes. */
+  const cw=Math.max(8,Math.round(bw*0.3)),ch=Math.max(8,Math.round(Math.min(bh*0.22,cw*0.8)));
+  const CORN=[['top-left',bx,by],['top-right',bx+bw-cw,by],['bottom-left',bx,by+bh-ch],['bottom-right',bx+bw-cw,by+bh-ch]];
+  const TW=230,TH=Math.round(TW*ch/cw),SW=32,SH=20;
+  const tc=document.createElement('canvas');tc.width=TW;tc.height=TH;const tg=tc.getContext('2d');
+  const sc=document.createElement('canvas');sc.width=SW;sc.height=SH;const sg=sc.getContext('2d',{willReadFrequently:true});
+  const sigOf=(x,y)=>{sg.drawImage(v,x,y,cw,ch,0,0,SW,SH);const d=sg.getImageData(0,0,SW,SH).data,o=new Uint8Array(SW*SH);
+    for(let i=0;i<o.length;i++)o[i]=d[i*4]*0.3+d[i*4+1]*0.59+d[i*4+2]*0.11;return o};
+  /* how much of the corner changed: the share of its cells (in %) that moved by more than 20 brightness levels */
+  const diff=(a,b)=>{let n=0;for(let i=0;i<a.length;i++)if(Math.abs(a[i]-b[i])>20)n++;return 100*n/a.length};
+  const lastCap=[null,null,null,null],samples=[];let nGrab=0;
+  const grab=t=>{nGrab++;
+    if(nGrab%8===1)say(`Watermark sweep: ${fmtTime(t)} of ${fmtTime(dur)} — all four corners, every ${step<0.5?'quarter':step<1?'half':'1'} second`,t/dur);
+    for(let c=0;c<4;c++){const [nm,x,y]=CORN[c];let sig;try{sig=sigOf(x,y)}catch(e){continue}
+      const pc=lastCap[c];let du;
+      if(pc&&diff(sig,pc.sig)<2)du=pc.du;else{tg.drawImage(v,x,y,cw,ch,0,0,TW,TH);du=tc.toDataURL('image/jpeg',0.85)}
+      const smp={t:Math.round(t*100)/100,corner:nm,c,sig,du};lastCap[c]=smp;samples.push(smp)}};
+  /* Fast way: play the clip muted at 4x speed and read a frame every step as it goes by. Then any gap
+     the player skipped (or the rest, if it can't play) is filled by stepping to those moments directly. */
+  let next=0;const got=[];
+  if(typeof v.requestVideoFrameCallback==='function'){try{
+    await seek(0);v.muted=true;v.playbackRate=4;
+    await new Promise(res=>{let fin=false,lastP=performance.now();
+      const end=()=>{if(fin)return;fin=true;clearInterval(wd);try{v.pause()}catch(e){}res()};
+      const cb=(now,md)=>{if(fin)return;const mt=md&&md.mediaTime!=null?md.mediaTime:v.currentTime;
+        if(mt>=next){try{grab(mt);got.push(mt)}catch(e){}next=mt+step;lastP=performance.now()}
+        if(mt>=dur-0.05)return end();v.requestVideoFrameCallback(cb)};
+      const wd=setInterval(()=>{if(v.ended||performance.now()-lastP>6000)end()},500);
+      v.requestVideoFrameCallback(cb);
+      const pp=v.play();if(pp&&pp.catch)pp.catch(()=>end());});
+    v.playbackRate=1;
+  }catch(e){}}
+  const covered=t=>{let lo=0,hi=got.length-1;while(lo<=hi){const m=(lo+hi)>>1;if(Math.abs(got[m]-t)<=step*0.6)return true;if(got[m]<t)lo=m+1;else hi=m-1}return false};
+  for(const t of times){if(covered(t))continue;await seek(t);grab(t)}
+  /* Keep each corner only when it changes (in time order); a mark that flashes on and off is two changes. */
+  samples.sort((p,q)=>p.t-q.t);
+  const thin=thr=>{const lk=[null,null,null,null],out=[];
+    for(const s0 of samples){const p=lk[s0.c];if(p&&diff(s0.sig,p.sig)<thr)continue;const ti=Object.assign({},s0,{until:dur});if(p)p.until=ti.t;lk[s0.c]=ti;out.push(ti)}return out};
+  let thr=2,keep=thin(thr);
+  /* Too many (a moving camera changes the corners all the time): keep only the bigger changes. */
+  while(keep.length>240&&thr<60){thr*=1.4;keep=thin(thr)}
+  /* 3. Numbered contact sheets, 20 tiles each, read by the AI. */
+  keep.forEach((ti,i)=>ti.n=i+1);
+  const COLS=5,ROWS=4,PAD=6,LAB=24,sheets=[];
+  for(let s0=0;s0<keep.length;s0+=COLS*ROWS){const part=keep.slice(s0,s0+COLS*ROWS),rows=Math.ceil(part.length/COLS);
+    const cv=document.createElement('canvas');cv.width=COLS*(TW+PAD)+PAD;cv.height=rows*(TH+LAB+PAD)+PAD;const g=cv.getContext('2d');
+    g.fillStyle='#ffffff';g.fillRect(0,0,cv.width,cv.height);
+    for(let i=0;i<part.length;i++){const ti=part[i],x=PAD+(i%COLS)*(TW+PAD),y=PAD+Math.floor(i/COLS)*(TH+LAB+PAD);
+      g.fillStyle='#10213f';g.fillRect(x,y,TW,LAB);g.fillStyle='#ffffff';g.font='bold 16px Arial,sans-serif';g.textBaseline='middle';
+      g.fillText(`#${ti.n}  ${fmtTime(ti.t)}  ${ti.corner}`,x+6,y+LAB/2+1);
+      g.drawImage(await loadImg(ti.du),x,y+LAB,TW,TH)}
+    sheets.push({lo:part[0].n,hi:part[part.length-1].n,du:cv.toDataURL('image/jpeg',0.86)})}
+  const base=(typeof API_BASE!=='undefined'&&API_BASE)||(typeof BACKEND_DEFAULT!=='undefined'&&BACKEND_DEFAULT)||'';
+  const marks=[],errors=[];
+  for(let i=0;i<sheets.length;i+=3){const grp=sheets.slice(i,i+3);
+    say(`Watermark sweep: the AI is reading corner sheet ${i+1}${grp.length>1?'–'+(i+grp.length):''} of ${sheets.length}…`,0.9);
+    try{const r=await fetch(base+'/api/video/watermarks',{method:'POST',headers:spearHeaders({'Content-Type':'application/json'}),body:JSON.stringify({sheets:grp.map(s=>s.du)})});
+      if(!r.ok){errors.push(r.status===404?'the server is not updated yet':'server '+r.status);if(r.status===404||r.status===401)break;continue}
+      const j=await r.json();(j.errors||[]).forEach(e=>errors.push(e));
+      for(const m of j.marks||[]){const sh=grp[m.sheet];if(!sh||m.tile<sh.lo||m.tile>sh.hi)continue;
+        const ti=keep[m.tile-1];if(ti)marks.push(Object.assign({t:ti.t,until:ti.until,corner:ti.corner,tile:ti.du},m))}}
+    catch(e){errors.push(String(e.message||e).slice(0,120))}}
+  marks.sort((a,b)=>a.t-b.t);
+  /* 4. The full frame at the moment each mark was seen — this is the evidence. */
+  const pick=[...marks].sort((a,b)=>(b.extremist-a.extremist)||(b.confidence-a.confidence)),ev=[];
+  for(const m of pick){if(ev.length>=2)break;if(ev.some(e=>Math.abs(e.t-m.t)<1.5))continue;
+    const tm=Math.min(dur-0.02,m.t);await seek(tm);
+    const W=Math.min(1280,VW),fc=document.createElement('canvas');fc.width=W;fc.height=Math.round(VH*W/VW);
+    try{fc.getContext('2d').drawImage(v,0,0,fc.width,fc.height)}catch(e){continue}
+    ev.push(Object.assign({},m,{t:tm,du:fc.toDataURL('image/jpeg',0.9)}))}
+  return {marks,evidence:ev,steps:times.length,step,tiles:keep.length,sheets:sheets.length,band:[bx,by,bw,bh],errors};
+}
+
+async function ingestVideo(fileArg){
+  const inp=document.getElementById('videoFile');const f=(fileArg&&fileArg.name)?fileArg:(inp.files&&inp.files[0]);
   if(!f){toast('Choose a video file first');return}
-  const poster=(document.getElementById('videoPoster').value||'').trim();
-  const st=document.getElementById('vidStatus'),bar=document.getElementById('vidBar');
+  const poster=(document.getElementById('videoPoster').value||(fileArg?((document.getElementById('heroPoster')||{}).value||''):'')||'').trim();
+  const st=(fileArg&&document.getElementById('heroStat'))||document.getElementById('vidStatus'),bar=document.getElementById('vidBar');
+  if(fileArg)st.className='herostat';
   st.textContent='Loading video…';bar.style.width='0';setBusy(true,'Loading video…');
   const url=URL.createObjectURL(f);
   const v=document.createElement('video');v.muted=true;v.playsInline=true;v.preload='auto';v.src=url;
@@ -3000,6 +3108,11 @@ async function ingestVideo(){
     if(hits.length||refs.length)frames.push({t,thumb:du,text:(text||'').replace(/\s+/g,' ').slice(0,160),hits:[...new Set([...hits.map(h=>h.term),...refs.map(r=>r.label)])],cbHits:hits});
     kept.push({t,du});
   }
+  /* Flash-watermark sweep: catches a logo that is on screen for only a second, without anyone rewinding. */
+  let wm=null;
+  try{wm=await watermarkSweep(v,dur,(msg,p)=>{st.textContent='🚩 '+msg;bar.style.width=Math.round((p||0)*100)+'%';setBusy(true,msg)})}
+  catch(e){wm={error:String(e.message||e).slice(0,120),marks:[],evidence:[]}}
+  if(wm&&wm.evidence)wm.evidence.slice().reverse().forEach(e=>frames.unshift({t:e.t,thumb:e.du,text:'',hits:[(e.org||'Logo')+' mark flashing ('+e.corner+')'],cbHits:[],wm:e}));
   URL.revokeObjectURL(url);bar.style.width='0';
 
   
@@ -3009,16 +3122,16 @@ async function ingestVideo(){
   let vframes=[];
   if(kept.length){
     const pick=[];
-    const flagged=frames.slice(0,2).map(fr=>({t:fr.t,du:fr.thumb}));
+    const flagged=frames.slice(0,frames.filter(fr=>fr.wm).length+2).map(fr=>({t:fr.t,du:fr.thumb,wm:fr.wm}));
     pick.push(...flagged);
     [0,...[1,2,3,4,5].map(j=>Math.floor(j*kept.length/6)),kept.length-1].forEach(i=>{const k=kept[i];
       if(k&&!pick.some(p=>Math.abs(p.t-k.t)<0.5))pick.push(k)});
-    const look=pick.slice(0,8);
+    const look=pick.slice(0,9);
     for(let i=0;i<look.length;i++){
       st.textContent=`👁 Looking at frame ${i+1} of ${look.length} with Vision AI…`;
       setBusy(true,`Vision AI is looking at the video (${i+1}/${look.length})…`);
       try{
-        const r=await visionAnalyze(look[i].du,'This is a FRAME from a video at '+fmtTime(look[i].t)+'. Look for media-outlet logos, watermarks, flags or insignia anywhere in the frame INCLUDING the corners, even small, faded or partly cut off — in particular ISIS / jihadist media brands (e.g. Amaq, al-Furqan, al-Hayat, al-I\u2019tisam, Ajnad, Nashir, al-Naba, Wilayat provinces, A\u2019maq-style tickers), the black standard / shahada flag, and Telegram channel links or handles (t.me/…, @…). Copy every link, handle and channel name EXACTLY as written. Transcribe and translate any non-English text.'+HUNT_CTX);
+        const r=await visionAnalyze(look[i].du,(look[i].wm?'A frame-by-frame sweep of this video found a mark that flashes on screen in the '+look[i].wm.corner+' corner at this moment ('+look[i].wm.what+(look[i].wm.org?'; it looks like '+look[i].wm.org:'')+'). Look closely at that corner, confirm what the mark is and whose it is. ':'')+'This is a FRAME from a video at '+fmtTime(look[i].t)+'. Look for media-outlet logos, watermarks, flags or insignia anywhere in the frame INCLUDING the corners, even small, faded or partly cut off — in particular ISIS / jihadist media brands (e.g. Amaq, al-Furqan, al-Hayat, al-I\u2019tisam, Ajnad, Nashir, al-Naba, Wilayat provinces, A\u2019maq-style tickers), the black standard / shahada flag, and Telegram channel links or handles (t.me/…, @…). Copy every link, handle and channel name EXACTLY as written. Transcribe and translate any non-English text.'+HUNT_CTX);
         if(r&&!r.__error)vframes.push({t:look[i].t,thumb:look[i].du,v:r});
       }catch(e){}
     }
@@ -3078,9 +3191,21 @@ async function ingestVideo(){
     visionFailed:vframes.length?'':'Vision AI could not look at the frames',
     media:(vBest&&vBest.f.thumb)||(vframes[0]&&vframes[0].thumb)||(frames[0]&&frames[0].thumb)||null,
     confidence:0.5+Math.min(0.4,unionHits.length*0.08)};
+  if(wm){const hx=x=>String(x||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    const ml=(wm.marks||[]).map(m=>({t:m.t,until:m.until,corner:m.corner,what:m.what,org:m.org,extremist:!!m.extremist,confidence:m.confidence}));
+    it.watermarks=ml;it.watermark_sweep={every_seconds:wm.step,moments:wm.steps,corner_changes:wm.tiles,error:wm.error||((wm.errors||[]).join('; ').slice(0,200))};
+    const lines=ml.length?ml.map(m=>({l:`🚩 Flashing mark at ${fmtTime(m.t)} (${hx(m.corner)} corner${m.until-m.t<4?', on screen about '+Math.max(1,Math.round(m.until-m.t))+' s':''}): ${hx(m.what)}${m.org?' — '+hx(m.org):''}`,d:m.extremist?'⚠':''}))
+      :[{l:wm.error||(wm.errors&&wm.errors.length&&!ml.length)?`🚩 Watermark sweep did not finish — ${hx(wm.error||wm.errors.join('; ')).slice(0,160)}`:`🚩 Watermark sweep: all four corners checked every ${wm.step} s across the clip — no flashing logo found`,d:''}];
+    it.breakdown.unshift(...lines);
+    if(ml.length)it.reasoning=`Watermark sweep: every corner was checked every ${wm.step} s across the whole clip; ${ml.length} mark(s) were caught on screen — ${ml.slice(0,3).map(m=>(m.org||m.what)+' at '+fmtTime(m.t)+' ('+m.corner+')').join(', ')}. A mark shown for only a moment is a way to slip past review of a thumbnail or a few frames. `+it.reasoning;
+    const ext=ml.filter(m=>m.extremist&&m.confidence>=0.7);
+    if(ext.length){if(it.score<7){it.score=7;it.tier=tierOf(7);it.recommendation=recOf(7)}
+      if(it.category==='benign')it.category=/isis|islamic state|amaq|a.maq|furqan|hayat|i.tisam|ajnad|nashir|naba|wilay|dabiq|rumiyah|black standard|shahada/i.test(ext.map(m=>m.org+' '+m.what).join(' '))?'isis_terrorism':'propaganda';
+      it.indicators=[...new Set([...(it.indicators||[]),...ext.map(m=>(m.org||m.what)+' watermark (flashing)')])];}
+    const ev0=frames.find(fr=>fr.wm);if(ev0){it.thumb=ev0.thumb;it.media=ev0.thumb}}
   if(!it.thumb)it.thumb=it.media;
   items.unshift(it);logAnalysis(it);log(it,'video scanned',`${scanned} frames · ${frames.length} flagged · ${cat} ${it.score}/10${API_BASE?'':' · demo'}`);
-  st.textContent=`Done — scanned ${scanned} frame(s), flagged ${frames.length}.`;inp.value='';
+  st.textContent=`Done — scanned ${scanned} frame(s), flagged ${frames.length}.`+(wm&&wm.marks&&wm.marks.length?` 🚩 ${wm.marks.length} flashing mark(s) caught — first at ${fmtTime(wm.marks[0].t)} (${wm.marks[0].corner}).`:'')+' Saved to the review queue.';if(fileArg)st.className='herostat done';inp.value='';
   
   
   const hr=document.getElementById('heroResults');
@@ -3088,7 +3213,7 @@ async function ingestVideo(){
     const c1=document.querySelector('#heroResults .vcard'); if(c1)c1.scrollIntoView({behavior:'smooth',block:'center'});}
   if(it.visionFailed&&it.media)autoRetryVision(it.id);
   selId=it.id;render();
-  toast(frames.length?`Video flagged: ${cat.replace(/_/g,' ')} — ${frames.length} frame(s), e.g. ${frames[0].hits[0]} at ${fmtTime(frames[0].t)}`:'Video scanned — no watermark text in sampled frames');
+  toast(frames.length?`Video flagged: ${String(it.category||cat).replace(/_/g,' ')} — ${frames.length} frame(s), e.g. ${frames[0].hits[0]} at ${fmtTime(frames[0].t)}`:'Video scanned — no watermark text in sampled frames');
 }
 function videoStrip(it){if(!it.frames||!it.frames.length)return '<div class="note">No frames carried readable watermark text. (Graphic-only logos/flags and audio need the backend vision/audio layer; add reference logo images to the Library to catch logos by fingerprint.)</div>';
   return '<div class="filmstrip">'+it.frames.map(fr=>`<div class="filmframe"><img src="${fr.thumb}" alt="frame"><div class="fcap">${fmtTime(fr.t)}</div><div class="fhit">${(fr.hits||[]).join(', ')||'—'}</div></div>`).join('')+'</div>';}
