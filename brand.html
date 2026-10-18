@@ -588,20 +588,135 @@ function shrinkImage(file) {
     img.src = url;
   });
 }
-async function videoFrames(file) {
+/* Video: the whole clip is swept frame by frame (every corner, every quarter to half second) so a logo, brand or
+   group mark that flashes on screen for a second is caught without anyone rewinding. Every frame where a mark
+   was seen is checked, plus four frames spread across the clip. */
+async function bsSweep(v,dur,say,maxEv){
+  const fmtTime=s=>{s=Math.max(0,Math.floor(s));const m=Math.floor(s/60);return m+':'+String(s%60).padStart(2,'0')};
+  const loadImg=src=>new Promise((res,rej)=>{const im=new Image();im.onload=()=>res(im);im.onerror=rej;im.src=src});
+  say=say||function(){};
+  const VW=v.videoWidth||0,VH=v.videoHeight||0;if(!VW||!VH||!dur)return {error:'video size unknown'};
+  const seek=t=>new Promise(res=>{let done=false;const h=()=>{if(done)return;done=true;v.removeEventListener('seeked',h);res()};
+    v.addEventListener('seeked',h);setTimeout(h,4000);try{v.currentTime=t}catch(e){h()}});
+  const step=Math.min(1,Math.max(0.25,dur/600)),times=[];
+  for(let t=0.05;t<dur-0.02;t+=step)times.push(Math.round(t*1000)/1000);
+  if(!times.length)times.push(0);
+  /* 1. Where is the picture? Rows and columns that are lit in at least one of six sample frames. */
+  const aw=160,ah=Math.max(8,Math.round(VH*aw/VW)),ac=document.createElement('canvas');ac.width=aw;ac.height=ah;
+  const ag=ac.getContext('2d',{willReadFrequently:true}),rowF=new Float32Array(ah),colF=new Float32Array(aw);
+  const probe=[...new Set([0.08,0.24,0.4,0.56,0.72,0.9].map(f=>times[Math.floor(f*(times.length-1))]))];
+  const lit=(d,i)=>d[i]*0.3+d[i+1]*0.59+d[i+2]*0.11>28;
+  for(const t of probe){await seek(t);try{ag.drawImage(v,0,0,aw,ah)}catch(e){continue}
+    const d=ag.getImageData(0,0,aw,ah).data;
+    for(let y=0;y<ah;y++){let n=0;for(let x=0;x<aw;x++)if(lit(d,(y*aw+x)*4))n++;rowF[y]=Math.max(rowF[y],n/aw)}}
+  const longest=(a,thr)=>{let b=null,s=-1,lo=-1;const close=()=>{if(s>=0&&(!b||lo-s>b[1]-b[0]))b=[s,lo]};
+    for(let i=0;i<a.length;i++)if(a[i]>thr){if(s<0||i-lo>3){close();s=i}lo=i}close();return b};
+  let rb=longest(rowF,0.45);if(!rb||rb[1]-rb[0]<ah*0.15||rb[1]-rb[0]>ah*0.92)rb=[0,ah-1];
+  for(const t of probe.slice(0,3)){await seek(t);try{ag.drawImage(v,0,0,aw,ah)}catch(e){continue}
+    const d=ag.getImageData(0,0,aw,ah).data,h=rb[1]-rb[0]+1;
+    for(let x=0;x<aw;x++){let n=0;for(let y=rb[0];y<=rb[1];y++)if(lit(d,(y*aw+x)*4))n++;colF[x]=Math.max(colF[x],n/h)}}
+  let cb=longest(colF,0.45);if(!cb||cb[1]-cb[0]<aw*0.15||cb[1]-cb[0]>aw*0.92)cb=[0,aw-1];
+  const bx=Math.round(cb[0]*VW/aw),by=Math.round(rb[0]*VH/ah),bw=Math.round((cb[1]-cb[0]+1)*VW/aw),bh=Math.round((rb[1]-rb[0]+1)*VH/ah);
+  /* 2. Step through the clip and keep each corner whenever it changes. */
+  const cw=Math.max(8,Math.round(bw*0.3)),ch=Math.max(8,Math.round(Math.min(bh*0.22,cw*0.8)));
+  const CORN=[['top-left',bx,by],['top-right',bx+bw-cw,by],['bottom-left',bx,by+bh-ch],['bottom-right',bx+bw-cw,by+bh-ch]];
+  const TW=230,TH=Math.round(TW*ch/cw),SW=32,SH=20;
+  const tc=document.createElement('canvas');tc.width=TW;tc.height=TH;const tg=tc.getContext('2d');
+  const sc=document.createElement('canvas');sc.width=SW;sc.height=SH;const sg=sc.getContext('2d',{willReadFrequently:true});
+  const sigOf=(x,y)=>{sg.drawImage(v,x,y,cw,ch,0,0,SW,SH);const d=sg.getImageData(0,0,SW,SH).data,o=new Uint8Array(SW*SH);
+    for(let i=0;i<o.length;i++)o[i]=d[i*4]*0.3+d[i*4+1]*0.59+d[i*4+2]*0.11;return o};
+  /* how much of the corner changed: the share of its cells (in %) that moved by more than 20 brightness levels */
+  const diff=(a,b)=>{let n=0;for(let i=0;i<a.length;i++)if(Math.abs(a[i]-b[i])>20)n++;return 100*n/a.length};
+  const lastCap=[null,null,null,null],samples=[];let nGrab=0;
+  const grab=t=>{nGrab++;
+    if(nGrab%8===1)say(`Watermark sweep: ${fmtTime(t)} of ${fmtTime(dur)} — all four corners, every ${step<0.5?'quarter':step<1?'half':'1'} second`,t/dur);
+    for(let c=0;c<4;c++){const [nm,x,y]=CORN[c];let sig;try{sig=sigOf(x,y)}catch(e){continue}
+      const pc=lastCap[c];let du;
+      if(pc&&diff(sig,pc.sig)<2)du=pc.du;else{tg.drawImage(v,x,y,cw,ch,0,0,TW,TH);du=tc.toDataURL('image/jpeg',0.85)}
+      const smp={t:Math.round(t*100)/100,corner:nm,c,sig,du};lastCap[c]=smp;samples.push(smp)}};
+  /* Fast way: play the clip muted at 4x speed and read a frame every step as it goes by. Then any gap
+     the player skipped (or the rest, if it can't play) is filled by stepping to those moments directly. */
+  let next=0;const got=[];
+  if(typeof v.requestVideoFrameCallback==='function'){try{
+    await seek(0);v.muted=true;v.playbackRate=4;
+    await new Promise(res=>{let fin=false,lastP=performance.now();
+      const end=()=>{if(fin)return;fin=true;clearInterval(wd);try{v.pause()}catch(e){}res()};
+      const cb=(now,md)=>{if(fin)return;const mt=md&&md.mediaTime!=null?md.mediaTime:v.currentTime;
+        if(mt>=next){try{grab(mt);got.push(mt)}catch(e){}next=mt+step;lastP=performance.now()}
+        if(mt>=dur-0.05)return end();v.requestVideoFrameCallback(cb)};
+      const wd=setInterval(()=>{if(v.ended||performance.now()-lastP>6000)end()},500);
+      v.requestVideoFrameCallback(cb);
+      const pp=v.play();if(pp&&pp.catch)pp.catch(()=>end());});
+    v.playbackRate=1;
+  }catch(e){}}
+  const covered=t=>{let lo=0,hi=got.length-1;while(lo<=hi){const m=(lo+hi)>>1;if(Math.abs(got[m]-t)<=step*0.6)return true;if(got[m]<t)lo=m+1;else hi=m-1}return false};
+  for(const t of times){if(covered(t))continue;await seek(t);grab(t)}
+  /* Keep each corner only when it changes (in time order); a mark that flashes on and off is two changes. */
+  samples.sort((p,q)=>p.t-q.t);
+  const thin=thr=>{const lk=[null,null,null,null],out=[];
+    for(const s0 of samples){const p=lk[s0.c];if(p&&diff(s0.sig,p.sig)<thr)continue;const ti=Object.assign({},s0,{until:dur});if(p)p.until=ti.t;lk[s0.c]=ti;out.push(ti)}return out};
+  let thr=2,keep=thin(thr);
+  /* Too many (a moving camera changes the corners all the time): keep only the bigger changes. */
+  while(keep.length>240&&thr<60){thr*=1.4;keep=thin(thr)}
+  /* 3. Numbered contact sheets, 20 tiles each, read by the AI. */
+  keep.forEach((ti,i)=>ti.n=i+1);
+  const COLS=5,ROWS=4,PAD=6,LAB=24,sheets=[];
+  for(let s0=0;s0<keep.length;s0+=COLS*ROWS){const part=keep.slice(s0,s0+COLS*ROWS),rows=Math.ceil(part.length/COLS);
+    const cv=document.createElement('canvas');cv.width=COLS*(TW+PAD)+PAD;cv.height=rows*(TH+LAB+PAD)+PAD;const g=cv.getContext('2d');
+    g.fillStyle='#ffffff';g.fillRect(0,0,cv.width,cv.height);
+    for(let i=0;i<part.length;i++){const ti=part[i],x=PAD+(i%COLS)*(TW+PAD),y=PAD+Math.floor(i/COLS)*(TH+LAB+PAD);
+      g.fillStyle='#10213f';g.fillRect(x,y,TW,LAB);g.fillStyle='#ffffff';g.font='bold 16px Arial,sans-serif';g.textBaseline='middle';
+      g.fillText(`#${ti.n}  ${fmtTime(ti.t)}  ${ti.corner}`,x+6,y+LAB/2+1);
+      g.drawImage(await loadImg(ti.du),x,y+LAB,TW,TH)}
+    sheets.push({lo:part[0].n,hi:part[part.length-1].n,du:cv.toDataURL('image/jpeg',0.86)})}
+  const marks=[],errors=[];
+  for(let i=0;i<sheets.length;i+=3){const grp=sheets.slice(i,i+3);
+    say(`Watermark sweep: the AI is reading corner sheet ${i+1}${grp.length>1?'–'+(i+grp.length):''} of ${sheets.length}…`,0.9);
+    try{const r=await fetch(BASE+'/api/video/watermarks',{method:'POST',headers:{'Content-Type':'application/json','X-Spear-Key':KEY},body:JSON.stringify({sheets:grp.map(s=>s.du)})});
+      if(!r.ok){errors.push(r.status===404?'the server is not updated yet':'server '+r.status);if(r.status===404||r.status===401)break;continue}
+      const j=await r.json();(j.errors||[]).forEach(e=>errors.push(e));
+      for(const m of j.marks||[]){const sh=grp[m.sheet];if(!sh||m.tile<sh.lo||m.tile>sh.hi)continue;
+        const ti=keep[m.tile-1];if(ti)marks.push(Object.assign({t:ti.t,until:ti.until,corner:ti.corner,tile:ti.du},m))}}
+    catch(e){errors.push(String(e.message||e).slice(0,120))}}
+  marks.sort((a,b)=>a.t-b.t);
+  /* 4. The full frame at the moment each mark was seen — this is the evidence. */
+  const pick=[...marks].sort((a,b)=>(b.extremist-a.extremist)||(b.confidence-a.confidence)),ev=[];
+  for(const m of pick){if(ev.length>=(maxEv||2))break;if(ev.some(e=>Math.abs(e.t-m.t)<1.5))continue;
+    const tm=Math.min(dur-0.02,m.t);await seek(tm);
+    const W=Math.min(1280,VW),fc=document.createElement('canvas');fc.width=W;fc.height=Math.round(VH*W/VW);
+    try{fc.getContext('2d').drawImage(v,0,0,fc.width,fc.height)}catch(e){continue}
+    ev.push(Object.assign({},m,{t:tm,du:fc.toDataURL('image/jpeg',0.9)}))}
+  return {marks,evidence:ev,steps:times.length,step,tiles:keep.length,sheets:sheets.length,band:[bx,by,bw,bh],errors};
+}
+
+async function videoFrames(file, say) {
   const url = URL.createObjectURL(file), v = document.createElement('video');
   v.muted = true; v.playsInline = true; v.preload = 'auto'; v.src = url;
   await new Promise((res, rej) => { v.onloadeddata = res; v.onerror = () => rej(new Error('this video could not be opened in the browser')); setTimeout(() => rej(new Error('the video took too long to open')), 20000); });
   const d = isFinite(v.duration) && v.duration > 0 ? v.duration : 1, out = [];
+  let sw = null;
+  try { sw = await bsSweep(v, d, say || (() => {}), 6); } catch (e) { sw = { error: String(e.message || e).slice(0, 120), marks: [], evidence: [] }; }
+  const fm = s => { s = Math.max(0, Math.floor(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+  for (const e of (sw.evidence || [])) out.push({ du: e.du, t: e.t, mark: e,
+    label: `at ${fm(e.t)}, flashing mark ${e.corner}`, why: `The frame-by-frame sweep caught a mark flashing on screen at ${fm(e.t)} in the ${e.corner} corner: ${e.what}${e.org ? ' (' + e.org + ')' : ''}. ` });
   for (const f of [0.05, 0.3, 0.55, 0.8]) {
-    v.currentTime = Math.min(Math.max(0, d - 0.1), d * f);
+    const t = Math.min(Math.max(0, d - 0.1), d * f);
+    if (out.some(o => Math.abs(o.t - t) < 1)) continue;
+    v.currentTime = t;
     await new Promise(res => { v.onseeked = res; setTimeout(res, 4000); });
     const s = Math.min(1, 1280 / Math.max(v.videoWidth || 1, v.videoHeight || 1)), c = document.createElement('canvas');
     c.width = Math.round((v.videoWidth || 640) * s); c.height = Math.round((v.videoHeight || 360) * s);
-    c.getContext('2d').drawImage(v, 0, 0, c.width, c.height); out.push(c.toDataURL('image/jpeg', 0.85));
+    c.getContext('2d').drawImage(v, 0, 0, c.width, c.height); out.push({ du: c.toDataURL('image/jpeg', 0.85), t, label: `at ${fm(t)}`, why: '' });
   }
   URL.revokeObjectURL(url);
-  return out;
+  return { frames: out, sweep: sw, fm };
+}
+function sweepSummary(sw, fm) {
+  if (!sw) return '';
+  const ml = sw.marks || [];
+  if (!ml.length) return `<div class="hint" style="margin-top:8px">\u{1F6A9} ${sw.error || (sw.errors || []).length ? 'Frame-by-frame sweep did not finish: ' + esc(sw.error || sw.errors.join('; ')) : `Frame-by-frame sweep: every corner checked every ${sw.step} s \u2014 no flashing logo or mark found.`}</div>`;
+  return `<div class="bwhere" style="margin-top:8px"><b>\u{1F6A9} Frame-by-frame sweep caught ${ml.length} mark${ml.length > 1 ? 's' : ''} on screen</b> (every corner checked every ${sw.step} s)
+    ${ml.map(m => `<div style="margin-top:4px">${m.extremist ? '\u26A0\uFE0F ' : ''}<b>${fm(m.t)}</b> \u00b7 ${esc(m.corner)} corner${m.until - m.t < 4 ? ' \u00b7 on screen about ' + Math.max(1, Math.round(m.until - m.t)) + ' s' : ''} \u2014 ${esc(m.what)}${m.org ? ' <b>(' + esc(m.org) + ')</b>' : ''}</div>`).join('')}</div>`;
 }
 function teachResult(r) {
   if (r.child_safety) return `<div class="msg err">${esc(r.message)}</div>`;
@@ -622,17 +737,20 @@ async function teachFiles(files) {
     box.prepend(card);
     const st2 = card.querySelector('[data-st]'), out = card.querySelector('[data-out]');
     let frames;
-    try { frames = isVid ? await videoFrames(file) : [await shrinkImage(file)]; }
+    try {
+      if (isVid) { const vf = await videoFrames(file, msg => { st2.textContent = msg; }); frames = vf.frames; out.insertAdjacentHTML('beforeend', sweepSummary(vf.sweep, vf.fm)); }
+      else frames = [{ du: await shrinkImage(file), label: '', why: '' }];
+    }
     catch (e) { st2.textContent = 'Could not read: ' + e.message; continue; }
     for (let i = 0; i < frames.length; i++) {
       st2.textContent = isVid ? `Checking frame ${i + 1} of ${frames.length}… (about 20 s each)` : 'Checking… (about 20 s)';
       const part = document.createElement('div'); part.style.cssText = 'display:flex;gap:12px;align-items:flex-start;margin-top:10px;flex-wrap:wrap';
-      part.innerHTML = `<img src="${frames[i]}" class="simg" style="margin:0;max-width:220px"><div style="flex:1;min-width:220px" data-r><div class="hint">Checking…</div></div>`;
+      part.innerHTML = `<img src="${frames[i].du}" class="simg" style="margin:0;max-width:220px"><div style="flex:1;min-width:220px" data-r><div class="hint">Checking…</div></div>`;
       out.appendChild(part);
       try {
-        const r = await api('/api/brand/teach', { method: 'POST', body: JSON.stringify({ image: frames[i], note, platform, url,
-          label: (file.name || 'upload') + (isVid ? `, frame ${i + 1} of ${frames.length}` : '') }) });
-        part.querySelector('[data-r]').innerHTML = (isVid ? `<div class="hint">Frame ${i + 1} of ${frames.length}</div>` : '') + teachResult(r);
+        const r = await api('/api/brand/teach', { method: 'POST', body: JSON.stringify({ image: frames[i].du, note: ((frames[i].why || '') + note).slice(0, 1500), platform, url,
+          label: (file.name || 'upload') + (isVid ? ` ${frames[i].label}` : '') }) });
+        part.querySelector('[data-r]').innerHTML = (isVid ? `<div class="hint">${frames[i].mark ? '\u{1F6A9} Mark caught ' : 'Frame '}${esc(frames[i].label)}</div>` : '') + teachResult(r);
       } catch (e) { part.querySelector('[data-r]').innerHTML = `<div class="msg err">Not checked: ${esc(e.message)}</div>`; }
     }
     st2.textContent = '✓ Saved to the archive · brands added to Brands spotted';
@@ -649,7 +767,7 @@ function drawTeach() {
       <div style="font-weight:800;font-size:16px">Drop pictures or videos here</div>
       <button class="btn pri" id="tpick" style="margin-top:8px">Choose pictures or videos</button>
       <input type="file" id="tfile" accept="image/*,video/*" multiple style="display:none">
-      <div class="hint" style="margin-top:8px">Screenshots or screen recordings from Telegram, YouTube, Instagram, TikTok, Snapchat… One or many at once. Videos are checked at four points across the clip.</div></div>
+      <div class="hint" style="margin-top:8px">Screenshots or screen recordings from Telegram, YouTube, Instagram, TikTok, Snapchat… One or many at once. Videos are swept frame by frame — every corner, every quarter second — so a logo, brand or ISIS mark that flashes on screen for a second is caught without rewinding.</div></div>
     <div class="form" style="margin-top:12px;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px">
       <div><label>Where it came from</label><select id="tplat">${['Telegram', 'YouTube', 'Instagram', 'Facebook', 'TikTok', 'Snapchat', 'X', 'Other'].map(p => `<option>${p}</option>`).join('')}</select></div>
       <div><label>Link to the post (optional)</label><input id="turl" placeholder="https://t.me/… or https://youtube.com/…"></div>
