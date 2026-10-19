@@ -32,6 +32,7 @@ body{margin:0;background:#e9edf3;font:14.5px/1.6 Helvetica,Arial,sans-serif;colo
 <body>
 <div class="bar noprint">
   <b>PROJECT SPEAR · Dossier</b>
+  <select id="bFor" title="Who the report is for" style="font:600 12.5px Helvetica,Arial,sans-serif;border:0;border-radius:7px;padding:8px 10px;color:#0f2a5c"><option value="">Report for: automatic</option><option value="meta">Report for: Meta</option><option value="other">Report for: another platform</option><option value="le">Report for: law enforcement</option></select>
   <button id="bAdd" title="Add more screenshots of the same post, then rewrite">➕ Add screenshots</button>
   <button id="bRe">↻ Rewrite with AI</button>
   <button id="bCopy" title="Copy the four answers (Q1–Q4) as plain text, ready to paste into Meta’s form">📋 Copy Q1–Q4 for Meta</button>
@@ -90,7 +91,7 @@ say('<span class="spin"></span>Writing the SPEAR Dossier from this screenshot…
 const meta=it.meta===true||/facebook|instagram|threads|whatsapp|messenger/i.test([it.source_app,it.platform,it.url].join(' '));
 let last='';
 for(let a=0;a<3;a++){
-try{const r=await fetch(API+'/api/deep-report',{method:'POST',headers:H({'Content-Type':'application/json'}),body:JSON.stringify({images:[it.thumb],author:author(),analyst_notes:String(it.notes||''),save:false,audience:meta?'meta':undefined})});
+try{const r=await fetch(API+'/api/deep-report',{method:'POST',headers:H({'Content-Type':'application/json'}),body:JSON.stringify({images:[it.thumb],author:author(),analyst_notes:String(it.notes||''),save:false,audience:FOR||(meta?'meta':undefined)})});
 if(r.ok){const j=await r.json();IMGS['']=it.thumb;LOCALIMG=it.thumb;await show({id:'',report:j.report,edits:{},case_ids:[]});status('Written '+new Date().toLocaleString()+' · this case has not synced to the server yet, so download the PDF to keep this dossier');return}
 let d='';try{d=(await r.json()).detail||''}catch(e){}
 last=d||('error '+r.status);if([400,403,404,413].includes(r.status))break;
@@ -104,7 +105,7 @@ async function writeNew(allowText){
   let last='';
   for(let a=0;a<3;a++){
     try{
-      const r=await fetch(API+'/api/deep-report',{method:'POST',headers:H({'Content-Type':'application/json'}),body:JSON.stringify({case_ids:CASES,author:author(),allow_text:!!allowText})});
+      const r=await fetch(API+'/api/deep-report',{method:'POST',headers:H({'Content-Type':'application/json'}),body:JSON.stringify({case_ids:CASES,author:author(),allow_text:!!allowText,audience:FOR||undefined})});
       if(r.ok){const j=await r.json();RID=j.id;history.replaceState(null,'','?id='+j.id);return show({id:j.id,report:j.report,edits:{},case_ids:j.report.case_ids})}
       let d='';try{d=(await r.json()).detail||''}catch(e){}
       last=d||('error '+r.status);
@@ -122,6 +123,7 @@ async function loadImgs(rep){
 }
 async function show(j){
   R=j.report;EDITS=j.edits||{};RID=j.id||RID;CASES=j.case_ids||R.case_ids||CASES;
+  if(R&&R.audience==='le'){FOR='le';$('bFor').value='le'}
   await loadImgs(R);render();
   $('bCopy').textContent=SpearReport.copyLabel?SpearReport.copyLabel(R):'📋 Copy Q1–Q4 for Meta';
   status('Written '+new Date(R.written_at||Date.now()).toLocaleString()+(j.updated_at&&Object.keys(EDITS).length?' · edited '+new Date(j.updated_at).toLocaleString():''));
@@ -155,6 +157,9 @@ $('bPdf').onclick=async()=>{if(!R)return;if(typeof html2pdf!=='function'){status
 $('bAll').onclick=()=>{const p=$('pg');if(!p)return;navigator.clipboard.writeText(SpearReport.fullText?SpearReport.fullText(p):p.innerText).then(()=>status('Full dossier copied'),()=>status('Copy blocked by the browser'))};
 $('bAppx').onclick=()=>{const p=$('pg');if(!p)return;p.classList.toggle('with-appx');$('bAppx').textContent=p.classList.contains('with-appx')?'Hide appendix':'Appendix'};
 $('bCopy').onclick=()=>{const p=$('pg');if(!p)return;const t=SpearReport.metaText(p);navigator.clipboard.writeText(t).then(()=>status(R&&R.report_type==='brief'?'Brief copied':'Q1–Q4 copied — paste into Meta’s form'),()=>status('Copy blocked by the browser'))};
+/* Who the report is for: Meta, another platform, or a law-enforcement agency (adds the law-enforcement brief). */
+var FOR='';
+$('bFor').onchange=()=>{FOR=$('bFor').value;if(!R)return;RID='';EDITS={};if(CASES.length)writeNew(R&&R.from_text);else if(P.get('local'))writeLocal(P.get('local'));};
 let armed=false;
 $('bRe').onclick=()=>{if(Object.keys(EDITS).length&&!armed){armed=true;status('Press “Rewrite with AI” again to replace this report (your edits stay on the old one)');return}armed=false;RID='';EDITS={};writeNew(R&&R.from_text)};
 /* add screenshots of the same post */
@@ -204,7 +209,7 @@ async function askSpear(){
   const v=R.verdict||{};
   const notes='CORRECTIONS FROM THE ANALYST ON THE PREVIOUS DRAFT. Apply every one, and update every section it affects (description, decoded meaning, verdict, policies, terms, Q1-Q4). If a correction is a question, answer it inside the relevant section.\n'+fixes+
     '\n\nPrevious draft for reference: '+(R.title||'')+' — '+(v.answer||'')+' '+(v.summary||'');
-  const body={author:author(),analyst_notes:notes.slice(0,2900),audience:R.report_type==='brief'?'other':'meta'};
+  const body={author:author(),analyst_notes:notes.slice(0,2900),audience:FOR||(R.report_type==='brief'?'other':'meta')};
   if(CASES.length){body.case_ids=CASES;body.save=true}else{body.images=[LOCALIMG||IMGS['']].filter(Boolean);body.save=false}
   let ok=false,last='';
   for(let a=0;a<3&&!ok;a++){
