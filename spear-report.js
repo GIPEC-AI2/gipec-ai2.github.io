@@ -83,10 +83,28 @@
     h += '<div class="bl"><div class="blk">Bottom line</div>' + E('vans', esc(v.answer || ''), 'div', 'verdict ' + vcls(v.answer)) + E('vsum', esc(v.summary || ''), 'p') + '</div>';
     var figs = ev.map(function (e, i) { return IM[e.case_id] ? '<figure><img src="' + IM[e.case_id] + '" alt="Image ' + (i + 1) + '"><figcaption>Image ' + (i + 1) + '</figcaption></figure>' : ''; }).join('');
 
+    /* LAW-ENFORCEMENT BRIEF (when an agency asked for it): first, so a duty supervisor reads it first */
+    var lb = r.le_brief;
+    if (lb && (lb.bottom_line || (lb.possible_offenses || []).length)) {
+      var ug = String(lb.urgency || '').toLowerCase(), uc = ug.indexOf('imm') === 0 ? '#d23c3c' : ug.indexOf('pri') === 0 ? '#c27a00' : '#1f5bb0';
+      var nx = String(lb.criminal_nexus || '').toLowerCase(), nc = nx.indexOf('lik') === 0 ? '#d23c3c' : nx.indexOf('pos') === 0 ? '#c27a00' : '#1f9d55';
+      h += '<section class="stage" data-x="le" style="border:3px solid #0f2a5c;border-radius:10px;padding:14px 16px;margin-bottom:18px"><h2 class="stg" style="margin-top:0">LAW-ENFORCEMENT BRIEF</h2>' +
+        '<div style="display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 10px"><span style="background:' + uc + ';color:#fff;font-weight:700;border-radius:6px;padding:5px 10px">Urgency: ' + esc(lb.urgency || '—') + '</span><span style="background:' + nc + ';color:#fff;font-weight:700;border-radius:6px;padding:5px 10px">Criminal nexus: ' + esc(lb.criminal_nexus || '—') + '</span></div>' +
+        E('lebl', esc(lb.bottom_line || ''), 'p');
+      if (lb.time_place) h += '<p><span class="lab">Date / time / place:</span> ' + E('letp', esc(lb.time_place), 'span') + '</p>';
+      if ((lb.possible_offenses || []).length) h += '<h3>Possible offenses (for the agency’s legal review)</h3>' + E('leoff', li(lb.possible_offenses, function (o) { return '<li><b>' + esc(o.offense) + '</b> — ' + esc(o.basis || '') + (o.missing ? ' <span class="note">Still needed: ' + esc(o.missing) + '</span>' : '') + '</li>'; }));
+      if (lb.protected_activity) h += '<div style="border-left:6px solid #1f9d55;background:#e8f7ee;border-radius:0 8px 8px 0;padding:8px 12px;margin:10px 0"><b>Protected activity:</b> ' + E('leprot', esc(lb.protected_activity), 'span') + '</div>';
+      if ((lb.identifiers || []).length) h += '<h3>Identifiers</h3><table style="width:100%;border-collapse:collapse;font-size:13px">' + items(lb.identifiers, function (x) { return '<tr><td style="border-bottom:1px solid #e3e8f0;padding:5px;width:22%"><b>' + esc(x.type) + '</b></td><td style="border-bottom:1px solid #e3e8f0;padding:5px;word-break:break-all" class="mono">' + esc(x.value) + '</td><td style="border-bottom:1px solid #e3e8f0;padding:5px" class="note">' + esc(x.where || '') + '</td></tr>'; }) + '</table>';
+      if ((lb.preservation || []).length) h += '<h3>What to ask the platform to preserve</h3>' + li(lb.preservation, function (x) { return '<li>' + esc(x) + '</li>'; });
+      if ((lb.next_steps || []).length) h += '<h3>Suggested next steps</h3>' + E('lenext', li(lb.next_steps, function (x) { return '<li>' + esc(x) + '</li>'; }));
+      h += '<p class="note">An analytic lead, not evidence of guilt and not legal advice. Originals are archived with SHA-256 fingerprints (see Capture). Preservation requests and legal process are sent by the agency.</p></section>';
+    }
     /* 1 HUNT */
     h += '<section class="stage">' + stage(1, 'THE HUNT', 'Discovery &amp; extraction');
     if (figs) h += '<div class="imgs">' + figs + '</div>';
     h += E('extr', li(r.extraction, function (x) { return '<li><b>' + esc(x.label) + ':</b> ' + esc(x.value) + '</li>'; }) || '<p class="note">Nothing extracted.</p>');
+    var qr = r.qr_codes || [];
+    if (qr.length) h += '<h3>\uD83D\uDD17 Hidden links read from QR codes in the picture</h3><ul class="dl">' + items(qr, function (q) { return '<li style="border-left:5px solid #c27a00;padding-left:8px"><b>' + esc(q.kind) + (q.image ? ' (Image ' + esc(q.image) + ')' : '') + ':</b> <span class="mono" style="word-break:break-all">' + esc(q.text) + '</span></li>'; }) + '</ul><p class="note">Read by machine from the picture, word for word. Recorded as leads only — SPEAR does not open or join these links.</p>';
     if (r.combined_message) h += E('combined', 'Full message when the frames are read together: “' + esc(r.combined_message) + '”', 'div', 'combined');
     if ((r.context || []).length) h += '<h3>What it means (decoded)</h3>' + E('context', '<ol class="n">' + items(r.context, function (c) { return '<li><b>' + esc(c.title) + ':</b> ' + esc(c.text) + '</li>'; }) + '</ol>');
     if ((r.images || []).length) h += '<h3>Frame-by-frame</h3>' + items(r.images, function (im, i) {
@@ -126,6 +144,13 @@
       if (cp.length) h += '<h3>Danger to other platforms</h3>' + E('xplat', li(cp, function (c) { return '<li><b>' + esc(c.platform) + ':</b> ' + esc(c.risk) + (c.policy ? ' <span class="note">Rule it breaks there: ' + esc(c.policy) + '</span>' : '') + '</li>'; }));
       h += '</section>';
     }
+    var pc = r.public_concern || {};
+    if (pc.answer || pc.summary) {
+      var lv = String(pc.level || '').toLowerCase(), lc = lv.indexOf('high') === 0 ? '#d23c3c' : lv.indexOf('elev') === 0 ? '#c27a00' : lv.indexOf('mod') === 0 ? '#b7791f' : '#1f9d55';
+      h += '<h3>Should the public be concerned?</h3><div class="verdict" style="border-left:6px solid ' + lc + '">' + (pc.level ? '<b style="color:' + lc + '">' + esc(pc.level) + ' concern.</b> ' : '') + esc(pc.answer || '') + '</div>' + E('pcsum', esc(pc.summary || ''), 'p');
+      if ((pc.signals || []).length) h += '<div class="lab">Real-world signals in the post</div>' + li(pc.signals, function (x) { return '<li>' + esc(x) + '</li>'; });
+      if ((pc.proportional_steps || []).length) h += '<div class="lab">Sensible next steps</div>' + li(pc.proportional_steps, function (x) { return '<li>' + esc(x) + '</li>'; });
+    }
     h += '<p><span class="lab">Recommended action:</span> ' + E('rec', esc(r.recommended_action || '—'), 'span') + '</p></section>';
 
     /* 5 TEACH */
@@ -142,6 +167,8 @@
     h += '<section data-q="2"><h3><span class="qn">Q2</span>' + esc(v.question || 'Is this a violation?') + '</h3>' + E('s2', esc(sub.q2 || ((v.answer || '') + ' ' + (v.summary || ''))), 'p') + '</section>';
     h += '<section data-q="3"><h3><span class="qn">Q3</span>' + q3t + '</h3>' + E('s3', esc(sub.q3 || m.intro || ''), 'p') + '</section>';
     h += '<section data-q="4"><h3><span class="qn">Q4</span>Could GIPECAI Project SPEAR have captured it?</h3>' + E('s4', esc(sub.q4 || r.spear_answer || ''), 'p') + '</section>';
+    var al = r.advertiser_letter || {};
+    if (al.body) h += '<section data-x="adv"><h3>Letter to advertisers <button type="button" class="btn sm" style="margin-left:8px" onclick="(function(b){var t=b.closest(\'section\').querySelector(\'[data-k=adv]\');try{navigator.clipboard.writeText(t.innerText);b.textContent=\'\u2713 Copied\'}catch(e){}})(this)">Copy letter</button></h3>' + (al.subject ? '<p><span class="lab">Subject:</span> ' + E('advs', esc(al.subject), 'span') + '</p>' : '') + E('adv', esc(al.body).replace(/\n/g, '<br>'), 'div') + '<p class="note">Fill in the brand and your name before sending. Have counsel review any letter to companies.</p></section>';
     if ((r.spear_catch || []).length) h += '<h3>How SPEAR catches it</h3>' + E('catch', li(r.spear_catch, function (c) { return '<li><b>' + esc(c.title) + ':</b> ' + esc(c.text) + '</li>'; }));
     if ((r.takeaways || []).length) h += '<h3>Key takeaways</h3>' + E('take', li(r.takeaways, function (c) { return '<li><b>' + esc(c.title) + ':</b> ' + esc(c.text) + '</li>'; }));
     if ((r.leverage || []).length) h += '<h3>How to use this capture</h3>' + E('lev', li(r.leverage, function (c) { return '<li><b>' + esc(c.title) + ':</b> ' + esc(c.text) + '</li>'; }));
