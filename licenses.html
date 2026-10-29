@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Customers &amp; Licenses — GIPEC AI²</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#0f2a5c;--ink:#1b2433;--muted:#5d6878;--line:#dfe4ec;--bg:#f4f6fa;--card:#fff;
+  --green:#1f8a4c;--green-bg:#e6f6ec;--amber:#b86e00;--amber-bg:#fff3dc;--red:#c62f2f;--red-bg:#fdeaea;--blue:#1f5bb0;--blue-bg:#e9f0fd;--violet:#6a3fb5}
+*{box-sizing:border-box}
+body{margin:0;font:17px/1.55 Inter,system-ui,"Segoe UI",Arial,sans-serif;color:var(--ink);background:var(--bg)}
+button,input,select,textarea{font:inherit}
+.top{background:linear-gradient(120deg,#2f7d5b 0%,#246548 60%,#1a4d37 100%);color:#fff;padding:16px 24px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.top h1{margin:0;font-size:24px;font-weight:800;letter-spacing:.3px}
+.top .sub{font-size:14px;opacity:.85}
+.top .sp{flex:1}
+.wrap{max-width:1250px;margin:0 auto;padding:18px 20px 60px}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 18px}
+.tab{border:2px solid var(--line);background:#fff;border-radius:12px;padding:10px 18px;font-weight:700;font-size:17px;cursor:pointer;color:var(--navy)}
+.tab.on{background:var(--navy);border-color:var(--navy);color:#fff}
+.tab .ct{display:inline-block;min-width:22px;padding:0 7px;border-radius:11px;background:var(--amber);color:#fff;font-size:13px;margin-left:6px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:14px}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+@media (max-width:800px){.tiles{grid-template-columns:repeat(2,1fr)}}
+.tile{border-radius:14px;padding:14px 16px;background:#fff;border:1px solid var(--line)}
+.tile .v{font-size:34px;font-weight:800;line-height:1.1}
+.tile .l{font-size:15px;color:var(--muted);font-weight:600}
+.tile.g{background:var(--green-bg);border-color:#bfe5cd}.tile.g .v{color:var(--green)}
+.tile.a{background:var(--amber-bg);border-color:#f2d59d}.tile.a .v{color:var(--amber)}
+.tile.r{background:var(--red-bg);border-color:#f3c2c2}.tile.r .v{color:var(--red)}
+.btn{border:2px solid var(--line);background:#fff;border-radius:10px;padding:9px 16px;cursor:pointer;font-weight:700;color:var(--navy)}
+.btn:hover{border-color:var(--blue)}
+.btn.big{font-size:19px;padding:13px 22px}
+.btn.pri{background:var(--blue);border-color:var(--blue);color:#fff}
+.btn.ok{background:var(--green);border-color:var(--green);color:#fff}
+.btn.warn{background:#fff;border-color:var(--amber);color:var(--amber)}
+.btn.no{background:#fff;border-color:var(--red);color:var(--red)}
+.btn.sm{padding:5px 11px;font-size:14px}
+.btn:disabled{opacity:.5;cursor:default}
+.co{border-left:10px solid var(--green);position:relative}
+.co.amber{border-left-color:var(--amber)}.co.red{border-left-color:var(--red)}
+.co .row1{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.co h2{margin:0;font-size:22px;color:var(--navy)}
+.badge{font-weight:800;font-size:14px;border-radius:20px;padding:3px 12px}
+.badge.green{background:var(--green-bg);color:var(--green)}.badge.amber{background:var(--amber-bg);color:var(--amber)}.badge.red{background:var(--red-bg);color:var(--red)}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin:12px 0}
+.fact{background:var(--bg);border-radius:10px;padding:9px 12px}
+.fact b{display:block;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px}
+.fact span{font-size:18px;font-weight:700}
+.bar{height:12px;background:#e6eaf0;border-radius:6px;overflow:hidden;margin-top:6px}
+.bar i{display:block;height:100%;background:var(--green)}
+.bar i.a{background:var(--amber)}.bar i.r{background:var(--red)}
+.flags{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
+.flag{background:var(--amber-bg);color:var(--amber);border-radius:8px;padding:3px 10px;font-weight:700;font-size:14px}
+.acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+table{width:100%;border-collapse:collapse;font-size:15px}
+th{text-align:left;font-size:13px;color:var(--muted);border-bottom:2px solid var(--line);padding:7px 6px;text-transform:uppercase;letter-spacing:.4px}
+td{border-bottom:1px solid #edf0f4;padding:8px 6px;vertical-align:top}
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.form label{display:block;font-size:14px;font-weight:700;color:var(--muted);margin-bottom:4px}
+.form input,.form select,.form textarea{width:100%;border:2px solid var(--line);border-radius:10px;padding:10px 12px;background:#fff;font-size:17px}
+.form textarea{min-height:96px}
+.form .full{grid-column:1/-1}
+.hint{font-size:14px;color:var(--muted)}
+.msg{font-weight:700;margin-left:8px}.msg.err{color:var(--red)}.msg.okm{color:var(--green)}
+.empty{padding:28px;text-align:center;color:var(--muted);font-size:18px}
+.modal{position:fixed;inset:0;background:rgba(10,20,40,.45);display:none;align-items:center;justify-content:center;z-index:2000;padding:16px}
+.modal.on{display:flex}
+.modal .box{background:#fff;border-radius:16px;max-width:680px;width:100%;padding:22px 24px;max-height:92vh;overflow:auto}
+.modal h3{margin:0 0 10px;font-size:22px;color:var(--navy)}
+.keybox{font:700 19px/1.4 ui-monospace,Menlo,Consolas,monospace;background:#0f1d33;color:#9ff0c2;border-radius:10px;padding:14px;word-break:break-all;margin:10px 0}
+.risk{font-weight:800;border-radius:8px;padding:2px 10px;font-size:14px}
+.risk.high{background:var(--red-bg);color:var(--red)}.risk.medium{background:var(--amber-bg);color:var(--amber)}.risk.low{background:var(--blue-bg);color:var(--blue)}
+.tr{border-left:8px solid var(--line)}.tr.draft{border-left-color:var(--amber)}.tr.published{border-left-color:var(--green)}.tr.retired{border-left-color:#b8c0cc}
+.chip{display:inline-block;background:var(--bg);border-radius:12px;padding:1px 10px;margin:2px 4px 2px 0;font-size:14px;font-weight:600}
+.guide{border-left:6px solid #2f7d5b}
+.guide ol{margin:6px 0 0;padding-left:22px}.guide li{margin:4px 0}
+.nokey{background:var(--amber-bg);border:2px solid #f2d59d;border-radius:14px;padding:18px;font-size:18px}
+</style>
+</head>
+<body>
+<div class="top">
+  <div><h1>Customers &amp; Licenses</h1><div class="sub">Who has SPEAR, what they can use, and when it ends · GIPEC staff only</div></div>
+  <span class="sp"></span>
+  <a class="btn sm" style="background:#fff" href="trends.html" target="_blank" rel="noopener">Open the public Trends Watch page ↗</a>
+</div>
+<div class="wrap">
+  <div id="nokey" class="nokey" style="display:none">This page needs the GIPEC setup on this device. Open the setup link Tre sent on this computer first, then reload.</div>
+  <div class="tabs" id="tabs">
+    <button class="tab on" data-t="customers">Customers</button>
+    <button class="tab" data-t="trends">Trends Watch</button>
+    <button class="tab" data-t="plans">Plans &amp; prices</button>
+    <button class="tab" data-t="billing">Billing</button>
+    <button class="tab" data-t="log">Activity log</button>
+  </div>
+  <div id="view"><div class="empty">Loading…</div></div>
+</div>
+<div class="modal" id="modal"><div class="box" id="mbox"></div></div>
+
+<script>
+const LS = k => { try { return localStorage.getItem(k) } catch (e) { return null } };
+const BASE = (LS('spear_api') || 'https://project-spear-backend.onrender.com').replace(/\/$/, '');
+const KEY = LS('spear_key') || '';
+const PUBLIC_SITE = location.origin + location.pathname.replace(/[^/]*$/, '');
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const day = s => { if (!s) return '—'; const d = new Date(String(s).length === 10 ? s + 'T12:00:00' : s); return isNaN(d) ? esc(s) : d.toLocaleDateString([], { dateStyle: 'medium' }); };
+const when = s => { if (!s) return '—'; const d = new Date(s); return isNaN(d) ? esc(s) : d.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }); };
+const usd = c => c == null ? '—' : '$' + (c / 100).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+const isoToday = () => new Date().toISOString().slice(0, 10);
+const S = { tab: 'customers', ov: null, trends: [], members: [], feedback: [], tfilter: 'draft' };
+
+async function api(path, opt = {}) {
+  const r = await fetch(BASE + path, { ...opt, headers: { 'X-Spear-Key': KEY, 'Content-Type': 'application/json', ...(opt.headers || {}) } });
+  if (!r.ok) { let d = ''; try { d = (await r.json()).detail } catch (e) {} throw new Error(d || ('Error ' + r.status)); }
+  const ct = r.headers.get('content-type') || '';
+  return ct.includes('json') ? r.json() : r.text();
+}
+const post = (p, b) => api(p, { method: 'POST', body: JSON.stringify(b || {}) });
+
+function modal(html) { document.getElementById('mbox').innerHTML = html; document.getElementById('modal').classList.add('on'); }
+function closeModal() { document.getElementById('modal').classList.remove('on'); }
+document.getElementById('modal').addEventListener('click', e => { if (e.target.id === 'modal') closeModal(); });
+
+function showKey(title, who, key, forMember) {
+  const link = PUBLIC_SITE + (forMember ? 'trends.html' : 'account.html');
+  modal(`<h3>${esc(title)}</h3>
+    <p>Access key for <b>${esc(who)}</b>. <b>It is shown only this once.</b> Copy it now and send it to them privately (for example by text message), separately from the link.</p>
+    <div class="keybox" id="kb">${esc(key)}</div>
+    <p class="hint">They open <b>${esc(link)}</b> and paste this key once. If it is lost, use “New key” to replace it; the old key stops working.</p>
+    <div class="acts"><button class="btn pri big" id="cp">Copy key</button><button class="btn big" onclick="closeModal()">Done</button></div>`);
+  document.getElementById('cp').onclick = async () => { try { await navigator.clipboard.writeText(key); document.getElementById('cp').textContent = 'Copied ✓' } catch (e) { alert('Select the key and copy it.') } };
+}
+
+function setTab(t) { S.tab = t; document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.t === t)); draw(); }
+document.getElementById('tabs').addEventListener('click', e => { const b = e.target.closest('.tab'); if (b) setTab(b.dataset.t); });
+
+async function load() {
+  if (!KEY) { document.getElementById('nokey').style.display = 'block'; document.getElementById('view').innerHTML = ''; return; }
+  try { S.ov = await api('/api/admin/lic/overview'); }
+  catch (e) { document.getElementById('view').innerHTML = `<div class="empty msg err">${esc(e.message)}</div>`; return; }
+  const ct = S.ov.trends.draft + S.ov.trends.feedback_open;
+  document.querySelector('[data-t=trends]').innerHTML = 'Trends Watch' + (ct ? `<span class="ct">${ct}</span>` : '');
+  draw();
+}
+
+function draw() {
+  if (!S.ov) return;
+  ({ customers: drawCustomers, trends: drawTrends, plans: drawPlans, billing: drawBilling, log: drawLog })[S.tab]();
+}
+
+/* ------------------------------------------------------------------ customers */
+function drawCustomers() {
+  const o = S.ov, v = document.getElementById('view');
+  v.innerHTML = `
+  <div class="tiles">
+    <div class="tile"><div class="v">${o.summary.customers}</div><div class="l">Customers</div></div>
+    <div class="tile g"><div class="v">${o.summary.green}</div><div class="l">Green · all good</div></div>
+    <div class="tile a"><div class="v">${o.summary.amber}</div><div class="l">Orange · needs attention soon</div></div>
+    <div class="tile r"><div class="v">${o.summary.red}</div><div class="l">Red · ended, locked or suspended</div></div>
+  </div>
+  <div class="acts" style="margin:0 0 16px"><button class="btn ok big" id="add">+ Add a customer</button></div>
+  ${o.companies.length ? o.companies.map(card).join('') : `<div class="card guide"><b style="font-size:19px">How licensing works</b><ol>
+    <li><b>Add a customer</b>: the company name, a plan and the dates. SPEAR makes the license.</li>
+    <li><b>Add their people</b>: each person gets their own access key. The plan sets how many people (seats).</li>
+    <li>They open the customer page, paste the key, and use only what their plan includes. Their work stays in their own space.</li>
+    <li>Colors tell you what needs doing: <b style="color:var(--green)">green</b> all good, <b style="color:var(--amber)">orange</b> renewal or usage coming up, <b style="color:var(--red)">red</b> ended or suspended.</li></ol></div>`}`;
+  v.querySelector('#add').onclick = addCustomer;
+  v.querySelectorAll('[data-a]').forEach(b => b.onclick = () => coAction(b.dataset.a, b.dataset.id, b.dataset.x));
+}
+
+function card(c) {
+  const co = c.company, l = c.license || {};
+  const pct = c.items_limit ? Math.min(100, Math.round(100 * c.items_used / c.items_limit)) : 0;
+  const users = c.users.map(u => `<tr><td><b>${esc(u.name)}</b><br><span class="hint">${esc(u.email || '')}</span></td><td>${esc(u.role)}</td>
+     <td>${u.active ? '<span class="badge green">On</span>' : '<span class="badge red">Off</span>'}</td><td class="hint">…${esc(u.key_hint)}</td><td class="hint">${u.last_used_at ? when(u.last_used_at) : 'never'}</td>
+     <td><button class="btn sm" data-a="${u.active ? 'udisable' : 'uenable'}" data-id="${u.id}">${u.active ? 'Turn off' : 'Turn on'}</button>
+     <button class="btn sm" data-a="ukey" data-id="${u.id}" data-x="${esc(u.name)}">New key</button></td></tr>`).join('');
+  const suspended = l.status === 'suspended';
+  return `<div class="card co ${c.color}">
+    <div class="row1"><h2>${esc(co.name)}</h2>${co.codename ? `<span class="chip">Codename: ${esc(co.codename)}</span>` : ''}
+      <span class="badge ${c.color}">${esc(c.state_text)}</span><span style="flex:1"></span>
+      <span class="hint">${esc(co.segment || '')}</span></div>
+    ${c.flags.length ? `<div class="flags">${c.flags.map(f => `<span class="flag">${esc(f)}</span>`).join('')}</div>` : ''}
+    <div class="facts">
+      <div class="fact"><b>Plan</b><span>${esc(l.plan_name || '—')}</span><div class="hint">${l.price_cents != null ? usd(l.price_cents) + ' (custom)' : usd(l.plan_price_cents)} ${l.billing === 'one_time' ? 'one time' : l.billing === 'annual' ? 'per year' : 'per month'}</div></div>
+      <div class="fact"><b>Dates</b><span>${day(l.starts_on)} – ${day(l.ends_on)}</span><div class="hint">${c.days_left != null && c.days_left >= 0 ? c.days_left + ' days left' : ''}</div></div>
+      <div class="fact"><b>People (seats)</b><span>${c.seats_used} of ${c.seats}</span></div>
+      <div class="fact"><b>Items this month</b><span>${c.items_used} of ${c.items_limit}</span>
+        <div class="bar"><i class="${pct >= 100 ? 'r' : pct >= 80 ? 'a' : ''}" style="width:${pct}%"></i></div>
+        ${c.overage_items ? `<div class="hint">${c.overage_items} over the limit</div>` : ''}</div>
+      <div class="fact"><b>Includes</b><span style="font-size:15px">${(l.modules || []).map(m => esc(S.ov.modules[m] || m)).join(', ') || '—'}</span></div>
+    </div>
+    ${c.users.length ? `<table><tr><th>Person</th><th>Role</th><th>Access</th><th>Key ends</th><th>Last used</th><th></th></tr>${users}</table>` : '<div class="hint">No people yet. Add their first person so they can sign in.</div>'}
+    <div class="acts">
+      <button class="btn pri" data-a="adduser" data-id="${co.id}" data-x="${esc(co.name)}">+ Add a person</button>
+      ${l.id ? `<button class="btn ok" data-a="renew" data-id="${l.id}">Renew</button>
+      <button class="btn" data-a="plan" data-id="${l.id}" data-x="${esc(l.plan_code)}">Change plan</button>
+      <button class="btn" data-a="extra" data-id="${l.id}">Seats, items &amp; dates</button>
+      <button class="btn ${suspended ? 'ok' : 'warn'}" data-a="${suspended ? 'resume' : 'suspend'}" data-id="${l.id}">${suspended ? 'Resume' : 'Suspend'}</button>` : ''}
+      <button class="btn" data-a="edit" data-id="${co.id}">Details</button>
+    </div></div>`;
+}
+
+function planOptions(sel) { return S.ov.plans.filter(p => p.active).map(p => `<option value="${esc(p.code)}" ${p.code === sel ? 'selected' : ''}>${esc(p.name)} — ${usd(p.price_cents)}${p.billing === 'one_time' ? ' one time' : '/month'} · ${p.seats} people · ${p.items_per_month} items</option>`).join(''); }
+
+function addCustomer() {
+  modal(`<h3>Add a customer</h3>
+  <div class="form">
+    <div class="full"><label>Company name</label><input id="f_name" placeholder="e.g. Parents Against Online Harm"></div>
+    <div><label>Codename (what shows on screens)</label><input id="f_code" placeholder="e.g. NP-1"></div>
+    <div><label>Type of customer</label><select id="f_seg">${['Nonprofit community group', 'Parent / family safety group', 'Brand / advertiser', 'Platform / trust & safety', 'Law enforcement / government', 'Research / academic', 'Other'].map(s => `<option>${s}</option>`).join('')}</select></div>
+    <div class="full"><label>Plan</label><select id="f_plan">${planOptions('starter')}</select></div>
+    <div><label>Start date</label><input id="f_start" type="date" value="${isoToday()}"></div>
+    <div><label>Length</label><select id="f_months"><option value="2">2 months (pilot)</option><option value="3">3 months</option><option value="6">6 months</option><option value="12" selected>12 months</option><option value="24">24 months</option></select></div>
+    <div><label>Contact person</label><input id="f_cn"></div>
+    <div><label>Contact e-mail</label><input id="f_ce" type="email"></div>
+    <div class="full"><label>Custom price in dollars (leave empty for the plan price)</label><input id="f_price" inputmode="decimal" placeholder="e.g. 18000"></div>
+    <div class="full"><label>Brand Safety clients this customer may see (their IDs from the Brand Safety page, one per line)</label><textarea id="f_brands" style="min-height:60px" placeholder="Leave empty if they are not a brand customer"></textarea></div>
+  </div>
+  <div class="acts"><button class="btn ok big" id="go">Create customer &amp; license</button><button class="btn big" onclick="closeModal()">Cancel</button><span class="msg" id="m"></span></div>`);
+  document.getElementById('go').onclick = async () => {
+    const g = id => document.getElementById(id).value.trim();
+    const price = g('f_price').replace(/[$,]/g, '');
+    const body = { name: g('f_name'), codename: g('f_code'), segment: g('f_seg'), plan_code: g('f_plan'), starts_on: g('f_start'),
+      months: +g('f_months'), contact_name: g('f_cn'), contact_email: g('f_ce'),
+      brand_tenants: g('f_brands').split(/[\n,]/).map(x => x.trim()).filter(Boolean) };
+    if (price) body.price_cents = Math.round(parseFloat(price) * 100);
+    const m = document.getElementById('m'); m.className = 'msg'; m.textContent = 'Saving…';
+    try { const c = await post('/api/admin/lic/companies', body); await load(); addUser(c.company.id, c.company.name, true); }
+    catch (e) { m.className = 'msg err'; m.textContent = e.message; }
+  };
+}
+
+function addUser(cid, cname, first) {
+  modal(`<h3>${first ? 'Customer created ✓ — now add their first person' : 'Add a person'}</h3>
+  <p class="hint">${esc(cname)}</p>
+  <div class="form">
+    <div><label>Name</label><input id="u_name"></div>
+    <div><label>E-mail</label><input id="u_email" type="email"></div>
+    <div class="full"><label>What they can do</label><select id="u_role">
+      <option value="admin">Administrator — can do everything their plan includes</option>
+      <option value="analyst" selected>Analyst — can run analyses and save cases</option>
+      <option value="viewer">Viewer — can look, cannot run analyses</option></select></div>
+  </div>
+  <div class="acts"><button class="btn ok big" id="go">Create access key</button><button class="btn big" onclick="closeModal()">${first ? 'Later' : 'Cancel'}</button><span class="msg" id="m"></span></div>`);
+  document.getElementById('go').onclick = async () => {
+    const m = document.getElementById('m'); m.className = 'msg'; m.textContent = 'Saving…';
+    try {
+      const name = document.getElementById('u_name').value.trim();
+      const r = await post(`/api/admin/lic/companies/${cid}/users`, { name, email: document.getElementById('u_email').value.trim(), role: document.getElementById('u_role').value });
+      await load(); showKey('Access key created', name + ' · ' + cname, r.access_key);
+    } catch (e) { m.className = 'msg err'; m.textContent = e.message; }
+  };
+}
+
+async function coAction(a, id, x) {
+  const run = async (fn) => { try { await fn(); await load(); } catch (e) { alert(e.message); } };
+  if (a === 'adduser') return addUser(id, x);
+  if (a === 'udisable') return run(() => post(`/api/admin/lic/users/${id}`, { action: 'disable' }));
+  if (a === 'uenable') return run(() => post(`/api/admin/lic/users/${id}`, { action: 'enable' }));
+  if (a === 'ukey') { if (!confirm('Make a new key for ' + x + '? Their old key stops working right away.')) return;
+    try { const r = await post(`/api/admin/lic/users/${id}`, { action: 'reset_key' }); await load(); showKey('New access key', x, r.access_key); } catch (e) { alert(e.message); } return; }
+  if (a === 'suspend') { if (!confirm('Suspend this customer? Their people are locked out until you click Resume.')) return; return run(() => post(`/api/admin/lic/licenses/${id}`, { action: 'suspend' })); }
+  if (a === 'resume') return run(() => post(`/api/admin/lic/licenses/${id}`, { action: 'resume' }));
+  if (a === 'renew') {
+    modal(`<h3>Renew</h3><div class="form"><div><label>Renew for</label><select id="r_m"><option value="1">1 month</option><option value="3">3 months</option><option value="6">6 months</option><option value="12" selected>12 months</option><option value="24">24 months</option></select></div>
+      <div><label>Plan</label><select id="r_p">${planOptions(S.ov.companies.find(c => c.license && c.license.id === id)?.license.plan_code)}</select></div></div>
+      <p class="hint">The new period starts the day after the current one ends (or today, if it has already ended).</p>
+      <div class="acts"><button class="btn ok big" id="go">Renew</button><button class="btn big" onclick="closeModal()">Cancel</button></div>`);
+    document.getElementById('go').onclick = () => run(async () => { await post(`/api/admin/lic/licenses/${id}`, { action: 'renew', months: +document.getElementById('r_m').value, plan_code: document.getElementById('r_p').value }); closeModal(); });
+    return;
+  }
+  if (a === 'plan') {
+    modal(`<h3>Change plan</h3><div class="form"><div class="full"><label>New plan (takes effect now)</label><select id="p_p">${planOptions(x)}</select></div></div>
+      <div class="acts"><button class="btn ok big" id="go">Change plan</button><button class="btn big" onclick="closeModal()">Cancel</button></div>`);
+    document.getElementById('go').onclick = () => run(async () => { await post(`/api/admin/lic/licenses/${id}`, { action: 'change_plan', plan_code: document.getElementById('p_p').value }); closeModal(); });
+    return;
+  }
+  if (a === 'extra') {
+    const l = S.ov.companies.find(c => c.license && c.license.id === id).license;
+    modal(`<h3>Seats, items &amp; dates</h3><div class="form">
+      <div><label>Extra people (on top of the plan)</label><input id="e_s" type="number" min="0" value="${l.extra_seats}"></div>
+      <div><label>Extra items per month</label><input id="e_i" type="number" min="0" value="${l.extra_items}"></div>
+      <div><label>Start date</label><input id="e_st" type="date" value="${l.starts_on}"></div>
+      <div><label>End date</label><input id="e_en" type="date" value="${l.ends_on}"></div>
+      <div class="full"><label>Custom price in dollars (empty = plan price)</label><input id="e_p" value="${l.price_cents != null ? l.price_cents / 100 : ''}"></div></div>
+      <div class="acts"><button class="btn ok big" id="go">Save</button><button class="btn big" onclick="closeModal()">Cancel</button></div>`);
+    document.getElementById('go').onclick = () => run(async () => {
+      const p = document.getElementById('e_p').value.replace(/[$,]/g, '').trim();
+      await post(`/api/admin/lic/licenses/${id}`, { action: 'set', extra_seats: +document.getElementById('e_s').value, extra_items: +document.getElementById('e_i').value,
+        starts_on: document.getElementById('e_st').value, ends_on: document.getElementById('e_en').value, price_cents: p ? Math.round(parseFloat(p) * 100) : null });
+      closeModal(); });
+    return;
+  }
+  if (a === 'edit') {
+    const co = S.ov.companies.find(c => c.company.id === id).company;
+    modal(`<h3>Customer details</h3><div class="form">
+      <div class="full"><label>Company name</label><input id="d_n" value="${esc(co.name)}"></div>
+      <div><label>Codename</label><input id="d_c" value="${esc(co.codename)}"></div>
+      <div><label>Type of customer</label><input id="d_s" value="${esc(co.segment)}"></div>
+      <div><label>Contact person</label><input id="d_cn" value="${esc(co.contact_name)}"></div>
+      <div><label>Contact e-mail</label><input id="d_ce" value="${esc(co.contact_email)}"></div>
+      <div class="full"><label>Brand Safety clients they may see (one per line)</label><textarea id="d_b" style="min-height:60px">${esc((co.brand_tenants || []).join('\n'))}</textarea></div>
+      <div class="full"><label>Notes (GIPEC only)</label><textarea id="d_no">${esc(co.notes)}</textarea></div></div>
+      <div class="acts"><button class="btn ok big" id="go">Save</button><button class="btn big" onclick="closeModal()">Cancel</button><span style="flex:1"></span><button class="btn no" id="arch">Remove from the list</button></div>
+      <p class="hint">Removing hides the customer and turns off their access. Their records are kept.</p>`);
+    const g = i => document.getElementById(i).value;
+    document.getElementById('go').onclick = () => run(async () => { await post(`/api/admin/lic/companies/${id}`, { name: g('d_n'), codename: g('d_c'), segment: g('d_s'), contact_name: g('d_cn'), contact_email: g('d_ce'), notes: g('d_no'), brand_tenants: g('d_b').split(/[\n,]/).map(x => x.trim()).filter(Boolean) }); closeModal(); });
+    document.getElementById('arch').onclick = () => { if (confirm('Remove ' + co.name + ' from the list and turn off their access?')) run(async () => { await post(`/api/admin/lic/companies/${id}`, { archived: true }); closeModal(); }); };
+  }
+}
+
+/* ------------------------------------------------------------------ trends */
+async function drawTrends() {
+  const v = document.getElementById('view');
+  v.innerHTML = '<div class="empty">Loading…</div>';
+  try {
+    const [t, m, f] = await Promise.all([api('/api/admin/trends'), api('/api/admin/trends-members'), api('/api/admin/trends-feedback')]);
+    S.trends = t.trends; S.members = m.members; S.feedback = f.feedback;
+  } catch (e) { v.innerHTML = `<div class="empty msg err">${esc(e.message)}</div>`; return; }
+  const n = s => S.trends.filter(x => x.status === s).length;
+  const list = S.trends.filter(x => S.tfilter === 'members' || S.tfilter === 'feedback' ? false : x.status === S.tfilter);
+  const openFb = S.feedback.filter(x => !x.resolved).length;
+  v.innerHTML = `
+  <div class="card guide"><b style="font-size:19px">Trends Watch — you decide what the public sees</b>
+    <div>Write up a dangerous trend SPEAR is tracking (what it is, the warning signs, what to do). <b>Nothing is visible until you click Publish.</b>
+    Links, @handles and e-mail addresses are removed automatically. Never include pictures, private details, or anything about a specific child.</div></div>
+  <div class="tiles">
+    <div class="tile a"><div class="v">${n('draft')}</div><div class="l">Waiting for your approval</div></div>
+    <div class="tile g"><div class="v">${n('published')}</div><div class="l">Published</div></div>
+    <div class="tile"><div class="v">${S.ov.trends.members_active}</div><div class="l">Registered members</div></div>
+    <div class="tile ${openFb ? 'a' : ''}"><div class="v">${openFb}</div><div class="l">Messages from members</div></div>
+  </div>
+  <div class="acts" style="margin-bottom:14px"><button class="btn ok big" id="newt">+ Write a new trend</button></div>
+  <div class="tabs" id="tf">${[['draft', 'Waiting for approval'], ['published', 'Published'], ['retired', 'Retired'], ['members', 'Members'], ['feedback', 'Messages']].map(([k, l]) => `<button class="tab ${S.tfilter === k ? 'on' : ''}" data-k="${k}">${l}</button>`).join('')}</div>
+  <div id="tlist"></div>`;
+  v.querySelector('#newt').onclick = () => trendForm();
+  v.querySelector('#tf').onclick = e => { const b = e.target.closest('[data-k]'); if (b) { S.tfilter = b.dataset.k; drawTrends(); } };
+  const box = v.querySelector('#tlist');
+  if (S.tfilter === 'members') {
+    box.innerHTML = S.members.length ? `<div class="card"><table><tr><th>Name</th><th>Type</th><th>Organization</th><th>Level</th><th>Status</th><th>Joined</th><th></th></tr>
+      ${S.members.map(m => `<tr><td><b>${esc(m.name)}</b><br><span class="hint">${esc(m.email)}</span></td><td>${esc(m.member_type)}</td><td>${esc(m.organization)}</td>
+      <td><select data-tier="${m.id}">${['community', 'plus', 'verified'].map(t => `<option ${t === m.tier ? 'selected' : ''}>${t}</option>`).join('')}</select></td>
+      <td>${m.status === 'active' ? '<span class="badge green">Active</span>' : '<span class="badge red">Suspended</span>'}</td><td class="hint">${day(m.created_at)}</td>
+      <td><button class="btn sm" data-m="${m.status === 'active' ? 'suspend' : 'activate'}" data-id="${m.id}">${m.status === 'active' ? 'Suspend' : 'Turn on'}</button>
+      <button class="btn sm" data-m="reset_key" data-id="${m.id}" data-x="${esc(m.name)}">New key</button></td></tr>`).join('')}</table></div>` : '<div class="empty">No members yet.</div>';
+    box.querySelectorAll('[data-tier]').forEach(s => s.onchange = async () => { try { await post('/api/admin/trends-members/' + s.dataset.tier, { action: 'tier', tier: s.value }); } catch (e) { alert(e.message) } });
+    box.querySelectorAll('[data-m]').forEach(b => b.onclick = async () => {
+      try { const r = await post('/api/admin/trends-members/' + b.dataset.id, { action: b.dataset.m });
+        if (r.member_key) showKey('New member key', b.dataset.x, r.member_key, true); else drawTrends(); } catch (e) { alert(e.message) } });
+    return;
+  }
+  if (S.tfilter === 'feedback') {
+    box.innerHTML = S.feedback.length ? S.feedback.map(f => `<div class="card" style="${f.resolved ? 'opacity:.55' : ''}"><div class="hint">${when(f.at)} · about “${esc(f.title || 'general')}” · from a ${esc(f.from_kind)}</div>
+      <div style="margin:6px 0;white-space:pre-wrap">${esc(f.message)}</div>${f.resolved ? '<span class="badge green">Handled</span>' : `<button class="btn sm ok" data-fb="${f.id}">Mark handled</button>`}</div>`).join('') : '<div class="empty">No messages.</div>';
+    box.querySelectorAll('[data-fb]').forEach(b => b.onclick = async () => { await post(`/api/admin/trends-feedback/${b.dataset.fb}/resolve`); drawTrends(); });
+    return;
+  }
+  box.innerHTML = list.length ? list.map(t => `<div class="card tr ${t.status}">
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><b style="font-size:20px;color:var(--navy)">${esc(t.title)}</b><span class="risk ${t.risk}">${t.risk === 'high' ? 'High risk' : t.risk === 'medium' ? 'Medium risk' : 'Low risk'}</span><span class="chip">${esc(t.category)}</span></div>
+    <div style="margin:8px 0">${esc(t.summary)}</div>
+    ${(t.terms || []).length ? `<div><b class="hint">Coded terms:</b> ${t.terms.map(x => `<span class="chip">${esc(x)}</span>`).join('')}</div>` : ''}
+    <div class="hint">${t.status === 'published' ? 'Published ' + day(t.approved_at) + ' by ' + esc(t.approved_by || '') : 'Last edited ' + when(t.updated_at)}</div>
+    <div class="acts">
+      ${t.status !== 'published' ? `<button class="btn ok" data-ta="publish" data-id="${t.id}">✓ Approve &amp; publish</button>` : `<button class="btn warn" data-ta="retire" data-id="${t.id}">Take down</button>`}
+      <button class="btn" data-ta="edit" data-id="${t.id}">Edit</button>
+      ${t.status !== 'published' ? `<button class="btn no" data-ta="delete" data-id="${t.id}">Delete</button>` : ''}</div></div>`).join('')
+    : `<div class="empty">${S.tfilter === 'draft' ? 'Nothing waiting. Click “Write a new trend”.' : 'Nothing here.'}</div>`;
+  box.querySelectorAll('[data-ta]').forEach(b => b.onclick = async () => {
+    const a = b.dataset.ta, id = b.dataset.id;
+    if (a === 'edit') return trendForm(S.trends.find(t => t.id === id));
+    if (a === 'publish' && !confirm('Publish this trend? Every registered member will be able to see it.')) return;
+    if (a === 'retire' && !confirm('Take this trend down from the public library?')) return;
+    if (a === 'delete' && !confirm('Delete this draft?')) return;
+    try { await post('/api/admin/trends/' + id, { action: a }); await load(); S.tab = 'trends'; drawTrends(); } catch (e) { alert(e.message) }
+  });
+}
+
+function trendForm(t) {
+  t = t || { risk: 'medium', category: S.ov.categories[0], terms: [], platforms: [], audiences: [] };
+  const aud = ['Parents', 'Educators', 'Community and faith groups', 'Businesses and brands', 'Law enforcement', 'Everyone'];
+  modal(`<h3>${t.id ? 'Edit trend' : 'Write a new trend'}</h3>
+  <p class="hint">Saved as a draft. It becomes public only when you click Approve &amp; publish. Links, @handles and e-mails are removed automatically.</p>
+  <div class="form">
+    <div class="full"><label>Title (short and plain)</label><input id="t_title" value="${esc(t.title || '')}" placeholder="e.g. Fake pills sold with candy emoji codes"></div>
+    <div><label>Category</label><select id="t_cat">${S.ov.categories.map(c => `<option ${c === t.category ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select></div>
+    <div><label>How dangerous</label><select id="t_risk"><option value="high" ${t.risk === 'high' ? 'selected' : ''}>High (red)</option><option value="medium" ${t.risk === 'medium' ? 'selected' : ''}>Medium (orange)</option><option value="low" ${t.risk === 'low' ? 'selected' : ''}>Low (blue)</option></select></div>
+    <div class="full"><label>What it is</label><textarea id="t_sum">${esc(t.summary || '')}</textarea></div>
+    <div class="full"><label>Warning signs to look for</label><textarea id="t_signs">${esc(t.signs || '')}</textarea></div>
+    <div class="full"><label>Why it matters</label><textarea id="t_why">${esc(t.why || '')}</textarea></div>
+    <div class="full"><label>What to do</label><textarea id="t_do">${esc(t.what_to_do || '')}</textarea></div>
+    <div class="full"><label>Coded words, emoji or numbers (comma between each)</label><input id="t_terms" value="${esc((t.terms || []).join(', '))}"></div>
+    <div><label>Where it shows up (comma between each)</label><input id="t_plat" value="${esc((t.platforms || []).join(', '))}" placeholder="Instagram, TikTok, Telegram"></div>
+    <div><label>Cases SPEAR has seen</label><input id="t_cc" type="number" min="0" value="${t.case_count || 0}"></div>
+    <div><label>First seen</label><input id="t_fs" type="date" value="${t.first_seen || ''}"></div>
+    <div><label>Last seen</label><input id="t_ls" type="date" value="${t.last_seen || isoToday()}"></div>
+    <div class="full"><label>Who should know</label><div>${aud.map(a => `<label style="display:inline-flex;gap:6px;align-items:center;margin-right:14px;font-weight:600;color:var(--ink)"><input type="checkbox" class="aud" value="${a}" style="width:auto" ${(t.audiences || []).includes(a) ? 'checked' : ''}>${a}</label>`).join('')}</div></div>
+  </div>
+  <div class="acts"><button class="btn ok big" id="go">Save draft</button>${t.status === 'published' ? '<button class="btn pri big" id="go2">Save and keep published</button>' : ''}<button class="btn big" onclick="closeModal()">Cancel</button><span class="msg" id="m"></span></div>`);
+  const save = async keep => {
+    const g = i => document.getElementById(i).value;
+    const m = document.getElementById('m'); m.className = 'msg'; m.textContent = 'Saving…';
+    try {
+      const r = await post('/api/admin/trends', { id: t.id, keep_published: !!keep, title: g('t_title'), category: g('t_cat'), risk: g('t_risk'), summary: g('t_sum'), signs: g('t_signs'), why: g('t_why'), what_to_do: g('t_do'),
+        terms: g('t_terms'), platforms: g('t_plat'), case_count: +g('t_cc'), first_seen: g('t_fs'), last_seen: g('t_ls'), audiences: [...document.querySelectorAll('.aud:checked')].map(x => x.value) });
+      if (r.removed) alert(r.removed + ' link(s), handle(s) or e-mail(s) were removed to keep the entry safe.');
+      closeModal(); await load(); S.tab = 'trends'; S.tfilter = keep ? 'published' : 'draft'; drawTrends();
+    } catch (e) { m.className = 'msg err'; m.textContent = e.message; }
+  };
+  document.getElementById('go').onclick = () => save(false);
+  if (document.getElementById('go2')) document.getElementById('go2').onclick = () => save(true);
+}
+
+/* ------------------------------------------------------------------ plans */
+function drawPlans() {
+  const v = document.getElementById('view');
+  v.innerHTML = `<div class="card"><p class="hint" style="margin-top:0">These are the proposed prices from the Licensing &amp; Go-to-Market Plan. Change any number and click Save on that row. A change applies to every customer on that plan; for one customer only, use “Custom price” on their license.</p>
+  <div style="overflow-x:auto"><table><tr><th>Plan</th><th>Price ($)</th><th>Billing</th><th>People</th><th>Items / month</th><th>Over the limit</th><th>Includes</th><th></th></tr>
+  ${S.ov.plans.map(p => `<tr data-code="${esc(p.code)}"><td><input class="pn" value="${esc(p.name)}" style="width:170px;padding:6px;border:2px solid var(--line);border-radius:8px"><div class="hint">${esc(p.notes || '')}</div></td>
+    <td><input class="pp" value="${p.price_cents / 100}" style="width:100px;padding:6px;border:2px solid var(--line);border-radius:8px"></td>
+    <td><select class="pb">${[['monthly', 'per month'], ['annual', 'per year'], ['one_time', 'one time']].map(([k, l]) => `<option value="${k}" ${k === p.billing ? 'selected' : ''}>${l}</option>`).join('')}</select></td>
+    <td><input class="ps" type="number" min="1" value="${p.seats}" style="width:70px;padding:6px;border:2px solid var(--line);border-radius:8px"></td>
+    <td><input class="pi" type="number" min="0" value="${p.items_per_month}" style="width:90px;padding:6px;border:2px solid var(--line);border-radius:8px"></td>
+    <td><label style="display:flex;gap:6px;align-items:center"><input class="poa" type="checkbox" ${p.overage_allowed ? 'checked' : ''}> allow at $<input class="po" value="${p.overage_cents / 100}" style="width:60px;padding:6px;border:2px solid var(--line);border-radius:8px"> each</label><div class="hint">Unticked = stops at the limit</div></td>
+    <td>${Object.entries(S.ov.modules).map(([k, l]) => `<label style="display:block;white-space:nowrap"><input type="checkbox" class="pm" value="${k}" ${(p.modules || []).includes(k) ? 'checked' : ''}> ${esc(l)}</label>`).join('')}</td>
+    <td><button class="btn sm ok" data-save>Save</button><span class="msg"></span></td></tr>`).join('')}
+  </table></div></div>`;
+  v.querySelectorAll('[data-save]').forEach(b => b.onclick = async () => {
+    const tr = b.closest('tr'), q = s => tr.querySelector(s), msg = tr.querySelector('.msg');
+    try {
+      await post('/api/admin/lic/plans', { code: tr.dataset.code, name: q('.pn').value, price_cents: Math.round(parseFloat(q('.pp').value || 0) * 100), billing: q('.pb').value,
+        seats: +q('.ps').value, items_per_month: +q('.pi').value, overage_allowed: q('.poa').checked, overage_cents: Math.round(parseFloat(q('.po').value || 0) * 100),
+        modules: [...tr.querySelectorAll('.pm:checked')].map(x => x.value), notes: S.ov.plans.find(p => p.code === tr.dataset.code).notes });
+      msg.className = 'msg okm'; msg.textContent = 'Saved ✓'; S.ov = await api('/api/admin/lic/overview');
+    } catch (e) { msg.className = 'msg err'; msg.textContent = e.message; }
+  });
+}
+
+/* ------------------------------------------------------------------ billing */
+function drawBilling() {
+  const v = document.getElementById('view');
+  const m = new Date().toISOString().slice(0, 7);
+  v.innerHTML = `<div class="card"><h2 style="margin-top:0;color:var(--navy)">Billing sheet</h2>
+  <p>One row per customer for the month: the plan fee, how many items they used, anything over the limit, and the total. Use it to send invoices and for the quarterly royalty report.</p>
+  <div class="acts"><input id="bm" type="month" value="${m}" style="font-size:18px;padding:9px;border:2px solid var(--line);border-radius:10px"><button class="btn ok big" id="dl">Download the spreadsheet (CSV)</button><span class="msg" id="msg"></span></div></div>`;
+  v.querySelector('#dl').onclick = async () => {
+    const mon = v.querySelector('#bm').value, msg = v.querySelector('#msg');
+    try { const t = await api('/api/admin/lic/billing.csv?month=' + encodeURIComponent(mon));
+      const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([t], { type: 'text/csv' })); a.download = `spear-billing-${mon}.csv`; a.click();
+      msg.className = 'msg okm'; msg.textContent = 'Downloaded ✓'; } catch (e) { msg.className = 'msg err'; msg.textContent = e.message; }
+  };
+}
+
+/* ------------------------------------------------------------------ log */
+async function drawLog() {
+  const v = document.getElementById('view');
+  v.innerHTML = '<div class="empty">Loading…</div>';
+  const W = { 'company.create': 'Customer added', 'company.update': 'Customer details changed', 'license.renew': 'License renewed', 'license.suspend': 'License suspended',
+    'license.resume': 'License resumed', 'license.cancel': 'License cancelled', 'license.change_plan': 'Plan changed', 'license.set': 'Seats, items or dates changed',
+    'user.add': 'Person added', 'user.disable': 'Person turned off', 'user.enable': 'Person turned on', 'user.reset_key': 'New key made', 'user.role': 'Role changed',
+    'plan.save': 'Plan or price changed', 'trend.create': 'Trend written', 'trend.edit': 'Trend edited', 'trend.publish': 'Trend published', 'trend.retire': 'Trend taken down',
+    'trend.draft': 'Trend back to draft', 'trend.delete': 'Trend deleted', 'member.register': 'New Trends Watch member', 'member.suspend': 'Member suspended',
+    'member.activate': 'Member turned on', 'member.tier': 'Member level changed', 'member.reset_key': 'New member key made' };
+  try {
+    const r = await api('/api/admin/lic/audit?limit=200');
+    v.innerHTML = `<div class="card"><table><tr><th>When</th><th>What happened</th><th>Customer</th><th>By</th></tr>${r.events.map(e => `<tr><td class="hint">${when(e.at)}</td><td><b>${esc(W[e.action] || e.action)}</b></td><td>${esc(e.company_name || '')}</td><td>${esc(e.actor)}</td></tr>`).join('')}</table></div>`;
+  } catch (e) { v.innerHTML = `<div class="empty msg err">${esc(e.message)}</div>`; }
+}
+
+load();
+</script>
+<script id="spear-nav">
+/* The Project SPEAR control panel: the same left-hand menu on every page, same colours as the
+   Operational dashboard, so Eric can go from any page to any other in one click. */
+(function(){
+  if(document.getElementById('spside'))return;
+  var P=location.pathname.split('/').pop()||'index.html';
+  var here=/licenses\.html$/.test(P)?'licenses':/brand\.html$/.test(P)?'brand':/(report|brief)\.html$/.test(P)?'reports':'analysis';
+  var G='#2f7d5b',O='#c96a12',B='#1f5bb0',N='#0f2a5c',PU='#6a3fb5',M='#9c2a62';
+  var items=[];try{items=JSON.parse(localStorage.getItem('spear_items')||'[]')||[]}catch(e){}
+  var live=items.filter(function(i){return !i.archived});
+  var cnt={all:live.filter(function(i){return !i.status||i.status==='Pending'}).length,approved:live.filter(function(i){return i.status==='Confirmed'}).length,
+    specialist:live.filter(function(i){return i.status==='Escalated'}).length,reported:live.filter(function(i){return i.reportedAt}).length,archive:items.filter(function(i){return i.archived}).length};
+  function a(k,href,ic,label,c,n){return '<a class="sn'+(k===here?' on':'')+'" href="'+href+'" style="--c:'+c+'"><span class="ic">'+ic+'</span><span class="tx">'+label+'</span>'+(n?'<span class="ct">'+n+'</span>':'')+'</a>'}
+  function g(t,c){return '<div class="sg"'+(c?' style="--c:'+c+'"':'')+'>'+(c?'<i></i>':'')+t+'</div>'}
+  var html='<div class="sb"><a href="ops.html#ops" style="color:inherit;text-decoration:none">Project Spear</a><small>CONTENT MODERATION PLATFORM</small></div>'+
+    g('Dashboards')+a('ops','ops.html#ops','▦','Operational view',G)+a('exec','ops.html#exec','↗','Executive view',O)+
+    g('Case management',B)+a('analysis','./','✳','Agent analysis',N)+a('brand','brand.html','◆','Brand safety',PU)+
+    a('all','ops.html#all','☰','All open cases',B,cnt.all)+a('approved','ops.html#approved','✓','Human approved',B,cnt.approved)+
+    a('specialist','ops.html#specialist','◷','Specialist queue',B,cnt.specialist)+a('reported','ops.html#reported','▤','Reported to Meta',B,cnt.reported)+
+    a('takedown','ops.html#takedown','⤓','Takedowns',B)+a('meta','ops.html#meta','ⓜ','Meta files',B)+a('archive','ops.html#archive','🗂','Archive',B,cnt.archive)+
+    g('Business',G)+a('licenses','licenses.html','🔑','Customers &amp; licenses',G)+a('trendsw','trends.html','📣','Trends Watch',G)+g('Agent management',M)+a('cost','ops.html#cost','$','Cost analysis',M)+a('console','ops.html#console','⌘','Agent console',M)+a('memory','ops.html#memory','◈','Agent memory',M)+
+    '<details class="sw"><summary>'+g('Analyst workspace',N)+'</summary>'+
+    a('x','./#capture','⊕','Capture &amp; analyze',N)+a('x','./#tab=ai','✦','AI chat',N)+a('x','./#tab=log','▣','Log',N)+a('x','./#tab=cb','✎','Codebook &amp; teach',N)+a('x','./#tab=lib','▥','Library',N)+a('x','./#tab=hunt','◎','Active Hunt',N)+'</details>';
+  var css='#spside{position:fixed;left:0;top:0;bottom:0;width:224px;background:#f5f7fb;border-right:1px solid #e3e8ef;overflow-y:auto;padding:14px 10px 24px;z-index:900;font:14px/1.2 Inter,system-ui,"Segoe UI",Arial,sans-serif;box-sizing:border-box}'+
+    'html body{padding-left:224px!important}'+
+    '#spside .sb{font:800 19px/1.1 Inter,system-ui,Arial,sans-serif;color:#0f1d33;padding:2px 8px 14px}#spside .sb small{display:block;font:600 9.5px/1.4 ui-monospace,Menlo,monospace;letter-spacing:1.6px;color:#6b7785;margin-top:3px}'+
+    '#spside .sg{display:flex;align-items:center;gap:7px;font:600 10.5px/1 ui-monospace,Menlo,monospace;letter-spacing:1.4px;text-transform:uppercase;color:var(--c,#8a94a3);margin:16px 8px 6px}#spside .sg i{width:8px;height:8px;border-radius:2px;background:var(--c)}'+
+    '#spside a.sn{display:flex;align-items:center;gap:10px;padding:8px 10px;margin:1px 0;border-radius:8px;color:var(--c);text-decoration:none;font-weight:600}'+
+    '#spside a.sn .ic{width:18px;text-align:center;font-weight:700}#spside a.sn .ct{margin-left:auto;font:700 11px ui-monospace,Menlo,monospace;color:#6b7785}'+
+    '#spside a.sn:hover{background:#fff}#spside a.sn.on{background:#fff;box-shadow:inset 4px 0 0 var(--c),0 1px 3px rgba(15,42,92,.1);color:var(--c)}'+
+    '#spside details.sw summary{list-style:none;cursor:pointer}#spside details.sw summary::-webkit-details-marker{display:none}#spside details.sw summary .sg::after{content:"▸";margin-left:4px}#spside details.sw[open] summary .sg::after{content:"▾"}'+
+    '#spmenu{display:none;position:fixed;left:10px;top:10px;z-index:901;font:700 13px/1 Inter,Arial,sans-serif;background:#0f1d33;color:#fff;border:0;border-radius:8px;padding:9px 12px;cursor:pointer}'+
+    '@media (max-width:900px){html body{padding-left:0!important}#spside{transform:translateX(-105%);transition:transform .2s;box-shadow:6px 0 24px rgba(0,0,0,.18)}#spside.open{transform:none}#spmenu{display:block}}'+
+    '@media print{#spside,#spmenu{display:none!important}html body{padding-left:0!important}}'+
+    /* the menu now carries these links, so the page headers stay clean */
+    'header a[href="ops.html"],header a[href="brand.html"],.top a[href="ops.html"],.top a[href="./"]{display:none!important}';
+  var st=document.createElement('style');st.id='spside-css';st.textContent=css;document.head.appendChild(st);
+  var n=document.createElement('nav');n.id='spside';n.setAttribute('aria-label','Project SPEAR menu');n.innerHTML=html;
+  document.body.insertBefore(n,document.body.firstChild);
+  var b=document.createElement('button');b.id='spmenu';b.type='button';b.textContent='☰ Menu';b.onclick=function(){n.classList.toggle('open')};document.body.appendChild(b);
+  var old=document.getElementById('spnav');if(old)old.remove();
+})();
+</script>
+<script id="spear-update">
+/* Auto-update: every few minutes the page checks whether a new version of SPEAR has been published.
+   If so, a banner offers "Update now". When nothing is in progress (no upload or scan running, nothing
+   being typed, the page idle for two minutes or in the background) it refreshes by itself. */
+(function(){
+  if(window.__spearUpd)return;window.__spearUpd=1;
+  var base=null,ready=false,last=Date.now();
+  ['mousemove','keydown','click','scroll','touchstart'].forEach(function(e){window.addEventListener(e,function(){last=Date.now()},{passive:true})});
+  function h(s){var x=0;for(var i=0;i<s.length;i++)x=(x*31+s.charCodeAt(i))|0;return s.length+':'+x}
+  function fetchSelf(){return fetch(location.pathname+'?v='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null}).catch(function(){return null})}
+  function busy(){
+    var b=document.getElementById('busyBar');if(b&&b.style.display!=='none'&&b.offsetParent!==null)return true;
+    var a=document.activeElement;if(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)&&String(a.value||'').trim())return true;
+    if(document.querySelector('.drawer.on,.arcm.on'))return true;
+    return false}
+  function banner(){
+    if(document.getElementById('updbar'))return;
+    var d=document.createElement('div');d.id='updbar';
+    d.style.cssText='position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:99990;background:#0f1d33;color:#fff;border-radius:12px;padding:12px 16px;display:flex;gap:12px;align-items:center;box-shadow:0 10px 30px rgba(0,0,0,.25);font:600 14px/1.3 Inter,system-ui,Arial,sans-serif;max-width:92vw';
+    d.innerHTML='<span>✨ A new version of SPEAR is ready.</span><button type="button" style="font:700 13px Inter,Arial,sans-serif;background:#2f7d5b;color:#fff;border:0;border-radius:8px;padding:8px 14px;cursor:pointer">Update now</button><button type="button" aria-label="Later" style="background:none;border:0;color:#9fb0c8;font:600 13px Inter,Arial,sans-serif;cursor:pointer">Later</button>';
+    d.children[1].onclick=function(){location.reload()};d.children[2].onclick=function(){d.remove()};
+    document.body.appendChild(d)}
+  function tick(){
+    fetchSelf().then(function(t){if(!t)return;var v=h(t);if(base===null){base=v;return}
+      if(v!==base)ready=true;
+      if(!ready)return;banner();
+      if(!busy()&&(document.hidden||Date.now()-last>120000))location.reload()})}
+  setTimeout(tick,5000);setInterval(tick,180000);
+  document.addEventListener('visibilitychange',function(){if(!document.hidden)tick()});
+})();
+</script>
+<script id="spear-aimode">
+/* AI mode switch (top of the side menu on every page): 🧪 Test = free Gemini, no charge — for testing
+   and teaching. ✅ Official = paid Gemini from the prepaid balance — for real cases. One click switches;
+   the server keeps the setting, so every page and device follows it. */
+(function(){
+  if(window.__spearMode)return;window.__spearMode=1;
+  var API=(localStorage.getItem('spear_api')||'https://project-spear-backend.onrender.com').replace(/\/$/,'');
+  function key(){return localStorage.getItem('spear_key')||''}
+  var S=null;
+  var css='#aimode{margin:4px 6px 10px;border-radius:10px;padding:9px 10px;font:600 12px/1.3 Inter,system-ui,Arial,sans-serif;cursor:pointer;border:1.5px solid;user-select:none}'+
+    '#aimode b{display:block;font-size:12.5px;letter-spacing:.3px}#aimode small{display:block;font-weight:500;opacity:.85;margin-top:2px}'+
+    '#aimode{display:flex;align-items:center;gap:10px}#aimode .sw{flex:none;width:38px;height:22px;border-radius:11px;background:rgba(255,255,255,.35);position:relative}#aimode .sw i{position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .15s}#aimode.official .sw i{left:19px}'+
+    '#aimode.official{background:#c0262d;border-color:#c0262d;color:#fff}#aimode.test{background:#f5c518;border-color:#e0b000;color:#3b2a06}#aimode.test .sw{background:rgba(0,0,0,.2)}#aimode.off{background:#f1f3f6;border-color:#c9d2df;color:#5b6678}'+
+    '#aimribbon{position:fixed;top:0;left:0;right:0;height:4px;background:repeating-linear-gradient(45deg,#e8a33d 0 12px,#f5c46b 12px 24px);z-index:99991}';
+  var st=document.createElement('style');st.textContent=css;document.head.appendChild(st);
+  function host(){return document.querySelector('#spside .sb')||document.querySelector('aside.side .brand')}
+  function paint(){
+    var h=host();if(!h)return false;var el=document.getElementById('aimode');
+    if(!el){el=document.createElement('div');el.id='aimode';el.setAttribute('role','button');el.title='Switch between Test (free) and Official (paid) AI';h.insertAdjacentElement('afterend',el);el.onclick=toggle}
+    if(!S){el.className='off';el.innerHTML='<b>AI mode</b><small>'+(key()?'checking…':'open the setup link on this device')+'</small>';return true}
+    if(S.mode==='test'){el.className='test';el.innerHTML='<span class="sw"><i></i></span><span><b>🧪 TEST MODE · free</b><small>Paid AI is OFF. For testing &amp; teaching. Click to turn ON.</small></span>'}
+    else{el.className='official';el.innerHTML='<span class="sw"><i></i></span><span><b>✅ OFFICIAL · paid ON</b><small>For real cases. Uses the prepaid balance. Click to turn OFF.</small></span>'}
+    var rb=document.getElementById('aimribbon');if(S.mode==='test'&&!rb){rb=document.createElement('div');rb.id='aimribbon';rb.title='Test mode — free AI';document.body.appendChild(rb)}else if(S.mode!=='test'&&rb)rb.remove();
+    return true}
+  function load(){if(!key())return paint();fetch(API+'/api/ai-mode',{headers:{'X-Spear-Key':key()}}).then(function(r){return r.ok?r.json():null}).then(function(j){if(j&&j.mode){S=j}paint()}).catch(function(){paint()})}
+  function toggle(){
+    if(!S){load();return}
+    var to=S.mode==='test'?'official':'test';
+    if(to==='test'&&!S.free_ready){alert('Test mode is not set up yet: a free Gemini key (GEMINI_FREE_API_KEY) has to be added on the server first.');return}
+    var msg=to==='official'?'Switch to OFFICIAL (paid)?\n\nUse this for real cases. AI calls are paid from the prepaid Gemini balance.'
+      :'Switch to TEST mode (free)?\n\nUse this for testing and teaching SPEAR. No charge.\nNote: on Google’s free tier, uploaded content may be used to improve Google’s products — switch back to Official for real client or Meta evidence.';
+    if(!confirm(msg))return;
+    fetch(API+'/api/ai-mode',{method:'POST',headers:{'X-Spear-Key':key(),'Content-Type':'application/json'},body:JSON.stringify({mode:to,by:localStorage.getItem('spear_author')||''})})
+      .then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j}})}).then(function(x){if(!x.ok){alert('Not switched: '+((x.j&&x.j.detail)||'server error'));return}S=x.j;paint()})
+      .catch(function(){alert('Could not reach the SPEAR server — try again in a moment.')})}
+  var n=0,t=setInterval(function(){if(paint()||++n>60){clearInterval(t);load()}},250);
+  setInterval(load,120000);document.addEventListener('visibilitychange',function(){if(!document.hidden)load()});
+})();
+</script>
+
+</body>
+</html>

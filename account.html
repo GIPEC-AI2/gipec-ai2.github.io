@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SPEAR Customer Portal — GIPEC AI²</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#0f2a5c;--ink:#1b2433;--muted:#5d6878;--line:#dfe4ec;--bg:#f4f6fa;--green:#1f8a4c;--green-bg:#e6f6ec;
+  --amber:#b86e00;--amber-bg:#fff3dc;--red:#c62f2f;--red-bg:#fdeaea;--blue:#1f5bb0;--blue-bg:#e9f0fd}
+*{box-sizing:border-box}
+body{margin:0;font:17px/1.6 Inter,system-ui,"Segoe UI",Arial,sans-serif;color:var(--ink);background:var(--bg)}
+button,input,select,textarea{font:inherit}
+header{background:linear-gradient(120deg,#0f2a5c 0%,#16357a 60%,#1f5bb0 100%);color:#fff;padding:18px 20px}
+header .in{max-width:1150px;margin:0 auto;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+header .mark{font-weight:800;letter-spacing:1.5px}header .mark b{color:#7fd3f2}
+header .t{font-size:15px;opacity:.85}header .sp{flex:1}
+.wrap{max-width:1150px;margin:0 auto;padding:18px 16px 60px}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px 20px;margin-bottom:14px}
+h2{margin:0 0 8px;color:var(--navy);font-size:23px}
+h3{margin:16px 0 6px;color:var(--navy);font-size:18px}
+.btn{border:2px solid var(--line);background:#fff;border-radius:12px;padding:10px 18px;cursor:pointer;font-weight:700;color:var(--navy)}
+.btn.pri{background:var(--blue);border-color:var(--blue);color:#fff}.btn.ok{background:var(--green);border-color:var(--green);color:#fff}
+.btn.no{border-color:var(--red);color:var(--red)}.btn.sm{font-size:14px;padding:5px 11px}.btn:disabled{opacity:.5}
+input[type=password],textarea{width:100%;border:2px solid var(--line);border-radius:10px;padding:11px 13px;font-size:17px}
+.msg{font-weight:700}.msg.err{color:var(--red)}.msg.okm{color:var(--green)}
+.hint{font-size:15px;color:var(--muted)}
+.status{border-left:10px solid var(--green)}.status.amber{border-left-color:var(--amber)}.status.red{border-left-color:var(--red)}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:10px}
+.fact{background:var(--bg);border-radius:10px;padding:9px 12px}.fact b{display:block;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px}.fact span{font-size:18px;font-weight:700}
+.bar{height:12px;background:#e6eaf0;border-radius:6px;overflow:hidden;margin-top:6px}.bar i{display:block;height:100%;background:var(--green)}.bar i.a{background:var(--amber)}.bar i.r{background:var(--red)}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px}
+.tab{border:2px solid var(--line);background:#fff;border-radius:12px;padding:9px 16px;font-weight:700;cursor:pointer;color:var(--navy)}
+.tab.on{background:var(--navy);border-color:var(--navy);color:#fff}
+.drop{border:3px dashed #1f4fb3;background:#f3f7ff;border-radius:16px;text-align:center;padding:26px 16px;cursor:pointer}
+.drop b{font-size:22px;color:#10213f;display:block}
+.thumbs{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;justify-content:center}.thumbs img{height:90px;border-radius:8px;border:1px solid var(--line)}
+.verdict{border-radius:12px;padding:12px 14px;font-size:19px;font-weight:700;margin:10px 0}
+.verdict.y{background:var(--red-bg);color:var(--red)}.verdict.n{background:var(--green-bg);color:var(--green)}.verdict.m{background:var(--amber-bg);color:var(--amber)}
+.case{display:flex;gap:12px;align-items:center;border-bottom:1px solid #edf0f4;padding:10px 0}.case img{width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid var(--line)}
+.case .tt{flex:1}
+table{width:100%;border-collapse:collapse;font-size:15px}th{text-align:left;font-size:13px;color:var(--muted);border-bottom:2px solid var(--line);padding:6px}td{border-bottom:1px solid #edf0f4;padding:7px 6px;vertical-align:top}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}@media (max-width:700px){.kpis{grid-template-columns:repeat(2,1fr)}}
+.kpi{background:var(--bg);border-radius:10px;padding:10px 12px}.kpi .v{font-size:28px;font-weight:800;color:var(--navy)}.kpi .l{font-size:14px;color:var(--muted)}
+.spin{display:inline-block;width:16px;height:16px;border:3px solid #c9d6ee;border-top-color:var(--blue);border-radius:50%;animation:s 1s linear infinite;vertical-align:-2px;margin-right:8px}@keyframes s{to{transform:rotate(360deg)}}
+@media print{header,.tabs,.noprint{display:none!important}body{background:#fff}.card{border:none}}
+</style>
+</head>
+<body>
+<header><div class="in"><span class="mark">GIPEC AI<b>²</b></span><span class="t">Project SPEAR · Customer portal</span><span class="sp"></span><span id="who" class="t"></span></div></header>
+<div class="wrap" id="app"><div class="card">Loading…</div></div>
+<script>
+const LS = { get: k => { try { return localStorage.getItem(k) } catch (e) { return null } }, set: (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v) } catch (e) {} } };
+const BASE = (LS.get('spear_api') || 'https://project-spear-backend.onrender.com').replace(/\/$/, '');
+let KEY = LS.get('spear_customer_key') || '';
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const day = s => { if (!s) return '—'; const d = new Date(String(s).length === 10 ? s + 'T12:00:00' : s); return isNaN(d) ? '—' : d.toLocaleDateString([], { dateStyle: 'medium' }); };
+const app = document.getElementById('app');
+const S = { me: null, tab: '', files: [], cases: [], report: null };
+
+async function api(path, opt = {}) {
+  const r = await fetch(BASE + path, { ...opt, headers: { 'X-Spear-Key': KEY, 'Content-Type': 'application/json', ...(opt.headers || {}) } });
+  if (!r.ok) { let d = ''; try { d = (await r.json()).detail } catch (e) {} const er = new Error(d || ('Error ' + r.status)); er.status = r.status; throw er; }
+  return (r.headers.get('content-type') || '').includes('json') ? r.json() : r.text();
+}
+
+function signIn(note) {
+  document.getElementById('who').textContent = '';
+  app.innerHTML = `<div class="card" style="max-width:640px;margin:20px auto">
+    <h2>Sign in</h2><p>Paste the access key GIPEC sent you. You only need to do this once on each device.</p>
+    <input type="password" id="k" placeholder="spk_…" autocomplete="off">
+    <div style="margin-top:12px"><button class="btn pri" id="go">Sign in</button> <span class="msg err" id="m">${esc(note || '')}</span></div>
+    <p class="hint">No key yet? Contact GIPEC AI² to set up your organization's license.</p></div>`;
+  document.getElementById('go').onclick = async () => { KEY = document.getElementById('k').value.trim(); LS.set('spear_customer_key', KEY); start(); };
+}
+
+async function start() {
+  if (!KEY) return signIn();
+  try { S.me = await api('/api/me'); }
+  catch (e) { if (e.status === 401) { LS.set('spear_customer_key', null); KEY = ''; return signIn(e.message); }
+    app.innerHTML = `<div class="card msg err">SPEAR is not reachable right now (${esc(e.message)}). It may be waking up; try again in a minute.</div>`; return; }
+  if (S.me.kind !== 'customer') { return signIn('That is not a customer key.'); }
+  document.getElementById('who').textContent = S.me.user + ' · ' + S.me.company;
+  const mods = S.me.modules.map(m => m.code);
+  const tabs = [];
+  if (mods.includes('analyze')) tabs.push(['analyze', 'Analyze a post'], ['cases', 'My cases']);
+  if (mods.includes('brand')) tabs.push(['brand', 'Brand safety']);
+  if (mods.includes('trends')) tabs.push(['trends', 'Trends Watch']);
+  if (!S.tab || !tabs.find(t => t[0] === S.tab)) S.tab = tabs.length ? tabs[0][0] : '';
+  const color = S.me.state === 'active' ? (S.me.warn || (S.me.days_left != null && S.me.days_left <= 30) ? 'amber' : '') : 'red';
+  const pct = S.me.items_limit ? Math.min(100, Math.round(100 * S.me.items_used / S.me.items_limit)) : 0;
+  app.innerHTML = `
+  <div class="card status ${color}">
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><h2 style="margin:0;flex:1">${esc(S.me.company)}</h2><span class="msg ${color === 'red' ? 'err' : color ? '' : 'okm'}">${esc(S.me.state_text)}</span></div>
+    <div class="facts">
+      <div class="fact"><b>Plan</b><span>${esc(S.me.plan || '—')}</span></div>
+      <div class="fact"><b>License ends</b><span>${day(S.me.ends_on)}</span><div class="hint">${S.me.days_left != null && S.me.days_left >= 0 ? S.me.days_left + ' days left' : ''}</div></div>
+      <div class="fact"><b>Analyses this month</b><span>${S.me.items_used} of ${S.me.items_limit}</span><div class="bar"><i class="${pct >= 100 ? 'r' : pct >= 80 ? 'a' : ''}" style="width:${pct}%"></i></div>
+        ${pct >= 100 ? `<div class="hint">${S.me.overage_allowed ? 'Over the monthly allowance; extra analyses are billed per item.' : 'Monthly allowance used. Contact GIPEC to add more.'}</div>` : pct >= 80 ? '<div class="hint">Getting close to this month\'s allowance.</div>' : ''}</div>
+      <div class="fact"><b>Your access</b><span style="text-transform:capitalize">${esc(S.me.role)}</span><div class="hint">${S.me.seats_used} of ${S.me.seats} people</div></div>
+    </div>
+  </div>
+  <div class="tabs noprint">${tabs.map(([k, l]) => `<button class="tab ${k === S.tab ? 'on' : ''}" data-t="${k}">${l}</button>`).join('')}<span style="flex:1"></span><button class="tab" id="out">Sign out</button></div>
+  <div id="view"></div>`;
+  app.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { S.tab = b.dataset.t; app.querySelectorAll('[data-t]').forEach(x => x.classList.toggle('on', x === b)); draw(); });
+  document.getElementById('out').onclick = () => { if (confirm('Sign out on this device?')) { LS.set('spear_customer_key', null); KEY = ''; signIn(); } };
+  draw();
+}
+
+function draw() { ({ analyze: drawAnalyze, cases: drawCases, brand: drawBrand, trends: drawTrends })[S.tab]?.(); }
+const V = () => document.getElementById('view');
+
+/* ------------------------------------------------------------ analyze */
+function drawAnalyze() {
+  const ro = S.me.role === 'viewer' || S.me.state !== 'active';
+  V().innerHTML = `<div class="card">
+    ${ro ? `<p class="msg err">${S.me.role === 'viewer' ? 'Your account is view-only.' : esc(S.me.state_text)}</p>` : ''}
+    <div class="drop" id="drop"><b>Drop screenshots of one post here</b><div>Up to 6 pictures of the same post (for example several frames of one video). SPEAR reads them together.</div>
+      <button class="btn pri" style="margin-top:12px" ${ro ? 'disabled' : ''}>Choose pictures</button><input type="file" id="f" accept="image/*" multiple style="display:none"><div class="thumbs" id="th"></div></div>
+    <h3>Anything we should know? (optional)</h3><textarea id="notes" rows="3" placeholder="Where you found it, what worried you, the account name…"></textarea>
+    <div style="margin-top:12px"><button class="btn ok" id="run" ${ro ? 'disabled' : ''}>Write the SPEAR report</button> <span id="st" class="hint"></span></div>
+    <p class="hint">Each report counts as one analysis on your plan. Pictures of children being harmed must never be uploaded; report them to the NCMEC CyberTipline (report.cybertip.org).</p></div>
+    <div id="out"></div>`;
+  const f = document.getElementById('f'), drop = document.getElementById('drop');
+  drop.onclick = e => { if (e.target.tagName !== 'INPUT' && !ro) f.click(); };
+  drop.ondragover = e => e.preventDefault();
+  drop.ondrop = e => { e.preventDefault(); if (!ro) addFiles(e.dataTransfer.files); };
+  f.onchange = () => addFiles(f.files);
+  document.getElementById('run').onclick = run;
+  if (S.report) document.getElementById('out').innerHTML = reportHtml(S.report, true);
+  thumbs();
+}
+function thumbs() { const t = document.getElementById('th'); if (t) t.innerHTML = S.files.map(u => `<img src="${u}" alt="">`).join(''); }
+async function addFiles(list) {
+  for (const file of [...list].slice(0, 6 - S.files.length)) {
+    if (!file.type.startsWith('image/')) continue;
+    S.files.push(await shrink(file, 1600));
+  }
+  thumbs();
+}
+function shrink(file, max) {
+  return new Promise(res => { const img = new Image(); img.onload = () => { const s = Math.min(1, max / Math.max(img.width, img.height)); const c = document.createElement('canvas');
+    c.width = Math.round(img.width * s); c.height = Math.round(img.height * s); c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); res(c.toDataURL('image/jpeg', .85)); URL.revokeObjectURL(img.src); };
+    img.src = URL.createObjectURL(file); });
+}
+async function run() {
+  const st = document.getElementById('st');
+  if (!S.files.length) { st.innerHTML = '<span class="msg err">Add at least one picture.</span>'; return; }
+  document.getElementById('run').disabled = true;
+  st.innerHTML = '<span class="spin"></span>Writing the report… this takes about 1–2 minutes.';
+  try {
+    const r = await api('/api/deep-report', { method: 'POST', body: JSON.stringify({ images: S.files, analyst_notes: document.getElementById('notes').value }) });
+    const thumb = await shrink(await (await fetch(S.files[0])).blob(), 360);
+    S.report = { id: 'r' + Date.now(), created_at: new Date().toISOString(), thumb, report: r.report };
+    st.textContent = ''; S.files = [];
+    document.getElementById('out').innerHTML = reportHtml(S.report, true); thumbs(); bindReport();
+    S.me = await api('/api/me').catch(() => S.me);
+  } catch (e) { st.innerHTML = `<span class="msg err">${esc(e.message)}</span>`; }
+  document.getElementById('run').disabled = false;
+}
+function vclass(a) { a = String(a || '').toLowerCase(); return a.startsWith('yes') ? 'y' : a.startsWith('no') ? 'n' : 'm'; }
+function reportHtml(c, canSave) {
+  const r = c.report || {}, v = r.verdict || {}, pc = r.public_concern || {}, ms = r.missed || {};
+  return `<div class="card">
+    <div class="noprint" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">${canSave ? '<button class="btn ok" id="save">Save to my cases</button>' : ''}<button class="btn" onclick="window.print()">Print / save as PDF</button></div>
+    <div style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap">${c.thumb ? `<img src="${c.thumb}" style="width:160px;border-radius:10px;border:1px solid var(--line)" alt="">` : ''}
+      <div style="flex:1;min-width:240px"><h2>${esc(r.title || 'SPEAR report')}</h2><div class="hint">${esc(r.platform || '')} ${r.account ? '· ' + esc(r.account) : ''} · ${day(c.created_at)}</div>
+      ${v.answer ? `<div class="verdict ${vclass(v.answer)}">${esc(v.question ? v.question + ' — ' : '')}${esc(v.answer)}</div>` : ''}</div></div>
+    ${v.summary ? `<p>${esc(v.summary)}</p>` : ''}
+    ${r.threat_assessment ? `<h3>Why it is dangerous</h3><p>${esc(r.threat_assessment)}</p>` : ''}
+    ${pc.answer ? `<h3>Should the public be concerned? · ${esc(pc.level || '')}</h3><p><b>${esc(pc.answer)}</b> ${esc(pc.summary || '')}</p>` : ''}
+    ${(r.context || []).length ? `<h3>Context</h3>${r.context.map(x => `<p><b>${esc(x.title)}.</b> ${esc(x.text)}</p>`).join('')}` : ''}
+    ${(ms.tactics || []).length ? `<h3>How it avoids automated moderation</h3>${ms.intro ? `<p>${esc(ms.intro)}</p>` : ''}${ms.tactics.map(t => `<p><b>${esc(t.title)}.</b> ${esc(t.tactic)} ${esc(t.why_missed)}</p>`).join('')}` : ''}
+    ${v.platform_context ? `<h3>Platform rules</h3><p>${esc(v.platform_context)}</p>` : ''}
+    <p class="hint">Written by GIPEC AI² Project SPEAR. © 2026 GIPEC AI². Patent pending. Confidential.</p></div>`;
+}
+function bindReport() {
+  const b = document.getElementById('save'); if (!b) return;
+  b.onclick = async () => { try { await api('/api/t/cases', { method: 'POST', body: JSON.stringify({ cases: [S.report] }) }); b.textContent = 'Saved ✓'; b.disabled = true; } catch (e) { alert(e.message); } };
+}
+
+/* ------------------------------------------------------------ cases */
+async function drawCases() {
+  V().innerHTML = '<div class="card">Loading…</div>';
+  try { S.cases = (await api('/api/t/cases')).cases; } catch (e) { V().innerHTML = `<div class="card msg err">${esc(e.message)}</div>`; return; }
+  V().innerHTML = `<div class="card"><h2>My cases</h2>${S.cases.length ? S.cases.map((c, i) => `<div class="case">${c.thumb ? `<img src="${c.thumb}" alt="">` : ''}
+    <div class="tt"><b>${esc((c.report || {}).title || 'Report')}</b><div class="hint">${day(c.created_at)} · ${esc(((c.report || {}).verdict || {}).answer || '')}</div></div>
+    <button class="btn sm" data-o="${i}">Open</button>${S.me.role !== 'viewer' ? `<button class="btn sm no" data-d="${i}">Delete</button>` : ''}</div>`).join('') : '<p class="hint">No saved cases yet. Reports you save from “Analyze a post” appear here. Only people in your organization can see them.</p>'}</div><div id="one"></div>`;
+  V().querySelectorAll('[data-o]').forEach(b => b.onclick = () => { document.getElementById('one').innerHTML = reportHtml(S.cases[+b.dataset.o], false); document.getElementById('one').scrollIntoView({ behavior: 'smooth' }); });
+  V().querySelectorAll('[data-d]').forEach(b => b.onclick = async () => { const c = S.cases[+b.dataset.d]; if (!confirm('Delete this case?')) return;
+    try { await api(`/api/t/cases/${encodeURIComponent(c.id)}/delete`, { method: 'POST' }); drawCases(); } catch (e) { alert(e.message); } });
+}
+
+/* ------------------------------------------------------------ brand */
+async function drawBrand() {
+  const ids = S.me.brand_clients || [];
+  if (!ids.length) { V().innerHTML = '<div class="card"><h2>Brand safety</h2><p>GIPEC has not linked a brand to your account yet. Contact GIPEC to set up monitoring.</p></div>'; return; }
+  V().innerHTML = `<div class="card noprint"><label class="hint">Brand <select id="bsel" style="font-size:17px;padding:6px;border-radius:8px">${ids.map(i => `<option>${esc(i)}</option>`).join('')}</select></label>
+    <label class="hint" style="margin-left:12px">Period <select id="bdays" style="font-size:17px;padding:6px;border-radius:8px"><option value="7">Last 7 days</option><option value="30" selected>Last 30 days</option><option value="90">Last 90 days</option></select></label></div><div id="brep"></div>`;
+  const go = async () => {
+    const tid = document.getElementById('bsel').value, days = document.getElementById('bdays').value, box = document.getElementById('brep');
+    box.innerHTML = '<div class="card"><span class="spin"></span>Loading the report…</div>';
+    try {
+      const r = await api(`/api/brand/tenants/${encodeURIComponent(tid)}/report?days=${days}`);
+      const conf = r.confirmed || [];
+      box.innerHTML = `<div class="card"><div class="noprint" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px"><button class="btn" id="csv">Download exclusion list (CSV)</button><button class="btn" onclick="window.print()">Print / save as PDF</button></div>
+        <h2>${esc((r.client || {}).brand || (r.client || {}).codename || tid)} · Brand safety report</h2><div class="hint">${day(r.since)} – ${day(r.generated_at)}</div>
+        <div class="kpis" style="margin-top:12px"><div class="kpi"><div class="v">${(r.screened || 0).toLocaleString()}</div><div class="l">Public posts screened</div></div>
+          <div class="kpi"><div class="v">${conf.length}</div><div class="l">Confirmed by an analyst</div></div>
+          <div class="kpi"><div class="v">${(r.severity || {}).high || 0}</div><div class="l">High severity</div></div>
+          <div class="kpi"><div class="v">${(r.exclusions || []).length}</div><div class="l">Recommended exclusions</div></div></div>
+        <h3>Confirmed incidents</h3>${conf.length ? `<table><tr><th>Date</th><th>Platform / account</th><th>Category</th><th>Severity</th><th>What it shows</th></tr>${conf.map(i => `<tr><td>${day(i.when || i.detected_at)}</td><td>${esc(i.platform || '')}<br>${esc(i.poster || '')}</td><td>${esc(i.risk_category || '')}</td><td>${esc(i.score)}/10</td><td>${esc((i.text || i.title || '').slice(0, 280))}</td></tr>`).join('')}</table>` : '<p class="hint">None confirmed in this period.</p>'}
+        <h3>Recommended exclusions</h3>${(r.exclusions || []).length ? `<table><tr><th>Type</th><th>Value</th><th>Incidents</th></tr>${r.exclusions.slice(0, 40).map(x => `<tr><td>${esc(x.type)}</td><td>${esc(x.value)}</td><td>${esc(x.incidents)}</td></tr>`).join('')}</table>` : '<p class="hint">None yet.</p>'}
+        <p class="hint">Every incident was reviewed and confirmed by a GIPEC analyst. Public sources only. © 2026 GIPEC AI². Patent pending. Confidential.</p></div>`;
+      document.getElementById('csv').onclick = async () => { try { const t = await api(`/api/brand/tenants/${encodeURIComponent(tid)}/exclusions.csv?days=${days}`);
+        const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([t], { type: 'text/csv' })); a.download = 'exclusion-list.csv'; a.click(); } catch (e) { alert(e.message); } };
+    } catch (e) { box.innerHTML = `<div class="card msg err">${esc(e.message)}</div>`; }
+  };
+  document.getElementById('bsel').onchange = go; document.getElementById('bdays').onchange = go; go();
+}
+
+/* ------------------------------------------------------------ trends */
+function drawTrends() {
+  V().innerHTML = `<div class="card"><h2>Trends Watch</h2><p>The library of dangerous online trends that GIPEC analysts have reviewed and published: what each one is, the warning signs, coded words, and what to do.</p>
+    <p>Your SPEAR access key works there. Open it, choose <b>Already a member?</b> and paste the same key.</p>
+    <a class="btn pri" href="trends.html" target="_blank" rel="noopener" style="text-decoration:none;display:inline-block">Open Trends Watch ↗</a></div>`;
+}
+
+start();
+</script>
+</body>
+</html>

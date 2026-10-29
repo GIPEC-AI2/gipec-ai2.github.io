@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trends Watch — GIPEC AI² Project SPEAR</title>
+<meta name="description" content="Plain-language alerts about dangerous online trends: coded hate symbols, extremist recruitment, counterfeit pills and threats to children. Reviewed by GIPEC analysts.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#0f2a5c;--ink:#1b2433;--muted:#5d6878;--line:#dfe4ec;--bg:#f4f6fa;--green:#1f8a4c;--green-bg:#e6f6ec;
+  --amber:#b86e00;--amber-bg:#fff3dc;--red:#c62f2f;--red-bg:#fdeaea;--blue:#1f5bb0;--blue-bg:#e9f0fd}
+*{box-sizing:border-box}
+body{margin:0;font:18px/1.6 Inter,system-ui,"Segoe UI",Arial,sans-serif;color:var(--ink);background:var(--bg)}
+button,input,select,textarea{font:inherit}
+header{background:linear-gradient(120deg,#0f2a5c 0%,#16357a 60%,#1f5bb0 100%);color:#fff;padding:26px 20px 30px}
+header .in{max-width:1100px;margin:0 auto}
+header .mark{font-weight:800;letter-spacing:1.5px;font-size:14px;opacity:.9}
+header .mark b{color:#7fd3f2}
+header h1{margin:6px 0 4px;font-size:34px;line-height:1.2}
+header p{margin:0;font-size:19px;opacity:.92;max-width:760px}
+.wrap{max-width:1100px;margin:0 auto;padding:20px 16px 60px}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:20px 22px;margin-bottom:16px}
+.grid2{display:grid;grid-template-columns:1.2fr 1fr;gap:16px}
+@media (max-width:860px){.grid2{grid-template-columns:1fr}}
+h2{margin:0 0 10px;color:var(--navy);font-size:24px}
+label{display:block;font-weight:700;font-size:15px;color:var(--muted);margin:10px 0 4px}
+input[type=text],input[type=email],input[type=password],select,textarea{width:100%;border:2px solid var(--line);border-radius:10px;padding:11px 13px;font-size:18px;background:#fff}
+.check{display:flex;gap:10px;align-items:flex-start;font-weight:600;color:var(--ink);margin:12px 0 0}
+.check input{width:22px;height:22px;margin-top:3px;flex:none}
+.btn{border:2px solid var(--line);background:#fff;border-radius:12px;padding:11px 20px;cursor:pointer;font-weight:700;color:var(--navy);font-size:18px}
+.btn.pri{background:var(--blue);border-color:var(--blue);color:#fff}
+.btn.ok{background:var(--green);border-color:var(--green);color:#fff}
+.btn.sm{font-size:15px;padding:6px 12px}
+.msg{font-weight:700;margin-top:10px}.msg.err{color:var(--red)}.msg.okm{color:var(--green)}
+.hint{font-size:15px;color:var(--muted)}
+.cats{display:flex;flex-wrap:wrap;gap:8px}
+.cat{border:2px solid var(--line);background:#fff;border-radius:22px;padding:7px 14px;font-weight:700;font-size:16px;cursor:pointer;color:var(--navy)}
+.cat.on{background:var(--navy);border-color:var(--navy);color:#fff}
+.cat .n{font-weight:600;opacity:.7;margin-left:4px}
+.search{display:flex;gap:10px;flex-wrap:wrap}
+.search input{flex:1;min-width:220px;font-size:20px;padding:13px 16px}
+.risk{font-weight:800;border-radius:8px;padding:3px 12px;font-size:15px;white-space:nowrap}
+.risk.high{background:var(--red-bg);color:var(--red)}.risk.medium{background:var(--amber-bg);color:var(--amber)}.risk.low{background:var(--blue-bg);color:var(--blue)}
+.tr{border-left:10px solid var(--line)}.tr.high{border-left-color:var(--red)}.tr.medium{border-left-color:var(--amber)}.tr.low{border-left-color:var(--blue)}
+.tr h3{margin:0;font-size:22px;color:var(--navy)}
+.tr .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.chip{display:inline-block;background:var(--bg);border-radius:12px;padding:2px 11px;margin:3px 5px 3px 0;font-size:15px;font-weight:600}
+.sec{margin-top:12px}.sec b{display:block;color:var(--navy);font-size:16px;text-transform:uppercase;letter-spacing:.6px}
+.sec p{margin:3px 0 0;white-space:pre-wrap}
+details summary{cursor:pointer;font-weight:700;color:var(--blue);margin-top:10px}
+.keybox{font:700 19px/1.4 ui-monospace,Menlo,Consolas,monospace;background:#0f1d33;color:#9ff0c2;border-radius:10px;padding:14px;word-break:break-all;margin:10px 0}
+.new{background:var(--green-bg);border:2px solid #bfe5cd}
+.foot{font-size:15px;color:var(--muted);border-top:1px solid var(--line);padding-top:16px;margin-top:26px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:15px;margin-top:8px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+</style>
+</head>
+<body>
+<header><div class="in">
+  <div class="mark">GIPEC AI<b>²</b> · PROJECT SPEAR</div>
+  <h1>Trends Watch</h1>
+  <p>Plain-language alerts about dangerous trends spreading online: coded hate symbols, extremist recruitment, fake pills sold to teens, and threats aimed at children and communities. Every entry is reviewed by a GIPEC analyst before it is published.</p>
+</div></header>
+
+<div class="wrap" id="app"><div class="card">Loading…</div></div>
+
+<div class="wrap" style="padding-top:0">
+  <div class="foot">
+    <b>If someone is in immediate danger, call 911.</b> To report the sexual exploitation of a child, use the NCMEC CyberTipline (report.cybertip.org, 1-800-843-5678).
+    Trends Watch describes patterns, not people. It contains no pictures, links or personal details, and it must not be used to harass anyone.
+    It is educational information, not legal advice. © 2026 GIPEC AI². Patent pending.
+  </div>
+</div>
+
+<script>
+const LS = { get: k => { try { return localStorage.getItem(k) } catch (e) { return null } }, set: (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v) } catch (e) {} } };
+const BASE = (LS.get('spear_api') || 'https://project-spear-backend.onrender.com').replace(/\/$/, '');
+let KEY = LS.get('spear_trends_key') || '';
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const day = s => { if (!s) return ''; const d = new Date(String(s).length === 10 ? s + 'T12:00:00' : s); return isNaN(d) ? '' : d.toLocaleDateString([], { dateStyle: 'medium' }); };
+const RISK = { high: 'High risk', medium: 'Medium risk', low: 'Lower risk' };
+const TYPES = { parent: 'A parent or guardian', educator: 'A teacher or school staff', community: 'A community group', faith: 'A faith organization', nonprofit: 'A nonprofit', law_enforcement: 'Law enforcement', business: 'A business', other: 'Other' };
+const S = { pub: null, me: null, q: '', cat: '', risk: '', results: [] };
+const app = document.getElementById('app');
+
+async function api(path, opt = {}) {
+  const h = { 'Content-Type': 'application/json', ...(opt.headers || {}) };
+  if (KEY && !opt.noKey) h['X-Spear-Key'] = KEY;
+  const r = await fetch(BASE + path, { ...opt, headers: h });
+  if (!r.ok) { let d = ''; try { d = (await r.json()).detail } catch (e) {} const err = new Error(d || ('Error ' + r.status)); err.status = r.status; throw err; }
+  return r.json();
+}
+
+async function start() {
+  try { S.pub = await api('/api/trends/public', { noKey: true }); } catch (e) { S.pub = { categories: [], total: 0 }; }
+  if (KEY) {
+    try { await api('/api/trends?limit=1'); return member(); }
+    catch (e) { if (e.status === 401 || e.status === 403) { LS.set('spear_trends_key', null); KEY = ''; } else { app.innerHTML = `<div class="card msg err">SPEAR is not reachable right now (${esc(e.message)}). Please try again in a minute.</div>`; return; } }
+  }
+  welcome();
+}
+
+function welcome(note) {
+  const cats = (S.pub.categories || []).map(c => `<span class="chip">${esc(c.name)}${c.count ? ` · ${c.count}` : ''}</span>`).join('');
+  app.innerHTML = `
+  ${note ? `<div class="card msg err">${esc(note)}</div>` : ''}
+  <div class="grid2">
+    <div class="card">
+      <h2>Join free</h2>
+      <p style="margin-top:0">For parents, teachers, community and faith groups, and anyone who wants to recognize these trends early. Free for adults 18 and older.</p>
+      <label for="r_name">Your name</label><input type="text" id="r_name" autocomplete="name">
+      <label for="r_email">Your e-mail</label><input type="email" id="r_email" autocomplete="email">
+      <label for="r_type">I am</label><select id="r_type">${Object.entries(TYPES).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select>
+      <label for="r_org">Organization (optional)</label><input type="text" id="r_org">
+      <label class="check"><input type="checkbox" id="r_18"> I am 18 or older.</label>
+      <label class="check"><input type="checkbox" id="r_terms"> I will use Trends Watch only to recognize and report harm, never to harass or target anyone. GIPEC keeps my name, e-mail, organization and the topics I follow to run my account, and does not sell them.</label>
+      <div style="margin-top:16px"><button class="btn ok" id="join">Join Trends Watch</button></div>
+      <div class="msg" id="rmsg"></div>
+    </div>
+    <div>
+      <div class="card">
+        <h2>Already a member?</h2>
+        <label for="k_in">Paste your access key</label><input type="password" id="k_in" placeholder="spm_…" autocomplete="off">
+        <div style="margin-top:12px"><button class="btn pri" id="kgo">Open Trends Watch</button></div>
+        <div class="msg" id="kmsg"></div>
+        <p class="hint">Organizations with a SPEAR license can use their SPEAR access key here too.</p>
+      </div>
+      <div class="card">
+        <h2>What we track</h2>
+        <div>${cats || '<span class="hint">Categories load when SPEAR is reachable.</span>'}</div>
+        <div class="legend"><span><i style="background:var(--red)"></i>High risk</span><span><i style="background:var(--amber)"></i>Medium risk</span><span><i style="background:var(--blue)"></i>Lower risk</span></div>
+      </div>
+    </div>
+  </div>`;
+  document.getElementById('join').onclick = join;
+  document.getElementById('kgo').onclick = async () => {
+    const k = document.getElementById('k_in').value.trim(), m = document.getElementById('kmsg');
+    if (!k) return;
+    KEY = k;
+    try { await api('/api/trends?limit=1'); LS.set('spear_trends_key', k); member(); }
+    catch (e) { KEY = ''; m.className = 'msg err'; m.textContent = e.status === 401 ? 'That key is not recognized.' : e.message; }
+  };
+}
+
+async function join() {
+  const g = id => document.getElementById(id), m = g('rmsg');
+  m.className = 'msg'; m.textContent = 'Joining…';
+  try {
+    const r = await api('/api/trends/register', { method: 'POST', noKey: true, body: JSON.stringify({ name: g('r_name').value, email: g('r_email').value, member_type: g('r_type').value,
+      organization: g('r_org').value, confirm_18: g('r_18').checked, accept_terms: g('r_terms').checked }) });
+    KEY = r.member_key; LS.set('spear_trends_key', KEY);
+    app.innerHTML = `<div class="card new"><h2>Welcome, ${esc(r.name)} ✓</h2>
+      <p>This is your personal access key. <b>It is shown only once.</b> It is saved on this device; write it down or keep it in your password manager so you can sign in on another device.</p>
+      <div class="keybox">${esc(r.member_key)}</div>
+      <button class="btn pri" id="cp">Copy key</button> <button class="btn ok" id="cont">Continue to Trends Watch</button></div>`;
+    document.getElementById('cp').onclick = async e => { try { await navigator.clipboard.writeText(r.member_key); e.target.textContent = 'Copied ✓' } catch (x) {} };
+    document.getElementById('cont').onclick = member;
+  } catch (e) { m.className = 'msg err'; m.textContent = e.message; }
+}
+
+async function member() {
+  try { S.me = await api('/api/trends/me'); } catch (e) { S.me = null; }   // licensed organizations have no member profile
+  const cats = (S.pub.categories || []);
+  app.innerHTML = `
+  <div class="card">
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><h2 style="margin:0;flex:1">${S.me ? 'Hello, ' + esc(S.me.name) : 'Trends Watch'}</h2>
+      <button class="btn sm" id="out">Sign out on this device</button></div>
+    <div class="search" style="margin-top:12px"><input type="text" id="q" placeholder="Search a word, emoji, symbol or app…" value="${esc(S.q)}"><button class="btn pri" id="go">Search</button></div>
+    <div class="cats" style="margin-top:12px"><button class="cat ${!S.cat ? 'on' : ''}" data-c="">All</button>${cats.map(c => `<button class="cat ${S.cat === c.name ? 'on' : ''}" data-c="${esc(c.name)}">${esc(c.name)}<span class="n">${c.count || ''}</span></button>`).join('')}</div>
+    <div class="cats" style="margin-top:8px">${[['', 'Any risk'], ['high', 'High risk only'], ['medium', 'Medium'], ['low', 'Lower']].map(([k, l]) => `<button class="cat ${S.risk === k ? 'on' : ''}" data-r="${k}">${l}</button>`).join('')}</div>
+  </div>
+  <div id="newbox"></div>
+  <div id="res"><div class="card">Loading…</div></div>
+  ${S.me ? `<div class="card"><h2>Topics I follow</h2><p class="hint" style="margin-top:0">New entries in these topics are shown at the top when you visit.</p>
+    <div>${cats.map(c => `<label class="check" style="margin:6px 0"><input type="checkbox" class="w" value="${esc(c.name)}" ${(S.me.watch || []).includes(c.name) ? 'checked' : ''}>${esc(c.name)}</label>`).join('')}</div>
+    <button class="btn ok" id="savew" style="margin-top:10px">Save my topics</button><span class="msg" id="wmsg"></span></div>` : ''}`;
+  document.getElementById('out').onclick = () => { if (confirm('Sign out on this device? You will need your access key to come back.')) { LS.set('spear_trends_key', null); KEY = ''; welcome(); } };
+  document.getElementById('go').onclick = () => { S.q = document.getElementById('q').value.trim(); search(); };
+  document.getElementById('q').onkeydown = e => { if (e.key === 'Enter') { S.q = e.target.value.trim(); search(); } };
+  app.querySelectorAll('[data-c]').forEach(b => b.onclick = () => { S.cat = b.dataset.c; app.querySelectorAll('[data-c]').forEach(x => x.classList.toggle('on', x === b)); search(); });
+  app.querySelectorAll('[data-r]').forEach(b => b.onclick = () => { S.risk = b.dataset.r; app.querySelectorAll('[data-r]').forEach(x => x.classList.toggle('on', x === b)); search(); });
+  if (S.me) {
+    document.getElementById('savew').onclick = async () => { const m = document.getElementById('wmsg');
+      try { await api('/api/trends/me', { method: 'POST', body: JSON.stringify({ watch: [...app.querySelectorAll('.w:checked')].map(x => x.value) }) }); m.className = 'msg okm'; m.textContent = ' Saved ✓'; }
+      catch (e) { m.className = 'msg err'; m.textContent = ' ' + e.message; } };
+    const nw = S.me.new_in_watched || [];
+    if (nw.length) {
+      document.getElementById('newbox').innerHTML = `<div class="card new"><h2>New since your last visit (${nw.length})</h2>${nw.map(t => `<div style="margin:6px 0"><span class="risk ${t.risk}">${RISK[t.risk]}</span> <b>${esc(t.title)}</b> <span class="hint">· ${esc(t.category)}</span></div>`).join('')}</div>`;
+    }
+    api('/api/trends/me', { method: 'POST', body: JSON.stringify({ seen: true }) }).catch(() => {});
+  }
+  search();
+}
+
+async function search() {
+  const box = document.getElementById('res');
+  box.innerHTML = '<div class="card">Searching…</div>';
+  const p = new URLSearchParams();
+  if (S.q) p.set('q', S.q); if (S.cat) p.set('category', S.cat); if (S.risk) p.set('risk', S.risk);
+  try {
+    const r = await api('/api/trends?' + p.toString());
+    S.results = r.results;
+    box.innerHTML = r.results.length ? r.results.map(entry).join('') :
+      `<div class="card"><b>No published trends match yet.</b><div class="hint">Try another word or category. New entries are added as GIPEC analysts review them.</div></div>`;
+    box.querySelectorAll('[data-fb]').forEach(b => b.onclick = () => feedback(b.dataset.fb, b));
+  } catch (e) { box.innerHTML = `<div class="card msg err">${esc(e.message)}</div>`; }
+}
+
+function entry(t) {
+  const sec = (label, txt) => txt ? `<div class="sec"><b>${label}</b><p>${esc(txt)}</p></div>` : '';
+  return `<div class="card tr ${t.risk}">
+    <div class="row"><h3 style="flex:1">${esc(t.title)}</h3><span class="risk ${t.risk}">${RISK[t.risk]}</span></div>
+    <div class="hint">${esc(t.category)}${t.last_seen ? ' · last seen ' + day(t.last_seen) : ''}${t.case_count ? ' · ' + t.case_count + ' cases reviewed' : ''}</div>
+    ${sec('What it is', t.summary)}
+    ${sec('Warning signs', t.signs)}
+    ${(t.terms || []).length ? `<div class="sec"><b>Coded words, emoji or numbers</b><div>${t.terms.map(x => `<span class="chip">${esc(x)}</span>`).join('')}</div></div>` : ''}
+    <details><summary>Why it matters and what to do</summary>
+      ${sec('Why it matters', t.why)}${sec('What to do', t.what_to_do)}
+      ${(t.platforms || []).length ? `<div class="sec"><b>Where it shows up</b><div>${t.platforms.map(x => `<span class="chip">${esc(x)}</span>`).join('')}</div></div>` : ''}
+      ${(t.audiences || []).length ? `<div class="sec"><b>Who should know</b><div>${t.audiences.map(x => `<span class="chip">${esc(x)}</span>`).join('')}</div></div>` : ''}
+    </details>
+    <div style="margin-top:12px"><button class="btn sm" data-fb="${t.id}">Suggest a correction or add something</button></div></div>`;
+}
+
+async function feedback(id, btn) {
+  const msg = prompt('What should GIPEC know about this entry? (No names, links or personal details, please.)');
+  if (!msg) return;
+  try { await api(`/api/trends/item/${encodeURIComponent(id)}/feedback`, { method: 'POST', body: JSON.stringify({ message: msg }) }); btn.textContent = 'Thank you — sent ✓'; btn.disabled = true; }
+  catch (e) { alert(e.message); }
+}
+
+start();
+</script>
+</body>
+</html>
