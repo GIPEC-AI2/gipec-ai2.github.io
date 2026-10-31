@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head><script>window.__spearHash=location.hash</script>
+<script src="spear-approval.js"></script>
 <script>
 /* Phone "Share to Project Spear" lands here (manifest share_target) -> hand it to the analysis workspace. */
 (function(){try{var u=new URLSearchParams(location.search);if(u.has('share_url')||u.has('share_text')||u.has('share_title')){location.replace('./'+location.search);}}catch(e){}})();
@@ -619,6 +620,15 @@ $('qbody').addEventListener('click',e=>{
 
 /* ---------- decisions (same statuses the analysis workspace uses; feedback goes to the learning library) ---------- */
 function decide(id,status){
+  /* CRITICAL escalation needs two different named analysts (spear-approval.js); fails closed if the check did not load */
+  if(status==='Escalated'){
+    const cur=loadItems().find(x=>String(x.id)===String(id));
+    if(cur&&!window.SpearApproval&&(String(cur.tier||tierOf(cur.score||0)).toUpperCase()==='CRITICAL')){toast('The approval check did not load. Reload the page before escalating a critical case.');return {ok:false,code:'no_guard'}}
+    if(cur&&window.SpearApproval&&SpearApproval.needsTwo(cur,status)){
+      let g=null;mutate(id,x=>{g=SpearApproval.check(x,status,{via:'ops'})});
+      if(g&&!g.ok){ITEMS=loadItems();renderAll();toast(caseId(cur)+': '+g.message);if(DRAWER_ID&&String(DRAWER_ID)===String(id))openDetails(id);return g}
+    }
+  }
   const it=mutate(id,x=>{x.status=status;if(status==='Pending'){delete x.decidedAt}else{x.decidedAt=new Date().toISOString();x.decidedIn='ops'}});
   if(!it)return;ITEMS=loadItems();renderAll();
   if(status!=='Pending'){
@@ -939,7 +949,8 @@ document.addEventListener('change',e=>{
 });
 function bulk(status){const ids=[...SEL];if(!ids.length)return;
   const word=status==='Confirmed'?'Approve':status==='Dismissed'?'Reject':'Escalate';
-  ids.forEach(id=>decide(id,status));clearSel();toast(`${word}d ${ids.length} case${ids.length>1?'s':''}`)}
+  let held=0;ids.forEach(id=>{const r=decide(id,status);if(r&&r.ok===false)held++});clearSel();
+  toast(`${word}d ${ids.length-held} case${ids.length-held===1?'':'s'}`+(held?` · ${held} critical case${held>1?'s':''} waiting for a second analyst`:''))}
 $('fplat').onchange=()=>renderQueue();$('ftype').onchange=()=>renderQueue();$('ftier').onchange=()=>{renderTiers();renderQueue()};
 $('bk-ok').onclick=()=>bulk('Confirmed');$('bk-no').onclick=()=>bulk('Dismissed');$('bk-esc').onclick=()=>bulk('Escalated');$('bk-clr').onclick=()=>{clearSel();renderQueue()};
 
@@ -1362,7 +1373,8 @@ $('bk-zip').onclick=()=>zipCases(checked());
 // bulk decisions apply to open cases only (closed cases can now be ticked for download)
 [['bk-ok','Confirmed','Approved'],['bk-no','Dismissed','Rejected'],['bk-esc','Escalated','Escalated']].forEach(([b,st,w])=>{$(b).onclick=()=>{
   const sel=checked(),open=sel.filter(isOpen);if(!open.length){toast('None of the selected cases are open');return}
-  open.forEach(it=>decide(it.id,st));$('bk-clr').click();toast(`${w} ${open.length} case${open.length>1?'s':''}${sel.length>open.length?` · ${sel.length-open.length} already decided, left as they were`:''}`)}});
+  let held=0;open.forEach(it=>{const r=decide(it.id,st);if(r&&r.ok===false)held++});$('bk-clr').click();
+  toast(`${w} ${open.length-held} case${open.length-held===1?'':'s'}${held?` · ${held} critical case${held>1?'s':''} waiting for a second analyst`:''}${sel.length>open.length?` · ${sel.length-open.length} already decided, left as they were`:''}`)}});
 
 /* ---------- 5. hook into rendering ---------- */
 const _renderQueue=renderQueue;

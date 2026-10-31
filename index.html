@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<script src="spear-approval.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Project SPEAR — Human-in-the-Loop (HITL) Review</title>
 <meta name="theme-color" content="#152A4E">
@@ -5679,7 +5680,7 @@ function clearDemo(){
   const b=document.getElementById('demoBanner'); if(b)b.style.display='none';
   selId=null; render(); toast(`Removed ${before-items.length} demo item(s)`);
 }
-function log(it,action,detail){audit.unshift({t:new Date().toLocaleTimeString(),id:it.id,action,detail,who:'Strategic'})}
+function log(it,action,detail){let who='';try{who=(localStorage.getItem('spear_author')||'').trim()}catch(e){}audit.unshift({t:new Date().toLocaleTimeString(),id:it.id,action,detail,who:who||'analyst'})}
 function sortBy(k){if(sortKey===k)sortDir*=-1;else{sortKey=k;sortDir=k==='score'?-1:1}render()}
 function fill(sel,vals){const s=document.getElementById(sel);const cur=s.value;s.innerHTML=s.options[0].outerHTML+vals.map(v=>`<option>${v}</option>`).join('');s.value=cur}
 let _tallyLast=0;
@@ -5822,8 +5823,14 @@ function discussIncident(id,angle){
   setTimeout(()=>{const p=document.getElementById('aiPane'); if(p)p.scrollIntoView({behavior:'smooth',block:'start'})},150);
 }
 
-function act(status){const it=items.find(i=>i.id===selId);if(!it)return;
-  if(status==='Escalated'&&it.tier==='CRITICAL'&&it.reviewers.length<1){it.reviewers.push('Strategic');log(it,'first confirmation recorded','CRITICAL requires a second analyst before escalation');render();return}
+function act(status){const it=items.find(i=>i.id===selId);if(!it)return {ok:false,code:'no_case'};
+  /* CRITICAL escalation needs two different named analysts (spear-approval.js). Fails closed if that check did not load. */
+  if(status==='Escalated'){
+    if(!window.SpearApproval){if(String(it.tier).toUpperCase()==='CRITICAL'||(+it.score||0)>=9){toast('The approval check did not load. Reload the page before reporting a critical case.');return {ok:false,code:'no_guard'}}}
+    else{const g=SpearApproval.check(it,status,{via:window.__spearVia||'dashboard',ask:window.__spearVia!=='voice'});
+      if(!g.ok){log(it,g.code==='first'?'first confirmation recorded':'escalation not applied',g.message);toast(g.message);render();return g}
+      if(g.reviewers)it.escalationReviewers=g.reviewers}
+  }
   it.status=status;it.decidedAt=new Date().toISOString();log(it,status,`rec: ${it.recommendation}; grade: ${it.grade}${API_BASE?' · feedback → library':' · feedback recorded (demo)'}`);sendFeedback(it,status);
   
   
@@ -5844,7 +5851,7 @@ function act(status){const it=items.find(i=>i.id===selId);if(!it)return;
     const box=document.getElementById('afterAccept');
     if(box){box.style.display='';box.dataset.id=it.id;
       box.querySelector('.aaTitle').textContent=`Incident #${it.id} ${status.toLowerCase()} — ${(it.category||'').replace(/_/g,' ')} ${it.score}/10`;}
-  }}
+  }return {ok:true}}
 
 
 
@@ -5930,7 +5937,7 @@ function renderDetail(){
      <button class="btn" style="background:#0f2a5c;border-color:#0f2a5c;color:#fff" onclick="openBrief(${it.id})" title="Executive Intelligence Brief in the senior analyst's report format - printable, editable">📑 Reports (PDF)</button>
       <button class="btn btn-ask" onclick="discussIncident(${it.id},'why')" title="Ask the analyst AI why this is happening and what to do about it">💬 Ask the AI about this</button>
    </div>
-   ${it.tier==='CRITICAL'?`<div class="twoman">CRITICAL tier: escalation requires two-analyst confirmation (${it.reviewers.length}/2 recorded).</div>`:''}
+   ${it.tier==='CRITICAL'?`<div class="twoman">CRITICAL tier: escalation requires two-analyst confirmation (${window.SpearApproval?SpearApproval.confirmed(it).length:0}/2 recorded${window.SpearApproval&&SpearApproval.confirmed(it).length?': '+esc(SpearApproval.confirmed(it).join(', ')):''}).</div>`:''}
    <div class="row" style="margin-top:8px"><span class="pill">report.md</span><span class="pill">metadata.json</span><span class="pill">screenshot.png</span><span class="pill">media/</span><button class="btn findmore" style="margin-left:auto" onclick="corroborate(${it.id})" title="Search the connected sources for other posts carrying these same signals — build the pattern, not just the one example">🔎 Find more like this</button><button class="btn adv" style="background:#6B46C1;border-color:#6B46C1" onclick="findAffiliates(${it.id})" title="Pivot from this account to affiliated accounts that share its brands, codes and collaborators">🔗 Find affiliated accounts</button><button class="btn sec" onclick="openReport()">Generate report</button></div>
    <h3 style="margin-top:14px">Audit log</h3>
    <div class="audit">${audit.filter(a=>a.id===it.id).map(a=>`<div><b>${a.t}</b> · ${a.who} · ${a.action} — ${a.detail}</div>`).join('')||'<div>—</div>'}</div>`;
