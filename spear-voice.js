@@ -60,7 +60,7 @@
     ask(words + ' case ' + it.id + ' (' + String(it.category || '').replace(/_/g, ' ') + ', ' + (it.score || 0) + '/10)?', function () {
       var res; window.__spearVia = 'voice'; try { res = window.act(status); } finally { window.__spearVia = ''; }
       var now = current() || it;
-      if (now.status !== status) return say(res && res.code === 'first' ? 'ok' : 'bad', (res && res.message) || 'Not applied. This is a critical case, so two different analysts must confirm it before it is reported.');
+      if (now.status !== status) return say(res && (res.code === 'first' || res.code === 'needs_approver') ? 'ok' : 'bad', (res && res.message) || 'Not applied. This is a critical case, so two different analysts must confirm it before it is reported.');
       try { now.decidedVia = 'voice'; if (has('itemsSave')) window.itemsSave(); } catch (e) {}
       say('ok', 'Done. Case ' + it.id + ' marked ' + (status === 'Escalated' ? 'report to platform' : status.toLowerCase()) + '. Say “next case” to keep going.'); }, status + ' case ' + it.id); }
   function api() { var b = ''; try { b = (typeof API_BASE !== 'undefined' && API_BASE) || (typeof BACKEND_DEFAULT !== 'undefined' && BACKEND_DEFAULT) || ''; } catch (e) {}

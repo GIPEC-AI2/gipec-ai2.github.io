@@ -5828,8 +5828,9 @@ function act(status){const it=items.find(i=>i.id===selId);if(!it)return {ok:fals
   if(status==='Escalated'){
     if(!window.SpearApproval){if(String(it.tier).toUpperCase()==='CRITICAL'||(+it.score||0)>=9){toast('The approval check did not load. Reload the page before reporting a critical case.');return {ok:false,code:'no_guard'}}}
     else{const g=SpearApproval.check(it,status,{via:window.__spearVia||'dashboard',ask:window.__spearVia!=='voice'});
-      if(!g.ok){log(it,g.code==='first'?'first confirmation recorded':'escalation not applied',g.message);toast(g.message);render();return g}
-      if(g.reviewers)it.escalationReviewers=g.reviewers}
+      if(!g.ok){log(it,(g.code==='first'||g.code==='needs_approver')?'confirmation recorded':'escalation not applied',g.message);toast(g.message);render();return g}
+      if(g.reviewers)it.escalationReviewers=g.reviewers;
+      if(g.mode==='test'){log(it,'escalated in test mode',g.message);toast(g.message)}}
   }
   it.status=status;it.decidedAt=new Date().toISOString();log(it,status,`rec: ${it.recommendation}; grade: ${it.grade}${API_BASE?' · feedback → library':' · feedback recorded (demo)'}`);sendFeedback(it,status);
   
@@ -5937,7 +5938,7 @@ function renderDetail(){
      <button class="btn" style="background:#0f2a5c;border-color:#0f2a5c;color:#fff" onclick="openBrief(${it.id})" title="Executive Intelligence Brief in the senior analyst's report format - printable, editable">📑 Reports (PDF)</button>
       <button class="btn btn-ask" onclick="discussIncident(${it.id},'why')" title="Ask the analyst AI why this is happening and what to do about it">💬 Ask the AI about this</button>
    </div>
-   ${it.tier==='CRITICAL'?`<div class="twoman">CRITICAL tier: escalation requires two-analyst confirmation (${window.SpearApproval?SpearApproval.confirmed(it).length:0}/2 recorded${window.SpearApproval&&SpearApproval.confirmed(it).length?': '+esc(SpearApproval.confirmed(it).join(', ')):''}).</div>`:''}
+   ${it.tier==='CRITICAL'?`<div class="twoman">CRITICAL tier: in official mode, reporting needs two people including Eric or a manager${window.SpearApproval&&SpearApproval.confirmed(it).length?' (confirmed so far: '+esc(SpearApproval.confirmed(it).join(', '))+')':''}. In test mode one analyst can report it..</div>`:''}
    <div class="row" style="margin-top:8px"><span class="pill">report.md</span><span class="pill">metadata.json</span><span class="pill">screenshot.png</span><span class="pill">media/</span><button class="btn findmore" style="margin-left:auto" onclick="corroborate(${it.id})" title="Search the connected sources for other posts carrying these same signals — build the pattern, not just the one example">🔎 Find more like this</button><button class="btn adv" style="background:#6B46C1;border-color:#6B46C1" onclick="findAffiliates(${it.id})" title="Pivot from this account to affiliated accounts that share its brands, codes and collaborators">🔗 Find affiliated accounts</button><button class="btn sec" onclick="openReport()">Generate report</button></div>
    <h3 style="margin-top:14px">Audit log</h3>
    <div class="audit">${audit.filter(a=>a.id===it.id).map(a=>`<div><b>${a.t}</b> · ${a.who} · ${a.action} — ${a.detail}</div>`).join('')||'<div>—</div>'}</div>`;
