@@ -2647,13 +2647,21 @@ async function watermarkPass(id){
     __B.S["watermarkPass_7"],
     'Known marks to recognise by name: '+KNOWN_MARKS.join('; ')+'.',
     meta.length?'TEXT FOUND INSIDE THE FILE ITSELF (metadata / comment segments — a person never sees this on screen): '+meta.slice(0,12).join(' | '):'No readable metadata strings.',
-    __B.S["watermarkPass_8"]
+    __B.S["watermarkPass_8"],
+    'PHONE AND APP SCREENS: if this is a screenshot of a phone gallery or app, the strips can show the status bar, buttons and a row of small thumbnails of OTHER photos (camera roll / filmstrip / scrubber). Those thumbnails are NOT part of this post: never report a mark found only in them. For every mark also return "in_main_content": true only if it is part of the post itself, false if it is in a thumbnail strip, status bar, keyboard, notification or app button.'
   ].join('\n');
   let r=null; try{ if(sheet) r=await visionAnalyze(sheet,ctx); }catch(e){}
+  /* Phone screenshots (e.g. iOS Photos) carry a strip of thumbnails of OTHER photos. A mark seen only there is not
+     part of this post and must never change the verdict (Oct/Nov 2026: an America First image was labelled ISIS
+     because an Amaq logo sat in a camera-roll thumbnail). */
+  const UI_RX=/thumbnail|camera[- ]?roll|film ?strip|scrubber|gallery strip|status bar|photos app|app (?:ui|interface|button)|keyboard|notification/i;
+  const phoneUI=!!(r&&!r.__error&&UI_RX.test([r.description||'',r.threat||'',(r.indicators||[]).join(' ')].join(' ')));
+  let ignoredUI=0;
   let marks=(r&&!r.__error&&Array.isArray(r.marks))?r.marks.filter(m=>m&&m.what&&(+m.confidence||0)>=0.35):[];
+  marks=marks.filter(m=>{const bad=m.in_main_content===false||UI_RX.test(String(m.what)+' '+String(m.signals||'')+' '+String(m.where||''));if(bad)ignoredUI++;return !bad});
   
   
-  if(!marks.length&&r&&!r.__error){
+  if(!marks.length&&r&&!r.__error&&!phoneUI){
     const pos=t=>{t=String(t).toLowerCase();return /top[- ]?left/.test(t)?'top-left':/top[- ]?right/.test(t)?'top-right':/bottom[- ]?left/.test(t)?'bottom-left':/bottom[- ]?right/.test(t)?'bottom-right':/top edge|top strip|along the top/.test(t)?'top-edge':/bottom edge|bottom strip|along the bottom/.test(t)?'bottom-edge':/metadata|exif/.test(t)?'metadata':'throughout'};
     const kind=t=>{t=String(t).toLowerCase();return /watermark/.test(t)?'watermark':/logo|badge|emblem|banner|insignia/.test(t)?'logo':/\d{2,}|code|numeric/.test(t)?'code':/@|handle|channel/.test(t)?'handle':/text/.test(t)?'hidden_text':'symbol'};
     const blob=[r.description||'',r.threat||''].join(' ');
@@ -2669,13 +2677,17 @@ async function watermarkPass(id){
     if(marks.length&&r.threat&&!r.description)r.description=String(r.threat);
   }
   it.marks=marks; it.markNote=(r&&!r.__error&&r.description)?String(r.description):'';
+  if(phoneUI||ignoredUI){it.markNote=(it.markNote?it.markNote+' ':'')+'Phone or app screen detected: marks in thumbnails of other photos, the status bar or app buttons were ignored. For the cleanest reading, upload the post itself or crop out the thumbnail strip.'}
   
-  const strong=marks.filter(m=>(m.kind==='logo'||m.kind==='watermark')&&(+m.confidence||0)>=0.6&&/amaq|furqan|hayat|thabat|ajnad|nashir|naba|black standard|tawhid|wilayah|qassam|hezbollah|active club|will2rise|nsawp|patriot front|atomwaffen|totenkopf|sonnenrad|ss rune/i.test(m.what+' '+(m.signals||'')));
+  const strong=marks.filter(m=>(m.kind==='logo'||m.kind==='watermark')&&(+m.confidence||0)>=0.6&&!(phoneUI&&m.inferred)&&/amaq|furqan|hayat|thabat|ajnad|nashir|naba|black standard|tawhid|wilayah|qassam|hezbollah|active club|will2rise|nsawp|patriot front|atomwaffen|totenkopf|sonnenrad|ss rune/i.test(m.what+' '+(m.signals||'')));
   if(strong.length){
     const before=it.score;
     it.score=Math.max(it.score,8); it.tier=tierOf(it.score); it.recommendation=recOf(it.score);
-    if(/amaq|furqan|hayat|thabat|ajnad|nashir|naba|black standard|tawhid|wilayah/i.test(strong[0].what+' '+strong[0].signals))it.category='isis_terrorism';
-    else if(it.category==='benign')it.category='propaganda';
+    /* The second look may add a mark, but it only sets the category when the main reading found nothing harmful.
+       If the main reading already named a different movement, keep it and flag the mark for the analyst. */
+    const isisMark=/amaq|furqan|hayat|thabat|ajnad|nashir|naba|black standard|tawhid|wilayah/i.test(strong[0].what+' '+strong[0].signals);
+    if(!it.category||it.category==='benign')it.category=isisMark?'isis_terrorism':'propaganda';
+    else if(isisMark&&it.category!=='isis_terrorism'){it.markConflict=true;try{log(it,'second look conflict','ISIS mark ('+strong[0].what+') on an item read as '+it.category+' — category kept; analyst to check')}catch(e){}}
     if(it.grade==='Unchecked'||it.grade==='Predicted')it.grade='Corroborated';
     strong.forEach(m=>{const tag='mark: '+m.what; if(!(it.indicators||[]).includes(tag))(it.indicators=it.indicators||[]).push(tag)});
     if(before!==it.score){toast('🔍 Watermark found — '+strong[0].what+' — raised to '+it.score+'/10');try{log(it,'watermark raised score',before+' → '+it.score+' ('+strong[0].what+')')}catch(e){}}
