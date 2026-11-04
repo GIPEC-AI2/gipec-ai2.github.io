@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Upload new slurs — Project SPEAR</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{--navy:#0f2a5c;--ink:#1b2433;--muted:#5d6878;--line:#dfe4ec;--bg:#f4f6fa;--green:#1f8a4c;--green-bg:#e6f6ec;--amber:#b86e00;--amber-bg:#fff3dc;--red:#c62f2f;--red-bg:#fdeaea;--blue:#1f5bb0;--blue-bg:#e9f0fd}
+*{box-sizing:border-box}
+body{margin:0;font:17px/1.55 Inter,system-ui,"Segoe UI",Arial,sans-serif;color:var(--ink);background:var(--bg)}
+button,input,select,textarea{font:inherit}
+.top{background:linear-gradient(120deg,#2f7d5b 0%,#246548 60%,#1a4d37 100%);color:#fff;padding:16px 24px}
+.top h1{margin:0;font-size:24px;font-weight:800}.top .sub{font-size:14px;opacity:.88}
+.wrap{max-width:1250px;margin:0 auto;padding:18px 20px 70px}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-bottom:14px}
+.drop{border:3px dashed #2f7d5b;background:#f2faf5;border-radius:16px;text-align:center;padding:28px 16px;cursor:pointer}
+.drop b{display:block;font-size:22px;color:#123}
+.drop.hover{background:#e3f4ea}
+.btn{border:2px solid var(--line);background:#fff;border-radius:10px;padding:10px 18px;cursor:pointer;font-weight:700;color:var(--navy)}
+.btn.ok{background:var(--green);border-color:var(--green);color:#fff}.btn.big{font-size:19px;padding:13px 24px}
+.btn:disabled{opacity:.5;cursor:default}
+textarea{width:100%;min-height:120px;border:2px solid var(--line);border-radius:10px;padding:10px 12px}
+.hint{font-size:15px;color:var(--muted)}
+.msg{font-weight:700}.msg.err{color:var(--red)}.msg.okm{color:var(--green)}
+.tiles{display:flex;gap:12px;flex-wrap:wrap;margin:6px 0 14px}
+.tile{border-radius:12px;padding:10px 16px;background:#fff;border:1px solid var(--line);min-width:150px}
+.tile .v{font-size:28px;font-weight:800;line-height:1.1}.tile.g{background:var(--green-bg)}.tile.g .v{color:var(--green)}.tile.a{background:var(--amber-bg)}.tile.a .v{color:var(--amber)}
+table{width:100%;border-collapse:collapse;font-size:15px}
+th{text-align:left;font-size:12.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;border-bottom:2px solid var(--line);padding:6px}
+td{border-bottom:1px solid #edf0f4;padding:6px;vertical-align:top}
+td input[type=text],td select{width:100%;border:1px solid var(--line);border-radius:7px;padding:5px 7px;font-size:15px}
+tr.known td{opacity:.55}tr.off td{opacity:.45}
+.st{font-weight:700;font-size:13px;border-radius:10px;padding:2px 9px;white-space:nowrap}
+.st.new{background:var(--green-bg);color:var(--green)}.st.known{background:#eef1f6;color:var(--muted)}.st.done{background:var(--blue-bg);color:var(--blue)}.st.fail{background:var(--red-bg);color:var(--red)}
+.ck{width:22px;height:22px}
+.legend{font-size:14px;color:var(--muted);margin:6px 0 10px}
+.spin{display:inline-block;width:16px;height:16px;border:3px solid #cfe1d6;border-top-color:var(--green);border-radius:50%;animation:s 1s linear infinite;vertical-align:-2px;margin-right:8px}@keyframes s{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="top"><h1>Upload new slurs</h1><div class="sub">Teach SPEAR a whole list of coded terms, slurs and emoji at once · Analyst workspace › Codebook &amp; teach</div></div>
+<div class="wrap">
+  <div id="nokey" class="card msg err" style="display:none">This page needs the SPEAR setup on this device. Open your setup link on this computer first, then reload.</div>
+
+  <div class="card">
+    <div class="drop" id="drop"><b>Drop your list here</b>Word (.docx), Excel (.xlsx or .csv) or a text file, one term per line. A meaning after a dash is kept, for example <i>“WANGHAF - what it stands for”</i>.
+      <div style="margin-top:12px"><button class="btn ok" type="button">Choose the file</button></div>
+      <input type="file" id="file" accept=".docx,.xlsx,.xls,.csv,.txt" style="display:none"></div>
+    <details style="margin-top:12px"><summary class="hint" style="cursor:pointer">…or paste the list instead</summary>
+      <textarea id="paste" placeholder="One term per line, e.g.&#10;56. WANGHAF - what it stands for&#10;Synagogue of Satan"></textarea>
+      <button class="btn" id="readPaste" type="button" style="margin-top:8px">Read the pasted list</button></details>
+  </div>
+
+  <div id="review" style="display:none">
+    <div class="tiles" id="tiles"></div>
+    <div class="card">
+      <div class="legend"><b>Check the list, then press the green button.</b> Fix anything SPEAR read wrong by typing over it. Terms SPEAR already knows are shown in grey and are skipped.
+        Tick <b>“Needs context”</b> for everyday words (like “Press” or “Cabal”): SPEAR will raise those for review instead of flagging them on their own, so news stories aren’t flagged.</div>
+      <div style="overflow-x:auto"><table><thead><tr><th style="width:34px">Add</th><th style="width:22%">Term</th><th style="width:16%">Also written as</th><th>What it means</th><th style="width:15%">Category</th><th style="width:86px">Needs context</th><th style="width:92px">Status</th></tr></thead><tbody id="rows"></tbody></table></div>
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:16px">
+        <button class="btn ok big" id="go" type="button">Teach SPEAR</button><span id="gomsg" class="msg"></span>
+      </div>
+      <p class="hint">Each term is saved in SPEAR’s team memory with your name and the date, and is used in every scan from now on. You can retire any term later on the Agent memory screen.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+const LS = k => { try { return localStorage.getItem(k) } catch (e) { return null } };
+const API = (LS('spear_api') || 'https://project-spear-backend.onrender.com').replace(/\/$/, '');
+const KEY = LS('spear_key') || '';
+const WHO = (LS('spear_author') || '').trim() || 'analyst';
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const CATS = [['antisemitism', 'Antisemitism'], ['propaganda', 'Extremist propaganda'], ['recruitment', 'Recruitment'], ['incitement', 'Incitement'], ['domestic_terrorism', 'Domestic terrorism'], ['glorification', 'Glorification'], ['isis_terrorism', 'ISIS / jihadist terrorism'], ['narcotics', 'Drugs'], ['counterfeit_meds', 'Counterfeit pills']];
+/* Everyday words, names and numbers that are only harmful in context: raise for review, don't flag on their own. */
+const CONTEXT_WORDS = /^(noticing|press|cabal|globalists?|elites?|globalists\/elites|the lobby|lobby|lobby \(aipac\)|aipac|adolf hitler|pepe the frog|pepe|change my mind|echoes|echoses|goyim|money mouth face|juice box emoji|the juice|blood libel|hakenkreuz|its always them|every single time|2%|18|110|109|1977|88|83|box 110|rat|snake|totally joyful day|its your duty|it's your duty|no authority|the jews did this)$/i;
+const EMOJI = { 'juice box': '🧃', 'money mouth': '🤑', 'rat': '🐀', 'snake': '🐍', 'nose': '👃', 'merchant': '' };
+const SPELL = { 'gropher': 'Groyper', 'total aryan victoy': 'Total Aryan Victory', 'echoses': 'echoes' };
+let ROWS = [], KNOWN = new Set();
+const norm = s => String(s || '').toLowerCase().replace(/[“”"']/g, '').replace(/\s+/g, ' ').trim();
+
+async function api(path, opt = {}) {
+  const r = await fetch(API + path, { ...opt, headers: { 'X-Spear-Key': KEY, 'Content-Type': 'application/json', ...(opt.headers || {}) } });
+  if (!r.ok) { let d = ''; try { d = (await r.json()).detail } catch (e) {} throw new Error(d || ('Error ' + r.status)); }
+  return r.json();
+}
+async function loadKnown() {
+  KNOWN = new Set();
+  try { const m = await api('/api/memory'); (m.entries || []).filter(e => e.category === 'coded_term' && e.status !== 'retired' && !e.retired).forEach(e => { KNOWN.add(norm(e.label)); (e.variants || []).forEach(v => KNOWN.add(norm(v))); }); } catch (e) {}
+  try { const b = await api('/api/client-bundle'); ((b.C || {}).CODEBOOK || []).forEach(e => { KNOWN.add(norm(e.term)); (e.variants || []).forEach(v => KNOWN.add(norm(v))); }); } catch (e) {}
+}
+
+/* ---------- reading the file ---------- */
+async function readFile(f) {
+  const n = f.name.toLowerCase();
+  if (n.endsWith('.docx')) {
+    const zip = await JSZip.loadAsync(f); const xml = await zip.file('word/document.xml').async('string');
+    const doc = new DOMParser().parseFromString(xml, 'application/xml'); const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+    return [...doc.getElementsByTagNameNS(W, 'p')].map(p => [...p.getElementsByTagNameNS(W, '*')].map(x => x.localName === 't' ? x.textContent : (x.localName === 'br' || x.localName === 'tab') ? ' ' : '').join(''));
+  }
+  if (n.endsWith('.xlsx') || n.endsWith('.xls') || n.endsWith('.csv')) {
+    const wb = XLSX.read(await f.arrayBuffer(), { type: 'array' }); const out = [];
+    wb.SheetNames.forEach(s => XLSX.utils.sheet_to_json(wb.Sheets[s], { header: 1, raw: false }).forEach(r => { const cells = r.map(c => String(c ?? '').trim()).filter(Boolean); if (cells.length) out.push(cells.length > 1 ? cells[0] + ' - ' + cells.slice(1).join(' ') : cells[0]); }));
+    return out;
+  }
+  return (await f.text()).split(/\r?\n/);
+}
+
+/* ---------- turning lines into terms ---------- */
+function parse(lines) {
+  const items = []; let lastNum = 0;
+  const OPEN_END = /\b(in|the|of|to|a|an|and|or|no|with|for|on|at|by|from|that|only|are|is|as|than)$/i;
+  for (let raw of lines) {
+    let s = String(raw || '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+    if (!s) continue;
+    if (/^highlighted|^anti[- ]?semitic\s+slurs|^list of|slurs\s*&?\s*emojis?$/i.test(s)) continue;
+    s = s.replace(/^[-•*]\s*/, '');
+    /* "56. WANGHAF" or "56 . WANGHAF" is a list number; "67 Total…" only when it follows the numbering;
+       "6 million Cookies" or "311 KKK" are part of the term. */
+    let numbered = false, nm = s.match(/^(\d{1,3})\s*[.)]\s*(?=\S)/);
+    if (nm) { numbered = true; lastNum = +nm[1]; s = s.slice(nm[0].length); }
+    else if ((nm = s.match(/^(\d{1,3})\s+(?=[A-Z])/)) && lastNum && +nm[1] > lastNum && +nm[1] <= lastNum + 3) { numbered = true; lastNum = +nm[1]; s = s.slice(nm[0].length); }
+    s = s.trim();
+    if (!s) continue;
+    const prev = items[items.length - 1];
+    if (!numbered && prev && (/^[a-z]/.test(s) || OPEN_END.test(prev.full))) { prev.full += ' ' + s; continue; }
+    items.push({ full: s });
+  }
+  const seen = new Set(), out = [];
+  for (const it of items) {
+    let s = it.full, label = s, detail = '', variants = [];
+    const m = s.match(/^(.{1,60}?)\s+[-–—]\s*(.+)$/) || s.match(/^(.{1,60}?)\s*[-–—]\s+(.+)$/);
+    if (m) { label = m[1]; detail = m[2]; }
+    else if (/^[A-Z0-9]{3,8}\s+[A-Z][a-z]/.test(s)) { label = s.split(' ')[0]; detail = s.slice(label.length).trim(); }
+    else if (s.split(' ').length > 4 && /\s(used|being used|to mock|for)\s/i.test(s)) { const k = s.search(/\s(being used|used|to mock|for)\s/i); label = s.slice(0, k).trim(); detail = s.slice(k).trim(); }
+    else if (s.length > 48) { const k = s.search(/\s(slur|anti[- ]?semitic|being used|used to|to mock|for )/i); label = (k > 2 ? s.slice(0, k) : s.split(' ').slice(0, 4).join(' ')).trim(); detail = s.slice(label.length).trim(); }
+    const par = label.match(/^(.*?)\s*\(([^)]+)\)\s*$/);
+    if (par) { const inside = par[2].trim(), base = par[1].trim(); const initials = base.split(/\s+/).map(w => w[0]).join('').toUpperCase();
+      if (inside.replace(/^the\s+/i, '').replace(/\s/g, '').toUpperCase() === initials || /^the\s/i.test(inside)) { label = base; variants.push(inside); } else { label = base; detail = (inside + (detail ? ' — ' + detail : '')); } }
+    if (/^[“"]?\d+[”"]?\s*\/\s*[“"]?\d+[”"]?$/.test(label) || (/\//.test(label) && label.length < 30)) { const parts = label.split('/').map(x => x.replace(/[“”"]/g, '').trim()).filter(Boolean); label = parts[0]; variants.push(...parts.slice(1)); }
+    label = label.replace(/[“”"]/g, '').replace(/[.:;,]+$/, '').replace(/\s+(anti[- ]?semitic\s+)?slurs?(\s+that)?$/i, '').trim();
+    if (!/\swith\s/i.test(label)) Object.entries(EMOJI).forEach(([k, e]) => { if (e && new RegExp('\\b' + k + '\\b', 'i').test(label) && /emoji|face/i.test(label)) variants.push(e); });
+    Object.entries(SPELL).forEach(([k, v]) => { if (norm(label) === k) variants.push(v); });
+    if (label.length < 2) continue;
+    const key = norm(label); if (seen.has(key)) continue; seen.add(key);
+    const ctx = CONTEXT_WORDS.test(label) || /emoji/i.test(label) || /^\d+$/.test(label) || label.split(' ').length === 1 && label.length <= 5 && !/^[A-Z0-9]+$/.test(label);
+    out.push({ add: true, label, variants: [...new Set(variants)].join(', '), detail: detail.replace(/^[-–—\s]+/, ''), cat: 'antisemitism', ctx, status: '' });
+  }
+  return out;
+}
+
+/* ---------- review table ---------- */
+function draw() {
+  ROWS.forEach(r => { if (r.status !== 'done' && r.status !== 'fail') { const k = KNOWN.has(norm(r.label)); r.status = k ? 'known' : 'new'; if (k && r.add === true && !r.touched) r.add = false; } });
+  const n = ROWS.filter(r => r.status === 'new').length, k = ROWS.filter(r => r.status === 'known').length, d = ROWS.filter(r => r.status === 'done').length;
+  document.getElementById('tiles').innerHTML = `<div class="tile"><div class="v">${ROWS.length}</div>terms read</div><div class="tile g"><div class="v">${n}</div>new to SPEAR</div><div class="tile"><div class="v">${k}</div>already known</div>${d ? `<div class="tile g"><div class="v">${d}</div>taught just now</div>` : ''}`;
+  document.getElementById('rows').innerHTML = ROWS.map((r, i) => `<tr class="${r.status === 'known' ? 'known' : ''}${r.add ? '' : ' off'}">
+    <td><input type="checkbox" class="ck" data-i="${i}" data-f="add" ${r.add ? 'checked' : ''} ${r.status === 'done' ? 'disabled' : ''}></td>
+    <td><input type="text" data-i="${i}" data-f="label" value="${esc(r.label)}"></td>
+    <td><input type="text" data-i="${i}" data-f="variants" value="${esc(r.variants)}" placeholder="other spellings, emoji"></td>
+    <td><input type="text" data-i="${i}" data-f="detail" value="${esc(r.detail)}"></td>
+    <td><select data-i="${i}" data-f="cat">${CATS.map(([v, l]) => `<option value="${v}" ${v === r.cat ? 'selected' : ''}>${l}</option>`).join('')}</select></td>
+    <td style="text-align:center"><input type="checkbox" class="ck" data-i="${i}" data-f="ctx" ${r.ctx ? 'checked' : ''}></td>
+    <td><span class="st ${r.status}">${{ new: 'New', known: 'Already known', done: 'Taught ✓', fail: 'Not saved' }[r.status] || ''}</span>${r.err ? `<div class="hint">${esc(r.err)}</div>` : ''}</td></tr>`).join('');
+  const go = document.getElementById('go'), c = ROWS.filter(r => r.add && r.status !== 'done').length;
+  go.textContent = c ? `Teach SPEAR ${c} term${c === 1 ? '' : 's'}` : 'Nothing selected'; go.disabled = !c;
+  document.getElementById('review').style.display = '';
+}
+document.getElementById('rows').addEventListener('input', e => { const t = e.target, i = +t.dataset.i, f = t.dataset.f; if (isNaN(i)) return;
+  if (t.type === 'checkbox') ROWS[i][f] = t.checked; else ROWS[i][f] = t.value; ROWS[i].touched = true; if (f === 'add' || f === 'label') draw(); });
+document.getElementById('rows').addEventListener('change', e => { const t = e.target, i = +t.dataset.i; if (!isNaN(i) && t.tagName === 'SELECT') ROWS[i].cat = t.value; });
+
+async function take(lines) {
+  const m = document.getElementById('gomsg'); m.className = 'msg'; m.innerHTML = '<span class="spin"></span>Reading the list…';
+  await loadKnown(); ROWS = parse(lines); m.textContent = '';
+  if (!ROWS.length) { m.className = 'msg err'; m.textContent = 'No terms found in that file.'; document.getElementById('review').style.display = ''; }
+  draw(); document.getElementById('review').scrollIntoView({ behavior: 'smooth' });
+}
+
+document.getElementById('go').onclick = async () => {
+  const todo = ROWS.filter(r => r.add && r.status !== 'done'); if (!todo.length) return;
+  if (!confirm(`Teach SPEAR ${todo.length} term${todo.length === 1 ? '' : 's'}? They will be used in every scan from now on.`)) return;
+  const m = document.getElementById('gomsg'), go = document.getElementById('go'); go.disabled = true; let ok = 0, bad = 0;
+  for (const r of todo) {
+    m.className = 'msg'; m.innerHTML = `<span class="spin"></span>Teaching ${ok + bad + 1} of ${todo.length}: ${esc(r.label)}`;
+    try {
+      await api('/api/memory', { method: 'POST', body: JSON.stringify({ category: 'coded_term', label: r.label.trim(), detail: r.detail.trim() || 'From the analyst\'s slur list', variants: r.variants.split(',').map(x => x.trim()).filter(Boolean),
+        severity: r.ctx ? 4 : 5, needs_context: !!r.ctx, threat_category: r.cat, by: WHO }) });
+      r.status = 'done'; r.err = ''; ok++;
+    } catch (e) { r.status = 'fail'; r.err = e.message; bad++; }
+  }
+  m.className = bad ? 'msg err' : 'msg okm'; m.textContent = `${ok} term${ok === 1 ? '' : 's'} taught${bad ? ` · ${bad} not saved (see the list)` : ''}. SPEAR uses them from the next scan.`;
+  draw();
+};
+
+const drop = document.getElementById('drop'), file = document.getElementById('file');
+drop.onclick = e => { if (e.target !== file) file.click(); };
+drop.ondragover = e => { e.preventDefault(); drop.classList.add('hover'); }; drop.ondragleave = () => drop.classList.remove('hover');
+drop.ondrop = async e => { e.preventDefault(); drop.classList.remove('hover'); const f = e.dataTransfer.files[0]; if (f) take(await readFile(f)); };
+file.onchange = async () => { const f = file.files[0]; if (f) take(await readFile(f)); file.value = ''; };
+document.getElementById('readPaste').onclick = () => take(document.getElementById('paste').value.split(/\r?\n/));
+if (!KEY) document.getElementById('nokey').style.display = '';
+window.__spearParse = parse; /* used by the synthetic tests */
+</script>
+<script id="spear-nav">
+/* The Project SPEAR control panel: the same left-hand menu on every page, same colours as the
+   Operational dashboard, so Eric can go from any page to any other in one click. */
+(function(){
+  if(document.getElementById('spside'))return;
+  var P=location.pathname.split('/').pop()||'index.html';
+  var here=/slurs\.html$/.test(P)?'slurs':/licenses\.html$/.test(P)?'licenses':/brand\.html$/.test(P)?'brand':/(report|brief)\.html$/.test(P)?'reports':'analysis';
+  var G='#2f7d5b',O='#c96a12',B='#1f5bb0',N='#0f2a5c',PU='#6a3fb5',M='#9c2a62';
+  var items=[];try{items=JSON.parse(localStorage.getItem('spear_items')||'[]')||[]}catch(e){}
+  var live=items.filter(function(i){return !i.archived});
+  var cnt={all:live.filter(function(i){return !i.status||i.status==='Pending'}).length,approved:live.filter(function(i){return i.status==='Confirmed'}).length,
+    specialist:live.filter(function(i){return i.status==='Escalated'}).length,reported:live.filter(function(i){return i.reportedAt}).length,archive:items.filter(function(i){return i.archived}).length};
+  function a(k,href,ic,label,c,n){return '<a class="sn'+(k===here?' on':'')+'" href="'+href+'" style="--c:'+c+'"><span class="ic">'+ic+'</span><span class="tx">'+label+'</span>'+(n?'<span class="ct">'+n+'</span>':'')+'</a>'}
+  function g(t,c){return '<div class="sg"'+(c?' style="--c:'+c+'"':'')+'>'+(c?'<i></i>':'')+t+'</div>'}
+  var html='<div class="sb"><a href="ops.html#ops" style="color:inherit;text-decoration:none">Project Spear</a><small>CONTENT MODERATION PLATFORM</small></div>'+
+    g('Dashboards')+a('ops','ops.html#ops','▦','Operational view',G)+a('exec','ops.html#exec','↗','Executive view',O)+
+    g('Case management',B)+a('analysis','./','✳','Agent analysis',N)+a('brand','brand.html','◆','Brand safety',PU)+
+    a('all','ops.html#all','☰','All open cases',B,cnt.all)+a('approved','ops.html#approved','✓','Human approved',B,cnt.approved)+
+    a('specialist','ops.html#specialist','◷','Specialist queue',B,cnt.specialist)+a('reported','ops.html#reported','▤','Reported to Meta',B,cnt.reported)+
+    a('takedown','ops.html#takedown','⤓','Takedowns',B)+a('meta','ops.html#meta','ⓜ','Meta files',B)+a('archive','ops.html#archive','🗂','Archive',B,cnt.archive)+
+    g('Business',G)+a('licenses','licenses.html','🔑','Customers &amp; licenses',G)+a('trendsw','trends.html','📣','Trends Watch',G)+g('Agent management',M)+a('cost','ops.html#cost','$','Cost analysis',M)+a('console','ops.html#console','⌘','Agent console',M)+a('memory','ops.html#memory','◈','Agent memory',M)+
+    '<details class="sw"'+(here==='slurs'?' open':'')+'><summary>'+g('Analyst workspace',N)+'</summary>'+
+    a('x','./#capture','⊕','Capture &amp; analyze',N)+a('x','./#tab=ai','✦','AI chat',N)+a('x','./#tab=log','▣','Log',N)+a('x','./#tab=cb','✎','Codebook &amp; teach',N)+a('slurs','slurs.html','⬆','Upload new slurs',N)+a('x','./#tab=lib','▥','Library',N)+a('x','./#tab=hunt','◎','Active Hunt',N)+'</details>';
+  var css='#spside{position:fixed;left:0;top:0;bottom:0;width:224px;background:#f5f7fb;border-right:1px solid #e3e8ef;overflow-y:auto;padding:14px 10px 24px;z-index:900;font:14px/1.2 Inter,system-ui,"Segoe UI",Arial,sans-serif;box-sizing:border-box}'+
+    'html body{padding-left:224px!important}'+
+    '#spside .sb{font:800 19px/1.1 Inter,system-ui,Arial,sans-serif;color:#0f1d33;padding:2px 8px 14px}#spside .sb small{display:block;font:600 9.5px/1.4 ui-monospace,Menlo,monospace;letter-spacing:1.6px;color:#6b7785;margin-top:3px}'+
+    '#spside .sg{display:flex;align-items:center;gap:7px;font:600 10.5px/1 ui-monospace,Menlo,monospace;letter-spacing:1.4px;text-transform:uppercase;color:var(--c,#8a94a3);margin:16px 8px 6px}#spside .sg i{width:8px;height:8px;border-radius:2px;background:var(--c)}'+
+    '#spside a.sn{display:flex;align-items:center;gap:10px;padding:8px 10px;margin:1px 0;border-radius:8px;color:var(--c);text-decoration:none;font-weight:600}'+
+    '#spside a.sn .ic{width:18px;text-align:center;font-weight:700}#spside a.sn .ct{margin-left:auto;font:700 11px ui-monospace,Menlo,monospace;color:#6b7785}'+
+    '#spside a.sn:hover{background:#fff}#spside a.sn.on{background:#fff;box-shadow:inset 4px 0 0 var(--c),0 1px 3px rgba(15,42,92,.1);color:var(--c)}'+
+    '#spside details.sw summary{list-style:none;cursor:pointer}#spside details.sw summary::-webkit-details-marker{display:none}#spside details.sw summary .sg::after{content:"▸";margin-left:4px}#spside details.sw[open] summary .sg::after{content:"▾"}'+
+    '#spmenu{display:none;position:fixed;left:10px;top:10px;z-index:901;font:700 13px/1 Inter,Arial,sans-serif;background:#0f1d33;color:#fff;border:0;border-radius:8px;padding:9px 12px;cursor:pointer}'+
+    '@media (max-width:900px){html body{padding-left:0!important}#spside{transform:translateX(-105%);transition:transform .2s;box-shadow:6px 0 24px rgba(0,0,0,.18)}#spside.open{transform:none}#spmenu{display:block}}'+
+    '@media print{#spside,#spmenu{display:none!important}html body{padding-left:0!important}}'+
+    /* the menu now carries these links, so the page headers stay clean */
+    'header a[href="ops.html"],header a[href="brand.html"],.top a[href="ops.html"],.top a[href="./"]{display:none!important}';
+  var st=document.createElement('style');st.id='spside-css';st.textContent=css;document.head.appendChild(st);
+  var n=document.createElement('nav');n.id='spside';n.setAttribute('aria-label','Project SPEAR menu');n.innerHTML=html;
+  document.body.insertBefore(n,document.body.firstChild);
+  var b=document.createElement('button');b.id='spmenu';b.type='button';b.textContent='☰ Menu';b.onclick=function(){n.classList.toggle('open')};document.body.appendChild(b);
+  var old=document.getElementById('spnav');if(old)old.remove();
+})();
+</script>
+<script id="spear-update">
+/* Auto-update: every few minutes the page checks whether a new version of SPEAR has been published.
+   If so, a banner offers "Update now". When nothing is in progress (no upload or scan running, nothing
+   being typed, the page idle for two minutes or in the background) it refreshes by itself. */
+(function(){
+  if(window.__spearUpd)return;window.__spearUpd=1;
+  var base=null,ready=false,last=Date.now();
+  ['mousemove','keydown','click','scroll','touchstart'].forEach(function(e){window.addEventListener(e,function(){last=Date.now()},{passive:true})});
+  function h(s){var x=0;for(var i=0;i<s.length;i++)x=(x*31+s.charCodeAt(i))|0;return s.length+':'+x}
+  function fetchSelf(){return fetch(location.pathname+'?v='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null}).catch(function(){return null})}
+  function busy(){
+    var b=document.getElementById('busyBar');if(b&&b.style.display!=='none'&&b.offsetParent!==null)return true;
+    var a=document.activeElement;if(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)&&String(a.value||'').trim())return true;
+    if(document.querySelector('.drawer.on,.arcm.on'))return true;
+    return false}
+  function banner(){
+    if(document.getElementById('updbar'))return;
+    var d=document.createElement('div');d.id='updbar';
+    d.style.cssText='position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:99990;background:#0f1d33;color:#fff;border-radius:12px;padding:12px 16px;display:flex;gap:12px;align-items:center;box-shadow:0 10px 30px rgba(0,0,0,.25);font:600 14px/1.3 Inter,system-ui,Arial,sans-serif;max-width:92vw';
+    d.innerHTML='<span>✨ A new version of SPEAR is ready.</span><button type="button" style="font:700 13px Inter,Arial,sans-serif;background:#2f7d5b;color:#fff;border:0;border-radius:8px;padding:8px 14px;cursor:pointer">Update now</button><button type="button" aria-label="Later" style="background:none;border:0;color:#9fb0c8;font:600 13px Inter,Arial,sans-serif;cursor:pointer">Later</button>';
+    d.children[1].onclick=function(){location.reload()};d.children[2].onclick=function(){d.remove()};
+    document.body.appendChild(d)}
+  function tick(){
+    fetchSelf().then(function(t){if(!t)return;var v=h(t);if(base===null){base=v;return}
+      if(v!==base)ready=true;
+      if(!ready)return;banner();
+      if(!busy()&&(document.hidden||Date.now()-last>120000))location.reload()})}
+  setTimeout(tick,5000);setInterval(tick,180000);
+  document.addEventListener('visibilitychange',function(){if(!document.hidden)tick()});
+})();
+</script>
+<script id="spear-aimode">
+/* AI mode switch (top of the side menu on every page): 🧪 Test = free Gemini, no charge — for testing
+   and teaching. ✅ Official = paid Gemini from the prepaid balance — for real cases. One click switches;
+   the server keeps the setting, so every page and device follows it. */
+(function(){
+  if(window.__spearMode)return;window.__spearMode=1;
+  var API=(localStorage.getItem('spear_api')||'https://project-spear-backend.onrender.com').replace(/\/$/,'');
+  function key(){return localStorage.getItem('spear_key')||''}
+  var S=null;
+  var css='#aimode{margin:4px 6px 10px;border-radius:10px;padding:9px 10px;font:600 12px/1.3 Inter,system-ui,Arial,sans-serif;cursor:pointer;border:1.5px solid;user-select:none}'+
+    '#aimode b{display:block;font-size:12.5px;letter-spacing:.3px}#aimode small{display:block;font-weight:500;opacity:.85;margin-top:2px}'+
+    '#aimode{display:flex;align-items:center;gap:10px}#aimode .sw{flex:none;width:38px;height:22px;border-radius:11px;background:rgba(255,255,255,.35);position:relative}#aimode .sw i{position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .15s}#aimode.official .sw i{left:19px}'+
+    '#aimode.official{background:#c0262d;border-color:#c0262d;color:#fff}#aimode.test{background:#f5c518;border-color:#e0b000;color:#3b2a06}#aimode.test .sw{background:rgba(0,0,0,.2)}#aimode.off{background:#f1f3f6;border-color:#c9d2df;color:#5b6678}'+
+    '#aimribbon{position:fixed;top:0;left:0;right:0;height:4px;background:repeating-linear-gradient(45deg,#e8a33d 0 12px,#f5c46b 12px 24px);z-index:99991}';
+  var st=document.createElement('style');st.textContent=css;document.head.appendChild(st);
+  function host(){return document.querySelector('#spside .sb')||document.querySelector('aside.side .brand')}
+  function paint(){
+    var h=host();if(!h)return false;var el=document.getElementById('aimode');
+    if(!el){el=document.createElement('div');el.id='aimode';el.setAttribute('role','button');el.title='Switch between Test (free) and Official (paid) AI';h.insertAdjacentElement('afterend',el);el.onclick=toggle}
+    if(!S){el.className='off';el.innerHTML='<b>AI mode</b><small>'+(key()?'checking…':'open the setup link on this device')+'</small>';return true}
+    if(S.mode==='test'){el.className='test';el.innerHTML='<span class="sw"><i></i></span><span><b>🧪 TEST MODE · free</b><small>Paid AI is OFF. For testing &amp; teaching. Click to turn ON.</small></span>'}
+    else{el.className='official';el.innerHTML='<span class="sw"><i></i></span><span><b>✅ OFFICIAL · paid ON</b><small>For real cases. Uses the prepaid balance. Click to turn OFF.</small></span>'}
+    var rb=document.getElementById('aimribbon');if(S.mode==='test'&&!rb){rb=document.createElement('div');rb.id='aimribbon';rb.title='Test mode — free AI';document.body.appendChild(rb)}else if(S.mode!=='test'&&rb)rb.remove();
+    return true}
+  function load(){if(!key())return paint();fetch(API+'/api/ai-mode',{headers:{'X-Spear-Key':key()}}).then(function(r){return r.ok?r.json():null}).then(function(j){if(j&&j.mode){S=j}paint()}).catch(function(){paint()})}
+  function toggle(){
+    if(!S){load();return}
+    var to=S.mode==='test'?'official':'test';
+    if(to==='test'&&!S.free_ready){alert('Test mode is not set up yet: a free Gemini key (GEMINI_FREE_API_KEY) has to be added on the server first.');return}
+    var msg=to==='official'?'Switch to OFFICIAL (paid)?\n\nUse this for real cases. AI calls are paid from the prepaid Gemini balance.'
+      :'Switch to TEST mode (free)?\n\nUse this for testing and teaching SPEAR. No charge.\nNote: on Google’s free tier, uploaded content may be used to improve Google’s products — switch back to Official for real client or Meta evidence.';
+    if(!confirm(msg))return;
+    fetch(API+'/api/ai-mode',{method:'POST',headers:{'X-Spear-Key':key(),'Content-Type':'application/json'},body:JSON.stringify({mode:to,by:localStorage.getItem('spear_author')||''})})
+      .then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j}})}).then(function(x){if(!x.ok){alert('Not switched: '+((x.j&&x.j.detail)||'server error'));return}S=x.j;paint()})
+      .catch(function(){alert('Could not reach the SPEAR server — try again in a moment.')})}
+  var n=0,t=setInterval(function(){if(paint()||++n>60){clearInterval(t);load()}},250);
+  setInterval(load,120000);document.addEventListener('visibilitychange',function(){if(!document.hidden)load()});
+})();
+</script>
+
+
+</body>
+</html>
