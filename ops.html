@@ -485,7 +485,7 @@ function typeOf(it){
   if(/samidoun|designated (org|entity)/.test(txt))return 'Dangerous Orgs';
   if(c!=='isis_terrorism'&&/antisemit|happy merchant|\bjew(s|ish)?\b|jewmaxx|\bgoy|holocaust|holohoax|\bzog\b|synagogue of satan/.test(txt+' '+String(it.visionDesc||'').toLowerCase()))return 'Hate Speech';
   if(TERROR.includes(c))return 'Terrorism';
-  if(c==='antisemitism'||c==='propaganda')return 'Hate Speech';
+  if(c==='antisemitism'||c==='hate_speech'||c==='propaganda')return 'Hate Speech';
   if(c==='domestic_terrorism')return 'Extremism';
   const o={narcotics:'Narcotics',counterfeit_meds:'Counterfeit meds',public_safety_threat:'Public safety',child_safety:'Child safety',self_harm_promotion:'Self-harm',inauthentic_ai:'Inauthentic',situational_awareness:'Situational'};
   return o[c]||'Review';
@@ -766,7 +766,7 @@ $('tagbox').onclick=e=>{const s=e.target.closest('.tag');if(!s)return;TAGS[s.dat
 $('addtag').onclick=()=>{const v=$('newtag').value.trim();if(!v)return;TAGS.push({t:v,on:true});$('newtag').value='';saveTags();renderTags()};
 function posterFrom(u,author){if(author)return author;try{const x=new URL(u),h=x.hostname.replace(/^www\./,''),s=x.pathname.split('/').filter(Boolean);
   if(h==='bsky.app'&&s[0]==='profile')return s[1];if(h==='t.me')return 't.me/'+(s[0]==='s'?s[1]:s[0]);if(s[0]&&s[0][0]==='@')return s[0]+'@'+h;return h}catch(e){return 'Unknown — not established'}}
-const CATS=['isis_terrorism','propaganda','recruitment','glorification','incitement','financing','operational_planning','domestic_terrorism','antisemitism','narcotics','counterfeit_meds','public_safety_threat','child_safety','self_harm_promotion','inauthentic_ai','situational_awareness','benign'];
+const CATS=['isis_terrorism','propaganda','recruitment','glorification','incitement','financing','operational_planning','domestic_terrorism','antisemitism','hate_speech','narcotics','counterfeit_meds','public_safety_threat','child_safety','self_harm_promotion','inauthentic_ai','situational_awareness','benign'];
 function nowLocal(){const d=new Date(),p=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`}
 let HUNTING=false;
 $('runhunt').onclick=async()=>{

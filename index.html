@@ -1198,8 +1198,8 @@ function _withTimeout(promise,ms,fallback){
 
 
 const HUNT_CTX=__B.C["HUNT_CTX"];
-const CATS=['isis_terrorism','propaganda','recruitment','glorification','incitement','financing','operational_planning','domestic_terrorism','antisemitism','narcotics','counterfeit_meds','public_safety_threat','child_safety','self_harm_promotion','inauthentic_ai','situational_awareness','benign'];
-const CATCOLOR={isis_terrorism:'#0A0A0A',propaganda:'#7C3AED',recruitment:'#D9480F',glorification:'#B7791F',incitement:'#B42318',financing:'#0F766E',operational_planning:'#1D4ED8',domestic_terrorism:'#9B1C1C',antisemitism:'#5B21B6',narcotics:'#047857',counterfeit_meds:'#B45309',public_safety_threat:'#BE123C',child_safety:'#701A75',self_harm_promotion:'#7C2D12',inauthentic_ai:'#0891B2',situational_awareness:'#1D4ED8',benign:'#5A6472'};
+const CATS=['isis_terrorism','propaganda','recruitment','glorification','incitement','financing','operational_planning','domestic_terrorism','antisemitism','hate_speech','narcotics','counterfeit_meds','public_safety_threat','child_safety','self_harm_promotion','inauthentic_ai','situational_awareness','benign'];
+const CATCOLOR={isis_terrorism:'#0A0A0A',propaganda:'#7C3AED',recruitment:'#D9480F',glorification:'#B7791F',incitement:'#B42318',financing:'#0F766E',operational_planning:'#1D4ED8',domestic_terrorism:'#9B1C1C',antisemitism:'#5B21B6',hate_speech:'#9D174D',narcotics:'#047857',counterfeit_meds:'#B45309',public_safety_threat:'#BE123C',child_safety:'#701A75',self_harm_promotion:'#7C2D12',inauthentic_ai:'#0891B2',situational_awareness:'#1D4ED8',benign:'#5A6472'};
 const GRADES=['Observed','Corroborated','Inferred','Predicted','Disputed','Unverified'];
 const CONN=['linguistic resemblance','narrative similarity','audience overlap','commercial/social interaction','operational coordination'];
 const TIERS=['CRITICAL','HIGH','MEDIUM','LOW','MINIMAL'];
@@ -1411,6 +1411,7 @@ const HARM=__B.C["HARM"];
 const NEXT={
  situational_awareness:'Do NOT report this to the platform — it is protected speech and the report will be rejected. Record it with the date, the place and the named person. Watch the same accounts for what would change the picture: the target’s route, schedule, hotel, home, or security detail; weapons or tactics; “by any means necessary”; or language that shifts from the individual to a protected group. Any of those moves it out of this lane.',
  isis_terrorism:'Escalate immediately as a designated-terrorist-entity referral: preserve the account handle, any linked Telegram/off-platform channel, and the affiliate watermark, and report the whole account (not just the one post) for takedown. Watch the full clip — the flagged frames or watermark may appear only mid-video.',
+ hate_speech:'Confirm the slur or dehumanizing language targets people for their race (or another protected trait) and is the author\u2019s own words, not news reporting or counter-speech; if it calls for violence, re-grade to incitement. Capture the slur or coded term for the report.',
  antisemitism:'Confirm whether the content targets people (hate speech) or crosses into a call for violence (re-grade to incitement); capture the coded terms/symbols for the report.',
  propaganda:'Check whether the account links onward to recruitment or financing pages; if it does, the item should be re-graded upward.',
  recruitment:'Verify the contact/application pathway is live and whether it leads to a known network (Corroborated) or is unlinked (keep as Inferred).',
@@ -3616,6 +3617,7 @@ const POLICY_MAP={
  situational_awareness:{clause:'NONE — lawful political speech. Criticism of a head of state, including calling them a war criminal, is permitted on every major platform.',reason:'DO NOT REPORT — record for protective awareness only'},
  isis_terrorism:{clause:'Dangerous Organizations & Individuals — Tier 1 designated terrorist entity (ISIS/ISIL): praise, substantive support, or representation',reason:'Terrorism (designated foreign terrorist organization)'},
  antisemitism:{clause:'Hate Speech — dehumanizing attacks / hateful ideology targeting a protected characteristic (Jewish identity)',reason:'Hate speech'},
+ hate_speech:{clause:'Hate Speech — slurs and dehumanizing attacks targeting a protected characteristic (race)',reason:'Hate speech'},
  propaganda:{clause:'Dangerous Organizations & Individuals — praise/support',reason:'Terrorism or violent extremism'},
  recruitment:{clause:'Dangerous Organizations & Individuals — recruitment',reason:'Terrorism or violent extremism'},
  glorification:{clause:'Dangerous Organizations & Individuals — glorification',reason:'Terrorism or violent extremism'},
@@ -3779,7 +3781,7 @@ function exportScopeItems(){const scope=(document.getElementById('expScope')||{}
 }
 function csvCell(v){v=(v==null?'':String(v)).replace(/"/g,'""');return /[",\n]/.test(v)?'"'+v+'"':v;}
 
-const META_TYPE={propaganda:'Hate speech',recruitment:'Terrorism',glorification:'Terrorism',incitement:'Terrorism',
+const META_TYPE={propaganda:'Hate speech',hate_speech:'Hate speech',recruitment:'Terrorism',glorification:'Terrorism',incitement:'Terrorism',
  financing:'Terrorism',operational_planning:'Terrorism',domestic_terrorism:'Terrorism',narcotics:'Narcotics',
  counterfeit_meds:'Counterfeit meds',public_safety_threat:'Public safety',child_safety:'Child safety (NCMEC)',
  self_harm_promotion:'Self-harm',inauthentic_ai:'Inauthentic behavior / fake account',benign:'Review'};

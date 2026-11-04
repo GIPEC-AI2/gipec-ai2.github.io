@@ -75,7 +75,7 @@ const API = (LS('spear_api') || 'https://project-spear-backend.onrender.com').re
 const KEY = LS('spear_key') || '';
 const WHO = (LS('spear_author') || '').trim() || 'analyst';
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const CATS = [['antisemitism', 'Antisemitism'], ['propaganda', 'Extremist propaganda'], ['recruitment', 'Recruitment'], ['incitement', 'Incitement'], ['domestic_terrorism', 'Domestic terrorism'], ['glorification', 'Glorification'], ['isis_terrorism', 'ISIS / jihadist terrorism'], ['narcotics', 'Drugs'], ['counterfeit_meds', 'Counterfeit pills']];
+const CATS = [['antisemitism', 'Antisemitism'], ['hate_speech', 'Hate speech (racist, anti-Black)'], ['propaganda', 'Extremist propaganda'], ['recruitment', 'Recruitment'], ['incitement', 'Incitement'], ['domestic_terrorism', 'Domestic terrorism'], ['glorification', 'Glorification'], ['isis_terrorism', 'ISIS / jihadist terrorism'], ['narcotics', 'Drugs'], ['counterfeit_meds', 'Counterfeit pills']];
 /* Everyday words, names and numbers that are only harmful in context: raise for review, don't flag on their own. */
 const CONTEXT_WORDS = /^(noticing|press|cabal|globalists?|elites?|globalists\/elites|the lobby|lobby|lobby \(aipac\)|aipac|adolf hitler|pepe the frog|pepe|change my mind|echoes|echoses|goyim|money mouth face|juice box emoji|the juice|blood libel|hakenkreuz|its always them|every single time|2%|18|110|109|1977|88|83|box 110|rat|snake|totally joyful day|its your duty|it's your duty|no authority|the jews did this)$/i;
 const EMOJI = { 'juice box': '🧃', 'money mouth': '🤑', 'rat': '🐀', 'snake': '🐍', 'nose': '👃', 'merchant': '' };
