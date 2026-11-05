@@ -151,7 +151,7 @@ $('bPdf').onclick=async()=>{if(!R)return;if(typeof html2pdf!=='function'){status
   const b=$('bPdf');b.disabled=true;b.textContent='⏳ Making PDF…';
   const pg=$('pg').cloneNode(true);pg.querySelectorAll('[contenteditable]').forEach(e=>e.removeAttribute('contenteditable'));pg.querySelectorAll('.noprint').forEach(e=>e.remove());
   if(!$('pg').classList.contains('with-appx'))pg.querySelectorAll('.appx').forEach(e=>e.remove());
-  pg.style.boxShadow='none';pg.style.margin='0';pg.style.padding='0';
+  pg.style.boxShadow='none';pg.style.margin='0';pg.style.padding='0';pg.style.width='672px';pg.style.maxWidth='672px';   /* narrower than the 711px PDF page: browsers zoomed out (Ctrl -) otherwise clip the right edge */
   try{await html2pdf().set({margin:[14,14,16,14],filename:fname('pdf'),image:{type:'jpeg',quality:0.95},html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff'},jsPDF:{unit:'mm',format:'letter',orientation:'portrait'},pagebreak:{mode:['css','legacy'],avoid:['h2','h3','.tac','.des','.ib','.verdict','li','figure','.kv']}}).from(pg).toPdf().get('pdf').then(pdf=>{if(window.SpearBrand)SpearBrand.stamp(pdf,R&&R.report_type==='brief'?'Project SPEAR // Intelligence Brief':'Project SPEAR // Dossier')}).save()}
   catch(e){status('PDF failed — use Print, then Save as PDF')}
   b.disabled=false;b.textContent='⬇ PDF'};

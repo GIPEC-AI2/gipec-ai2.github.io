@@ -291,7 +291,7 @@ async function downloadPdf(which){
   if(typeof html2pdf!=='function'){$('st').textContent='PDF tool did not load — use Print, then “Save as PDF”';return}
   const src=document.querySelector(which==='assess'?'.p1':'.p2');if(!src)return;
   const btn=$(which==='assess'?'dlA':'dlB'),label=btn.textContent;btn.disabled=true;btn.textContent='⏳ Making PDF…';
-  const clone=src.cloneNode(true);clone.classList.remove('pb');clone.classList.add('pdfpage');
+  const clone=src.cloneNode(true);clone.classList.remove('pb');clone.classList.add('pdfpage');clone.style.setProperty('width','650px','important');clone.style.setProperty('max-width','650px','important');   /* narrower than the A4 page so zoomed-out browsers do not clip the right edge */
   clone.querySelectorAll('[contenteditable]').forEach(e=>e.removeAttribute('contenteditable'));
   const au=(src.querySelector('[data-k=author]')||{}).textContent||B.author||author();
   const title=which==='assess'?'PROJECT SPEAR // ANALYST ASSESSMENT':'PROJECT SPEAR // EXECUTIVE INTELLIGENCE BRIEF';
