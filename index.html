@@ -622,6 +622,8 @@ input,select,textarea{font-size:15px}
 .btn.mute{font-weight:600}
 label,summary{font-size:14px}
 summary{padding:3px 0}
+.dossbtn{display:block;width:100%;margin:10px 0 4px;text-align:left;font:800 17px system-ui,-apple-system,Segoe UI,sans-serif;background:#2f7d5b;color:#fff;border:0;border-radius:10px;padding:13px 16px;cursor:pointer;box-shadow:0 2px 8px rgba(47,125,91,.25)}.dossbtn span{display:block;font-weight:500;font-size:13px;opacity:.92;margin-top:2px}.dossbtn:hover{background:#246548}
+.markid{background:#fff4e5;border:1.5px solid #e8a33d;border-radius:8px;padding:7px 10px;margin:4px 0 8px;font-size:14px;color:#6b3b00}
 </style>
 </head>
 <body>
@@ -2692,6 +2694,7 @@ async function watermarkPass(id){
     else if(isisMark&&it.category!=='isis_terrorism'){it.markConflict=true;try{log(it,'second look conflict','ISIS mark ('+strong[0].what+') on an item read as '+it.category+' — category kept; analyst to check')}catch(e){}}
     if(it.grade==='Unchecked'||it.grade==='Predicted')it.grade='Corroborated';
     strong.forEach(m=>{const tag='mark: '+m.what; if(!(it.indicators||[]).includes(tag))(it.indicators=it.indicators||[]).push(tag)});
+    it.markId={what:String(strong[0].what).slice(0,140),where:strong[0].where||''};
     if(before!==it.score){toast('🔍 Watermark found — '+strong[0].what+' — raised to '+it.score+'/10');try{log(it,'watermark raised score',before+' → '+it.score+' ('+strong[0].what+')')}catch(e){}}
     _refreshCard(it,null); return;   
   }
@@ -2784,12 +2787,14 @@ function renderVisionCard(it){
       </span>
       ${notChecked?`<button class="btn btn-retry" style="margin-left:auto" onclick="retryVision(${it.id},this)">🔁 Try again</button>`:''}
     </div>
+    ${(!notChecked&&it.type!=='audio')?`<button class="dossbtn" onclick="openBrief(${it.id})" title="The full intelligence report: description, why Meta missed it, how SPEAR caught it, policies, Q1–Q4 for Meta. Ask SPEAR questions next to the post. Download as PDF.">📄 Open the full SPEAR Dossier<span>Full intelligence report · Ask SPEAR about this post · PDF</span></button>`:''}
     <div class="vtop">
       ${it.thumb?`<img class="vthumb" src="${it.thumb}" alt="">`:'<div class="noart">🎧</div>'}
       <div class="vbody">
         <h4>${it.type==='audio'?'🎧 What this recording says':it.type==='video'?'👁 What this video shows':(it.visionFailed&&it.textFallback?'🔤 What the words in this image say':'👁 What this image is')}</h4>
         ${(it.visionFailed&&!notChecked)?`<div class="warnstrip">⚠ Vision AI could not look at the picture — the text below was read and translated instead.
           <button class="btn sec" style="padding:3px 10px;font-size:12px;margin-left:6px" onclick="retryVision(${it.id},this)">🔁 Try Vision AI again</button></div>`:''}
+        ${(it.markId&&it.markId.what)?`<div class="markid">🔍 <b>Second look identified:</b> ${e(it.markId.what)}${it.markId.where&&it.markId.where!=='throughout'?' — '+e(String(it.markId.where).replace('-',' '))+(/edge/.test(it.markId.where)?'':' corner'):''}</div>`:''}
         <div class="vdesc">${notChecked
           ? e(String(it.visionFailed).replace(/^server vision \d+ — ?/,''))+'<div class="autostrip note" style="margin:8px 0 0"></div>' 
           : (off ? '<span style="color:#B42318"><b>No description available.</b> '+e((it.reasoning||'').slice(0,240))+'</span>'
@@ -2847,8 +2852,8 @@ function renderVisionCard(it){
       ${(!off&&!notChecked)?`<button class="btn btn-prev" onclick="recommendPrevention(${it.id},this)">🛡 How to stop this</button>`:''}
       <button class="btn findmore" onclick="corroborate(${it.id})">🔎 Find more like this</button>
       ${(it.visionRaw&&((it.visionRaw.entities||[]).length||it.visionRaw.place))?`<button class="btn btn-ctx" onclick="getContext(${it.id})" title="Search current reporting on the people and places named here, and read the post against it">🌐 What's going on around this?</button>`:''}
-      <button class="btn btn-decide" onclick="select(${it.id});showTab('queue');document.getElementById('queuePane').scrollIntoView({behavior:'smooth',block:'center'})">📄 Open full report</button>
-      <button class="btn" style="background:#0f2a5c;border-color:#0f2a5c;color:#fff" onclick="openBrief(${it.id})" title="Executive Intelligence Brief in the senior analyst's report format - printable, editable">📑 Reports (PDF)</button>
+      <button class="btn btn-decide" onclick="select(${it.id});showTab('queue');document.getElementById('queuePane').scrollIntoView({behavior:'smooth',block:'center'})">📋 Open in the review queue</button>
+      <button class="btn" style="background:#0f2a5c;border-color:#0f2a5c;color:#fff" onclick="openBrief(${it.id})" title="Executive Intelligence Brief in the senior analyst's report format - printable, editable">📄 SPEAR Dossier (PDF)</button>
       <button class="btn sec" onclick="this.closest('.vcard').remove()">Dismiss</button>
       <span class="note" style="margin:0">Saved to the review queue. <b>Find more like this</b> searches for other posts carrying the same signals.</span>
     </div></div>
@@ -5950,7 +5955,7 @@ function renderDetail(){
      <button class="btn ok" onclick="act('Confirmed')">Confirm</button>
      <button class="btn btn-decide" onclick="act('Escalated')">🚩 Report to platform</button>
      <button class="btn mute" onclick="act('Dismissed')">Dismiss (FP)</button>
-     <button class="btn" style="background:#0f2a5c;border-color:#0f2a5c;color:#fff" onclick="openBrief(${it.id})" title="Executive Intelligence Brief in the senior analyst's report format - printable, editable">📑 Reports (PDF)</button>
+     <button class="btn" style="background:#0f2a5c;border-color:#0f2a5c;color:#fff" onclick="openBrief(${it.id})" title="Executive Intelligence Brief in the senior analyst's report format - printable, editable">📄 SPEAR Dossier (PDF)</button>
       <button class="btn btn-ask" onclick="discussIncident(${it.id},'why')" title="Ask the analyst AI why this is happening and what to do about it">💬 Ask the AI about this</button>
    </div>
    ${it.tier==='CRITICAL'?`<div class="twoman">CRITICAL tier: in official mode, reporting needs two people including Eric or a manager${window.SpearApproval&&SpearApproval.confirmed(it).length?' (confirmed so far: '+esc(SpearApproval.confirmed(it).join(', '))+')':''}. In test mode one analyst can report it..</div>`:''}
