@@ -51,6 +51,7 @@ body{margin:0;background:#e9edf3;font:14.5px/1.6 Helvetica,Arial,sans-serif;colo
   <div style="display:flex;gap:8px;justify-content:flex-end"><button id="pCancel" style="font:600 13px Helvetica;padding:8px 14px;border-radius:7px;border:1px solid #c9d6f3;background:#fff;color:#1f5fd6;cursor:pointer">Cancel</button><button id="pGo" style="font:600 13px Helvetica;padding:8px 14px;border-radius:7px;border:0;background:#1f5fd6;color:#fff;cursor:pointer">Write the report with these</button></div>
 </div></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="spear-brand.js"></script>
 <script src="spear-report.js"></script>
 <script>
 /* Full analyst report for one post (one or several screenshots). The report is written on the server
@@ -151,7 +152,7 @@ $('bPdf').onclick=async()=>{if(!R)return;if(typeof html2pdf!=='function'){status
   const pg=$('pg').cloneNode(true);pg.querySelectorAll('[contenteditable]').forEach(e=>e.removeAttribute('contenteditable'));pg.querySelectorAll('.noprint').forEach(e=>e.remove());
   if(!$('pg').classList.contains('with-appx'))pg.querySelectorAll('.appx').forEach(e=>e.remove());
   pg.style.boxShadow='none';pg.style.margin='0';pg.style.padding='0';
-  try{await html2pdf().set({margin:[14,14,16,14],filename:fname('pdf'),image:{type:'jpeg',quality:0.95},html2canvas:{scale:2,backgroundColor:'#ffffff'},jsPDF:{unit:'mm',format:'letter',orientation:'portrait'},pagebreak:{mode:['css','legacy'],avoid:['h2','h3','.tac','.des','.ib','.verdict','li','figure','.kv']}}).from(pg).save()}
+  try{await html2pdf().set({margin:[14,14,16,14],filename:fname('pdf'),image:{type:'jpeg',quality:0.95},html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff'},jsPDF:{unit:'mm',format:'letter',orientation:'portrait'},pagebreak:{mode:['css','legacy'],avoid:['h2','h3','.tac','.des','.ib','.verdict','li','figure','.kv']}}).from(pg).toPdf().get('pdf').then(pdf=>{if(window.SpearBrand)SpearBrand.stamp(pdf,R&&R.report_type==='brief'?'Project SPEAR // Intelligence Brief':'Project SPEAR // Dossier')}).save()}
   catch(e){status('PDF failed — use Print, then Save as PDF')}
   b.disabled=false;b.textContent='⬇ PDF'};
 $('bAll').onclick=()=>{const p=$('pg');if(!p)return;navigator.clipboard.writeText(SpearReport.fullText?SpearReport.fullText(p):p.innerText).then(()=>status('Full dossier copied'),()=>status('Copy blocked by the browser'))};

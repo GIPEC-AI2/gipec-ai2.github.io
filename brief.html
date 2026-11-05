@@ -98,6 +98,7 @@ body.only-brief .p1{display:none}body.only-assess .p2{display:none}
 <div id="root"><div class="msg"><span class="spin"></span>Loading the case…</div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="spear-brand.js"></script>
 <script>
 /* Reads the case from this browser's shared queue (spear_items), asks the Project Spear backend
    (POST /api/brief, server-held AI key) to write it, and lays it out the way the senior analyst
@@ -182,9 +183,9 @@ function ansCls(v){v=String(v||'').toLowerCase();return v.startsWith('yes')?'yes
 function part1(b){
   const a=b.assessment;const it=IT,csam=it.category==='child_safety';
   const img=(!csam&&(it.media||it.thumb))||'';
-  if(!a)return `<div class="page p1"><p class="part">Part 1 · Analyst assessment</p><div class="call"><p>This case was written before the full assessment was added. Press <b>↻ Rewrite with AI</b> to write it.</p></div></div>`;
+  if(!a)return `<div class="page p1">${window.SpearBrand?SpearBrand.letterhead('Analyst Assessment'):''}<p class="part">Part 1 · Analyst assessment</p><div class="call"><p>This case was written before the full assessment was added. Press <b>↻ Rewrite with AI</b> to write it.</p></div></div>`;
   const missed=(a.missed||[]).map((m,i)=>`<div class="num">${i+1}. ${esc(m.title||'')}</div><ul>${(m.points||[]).map(p=>`<li>${esc(p)}</li>`).join('')}</ul>`).join('');
-  return `<div class="page p1">
+  return `<div class="page p1">${window.SpearBrand?SpearBrand.letterhead('Analyst Assessment'):''}
   <span class="tag">RESTRICTED // ANALYST ASSESSMENT</span>
   <h1>PROJECT SPEAR</h1>
   <p class="sub">Analyst Assessment — ${esc(bAcct(b))} (${esc(bPlat(b))}${b.content_type?' · '+esc(b.content_type):''})</p>
@@ -219,7 +220,7 @@ function part2(b){
   const it=IT,csam=it.category==='child_safety';
   const url=/^https?:/.test(it.url||'')?it.url:'';
   const img=(!csam&&(it.media||it.thumb))||'';
-  return `<div class="page p2 pb">
+  return `<div class="page p2 pb">${window.SpearBrand?SpearBrand.letterhead('Executive Intelligence Brief'):''}
   <span class="tag">RESTRICTED // EXECUTIVE INTELLIGENCE BRIEF</span>
   <h1>PROJECT SPEAR</h1>
   ${E('subtitle',esc(b.subtitle||'Threat Assessment & GIPECAI Detection Pipeline'),'p','sub')}
@@ -302,7 +303,8 @@ async function downloadPdf(which){
       pagebreak:{mode:['css','legacy'],avoid:['.sec4','h2','.q','.call','.col','li','.ev','.meta','.num','.lbl']}
     }).from(clone).toPdf().get('pdf').then(pdf=>{
       const n=pdf.internal.getNumberOfPages();
-      for(let i=1;i<=n;i++){pdf.setPage(i);pdf.setFont('helvetica','bold');pdf.setFontSize(7);pdf.setTextColor(91,102,120);
+      if(window.SpearBrand)SpearBrand.stamp(pdf,title);
+      else for(let i=1;i<=n;i++){pdf.setPage(i);pdf.setFont('helvetica','bold');pdf.setFontSize(7);pdf.setTextColor(91,102,120);
         pdf.text(title,14,289);pdf.setFont('helvetica','normal');pdf.text('Page '+i+' of '+n,196,289,{align:'right'});}
       pdf.setProperties({title:'Project SPEAR - '+(which==='assess'?'Analyst Assessment':'Executive Intelligence Briefing')+' - '+bAcct(B),author:au,subject:'GIPEC AI² Project Spear',creator:'Project Spear'});
     }).save();

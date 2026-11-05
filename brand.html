@@ -150,6 +150,7 @@ table.par td{border-bottom:1px solid #eef1f6;padding:7px 6px;vertical-align:top}
 .tlegend .tstage{margin-left:0;padding:5px 12px;font-size:14px}
 .tlegend i{display:inline-block;width:16px;height:16px;border-radius:3px;vertical-align:-2px;margin-right:4px}
 </style>
+<script src="spear-brand.js"></script>
 </head>
 <body>
 <div class="top">
@@ -503,7 +504,7 @@ async function drawReport(c) {
       <button class="btn" id="csv">Download exclusion list (CSV)</button>
       <button class="btn pri" id="pdf">Print / save as PDF</button></div>
   <div class="rep">
-    <div class="rhead"><span class="wm">GIPEC AI<b>²</b></span><span class="hint">Project SPEAR · Brand Safety Report</span><span style="flex:1"></span><span class="hint">CONFIDENTIAL</span></div>
+    ${window.SpearBrand?SpearBrand.letterhead('Brand Safety Report · Confidential'):'<div class="rhead"><span class="wm">GIPEC AI<b>²</b></span><span class="hint">Project SPEAR · Brand Safety Report</span><span style="flex:1"></span><span class="hint">CONFIDENTIAL</span></div>'}
     <h2>${esc(name)}</h2>
     <div class="hint">Period: ${day(r.since)} – ${day(r.generated_at)} · Generated ${when(r.generated_at)}</div>
     <h3>Executive summary</h3><p>${summary}</p>

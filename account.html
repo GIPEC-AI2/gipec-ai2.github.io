@@ -46,6 +46,7 @@ table{width:100%;border-collapse:collapse;font-size:15px}th{text-align:left;font
 .spin{display:inline-block;width:16px;height:16px;border:3px solid #c9d6ee;border-top-color:var(--blue);border-radius:50%;animation:s 1s linear infinite;vertical-align:-2px;margin-right:8px}@keyframes s{to{transform:rotate(360deg)}}
 @media print{header,.tabs,.noprint{display:none!important}body{background:#fff}.card{border:none}}
 </style>
+<script src="spear-brand.js"></script>
 </head>
 <body>
 <header><div class="in"><span class="mark">GIPEC AI<b>²</b></span><span class="t">Project SPEAR · Customer portal</span><span class="sp"></span><span id="who" class="t"></span></div></header>
@@ -164,6 +165,7 @@ function reportHtml(c, canSave) {
   const r = c.report || {}, v = r.verdict || {}, pc = r.public_concern || {}, ms = r.missed || {};
   return `<div class="card">
     <div class="noprint" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">${canSave ? '<button class="btn ok" id="save">Save to my cases</button>' : ''}<button class="btn" onclick="window.print()">Print / save as PDF</button></div>
+    ${window.SpearBrand?SpearBrand.letterhead('SPEAR Report'):''}
     <div style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap">${c.thumb ? `<img src="${c.thumb}" style="width:160px;border-radius:10px;border:1px solid var(--line)" alt="">` : ''}
       <div style="flex:1;min-width:240px"><h2>${esc(r.title || 'SPEAR report')}</h2><div class="hint">${esc(r.platform || '')} ${r.account ? '· ' + esc(r.account) : ''} · ${day(c.created_at)}</div>
       ${v.answer ? `<div class="verdict ${vclass(v.answer)}">${esc(v.question ? v.question + ' — ' : '')}${esc(v.answer)}</div>` : ''}</div></div>
@@ -205,6 +207,7 @@ async function drawBrand() {
       const r = await api(`/api/brand/tenants/${encodeURIComponent(tid)}/report?days=${days}`);
       const conf = r.confirmed || [];
       box.innerHTML = `<div class="card"><div class="noprint" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px"><button class="btn" id="csv">Download exclusion list (CSV)</button><button class="btn" onclick="window.print()">Print / save as PDF</button></div>
+    ${window.SpearBrand?SpearBrand.letterhead('SPEAR Report'):''}
         <h2>${esc((r.client || {}).brand || (r.client || {}).codename || tid)} · Brand safety report</h2><div class="hint">${day(r.since)} – ${day(r.generated_at)}</div>
         <div class="kpis" style="margin-top:12px"><div class="kpi"><div class="v">${(r.screened || 0).toLocaleString()}</div><div class="l">Public posts screened</div></div>
           <div class="kpi"><div class="v">${conf.length}</div><div class="l">Confirmed by an analyst</div></div>
