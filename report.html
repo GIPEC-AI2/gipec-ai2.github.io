@@ -231,9 +231,11 @@ function askPaint(){
   $('askLog').innerHTML=(log.length?'':'<p class="hint">Talk to SPEAR the way you talk to Gemini. Ask what something is, ask why Meta missed it, or tell it what it got wrong. Answers come back in seconds. When an answer belongs in the report, press <b>Put this in the dossier</b>.</p>')+
     log.map((x,i)=>x.who==='you'?'<div class="m y">'+esc(x.t)+'</div>':
       x.kind==='update'?'<div class="m u">'+esc(x.t)+'</div>':
-      '<div class="m s"><b style="color:#1a4d37">SPEAR:</b> '+esc(x.t)+(x.kind==='answer'?'<button type="button" class="ad" data-i="'+i+'">✚ Put this in the dossier</button>':'')+'</div>').join('');
+      '<div class="m s"><b style="color:#1a4d37">SPEAR:</b> '+askMd(x.t)+(x.kind==='answer'?'<button type="button" class="ad" data-i="'+i+'">✚ Put this in the dossier</button>':'')+'</div>').join('');
   const lg=$('askLog');lg.scrollTop=lg.scrollHeight;
 }
+/* the AI sometimes answers with **bold** / *italic*: show it as formatting, never as raw HTML */
+function askMd(s){return esc(s).replace(/\*\*([^*\n]+)\*\*/g,'<b>$1</b>').replace(/(^|[^*])\*([^*\n]+)\*/g,'$1<i>$2</i>')}
 function askOpen(){askPaint();$('askp').classList.add('on');document.body.classList.add('askopen');setTimeout(()=>{try{$('askQ').focus()}catch(e){}},50)}
 async function askSend(){
   const q=$('askQ').value.trim();if(q.length<2||!R)return;

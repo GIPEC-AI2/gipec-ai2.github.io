@@ -7,6 +7,9 @@
   var CSS = '.sr{color:#1b2533;font:14.5px/1.6 Helvetica,Arial,sans-serif}' +
     '.sr .tag{display:inline-block;font:700 10.5px/1 Helvetica;letter-spacing:1.2px;color:#b42318;border:1.5px solid #b42318;padding:4px 7px;border-radius:3px}' +
     '.sr h1{font-size:26px;color:#0f2a5c;margin:10px 0 2px;letter-spacing:.5px}' +
+    '.sr .brandbar{display:flex;align-items:center;gap:16px;border-bottom:3px solid #0f2a5c;padding:0 0 12px;margin:0 0 16px}.sr .brandbar img{height:54px;width:auto;display:block}' +
+    '.sr .brandbar .bt{margin-left:auto;text-align:right;font:12px/1.45 Helvetica,Arial,sans-serif;color:#5b6678}.sr .brandbar .bt b{display:block;font-size:14px;color:#0f2a5c;letter-spacing:.3px}' +
+    '@media (max-width:600px){.sr .brandbar img{height:38px}.sr .brandbar .bt{font-size:10.5px}.sr .brandbar .bt b{font-size:12px}}' +
     '.sr .sub{color:#5b6678;margin:0 0 14px}' +
     '.sr .meta{display:grid;grid-template-columns:110px 1fr 110px 1fr;gap:4px 12px;font-size:13px;border-top:2px solid #0f2a5c;border-bottom:1px solid #dfe5ee;padding:9px 0;margin-bottom:18px}' +
     '.sr .meta .k{color:#5b6678}' +
@@ -59,6 +62,11 @@
   /* opts: {edits, imgs:{case_id:dataUrl}, editable, compact, author, teach} */
   function render(r, opts) { return isDossier(r) ? renderDossier(r, opts) : renderLegacy(r, opts); }
 
+  /* GIPEC AI2 letterhead at the top of every report (logo served from the same site so the PDF can draw it). */
+  function brandBar(kind) {
+    return '<div class="brandbar"><img src="https://gipec-ai2.github.io/gipec-logo.png" alt="GIPEC AI²" crossorigin="anonymous">' +
+      '<div class="bt"><b>GIPEC AI² · Project SPEAR</b>' + kind + ' · Patent Pending<br>gipecai.com · admin@gipecai.com</div></div>';
+  }
   /* SPEAR DOSSIER: the analyst's stages - Hunt, Capture, Be hunted, Flag, Teach, Report. */
   function renderDossier(r, opts) {
     css(); opts = opts || {}; var ED = opts.edits || {}, IM = opts.imgs || {}, ce = opts.editable !== false;
@@ -71,6 +79,7 @@
     function stage(n, name, sub2) { return '<h2 class="stg"><span class="qn">' + n + '</span>' + name + (sub2 ? ' <span class="stsub">' + sub2 + '</span>' : '') + '</h2>'; }
     function li(a, f) { return a && a.length ? '<ul class="dl">' + items(a, f) + '</ul>' : ''; }
     var h = '';
+    h += brandBar(brief ? 'Intelligence Brief' : 'Threat Intelligence Dossier');
     h += '<span class="tag">RESTRICTED // SPEAR DOSSIER' + (brief ? ' · INTELLIGENCE BRIEF' : '') + '</span><h1>SPEAR DOSSIER</h1>';
     h += E('title', esc(r.title || 'Multimodal threat analysis'), 'p', 'sub');
     h += '<div class="meta"><div class="k">Account</div>' + E('account', esc(r.account || 'Not recorded')) +
@@ -174,7 +183,7 @@
     if ((r.leverage || []).length) h += '<h3>How to use this capture</h3>' + E('lev', li(r.leverage, function (c) { return '<li><b>' + esc(c.title) + ':</b> ' + esc(c.text) + '</li>'; }));
     h += '</section>';
     h += '<div class="appx"><h2>Appendix — About Project SPEAR</h2>' + E('appx', '<p>Project SPEAR (GIPEC AI²) is a human-in-the-loop threat-intelligence system for coordinated harmful content. It hunts open platforms for known terms, captures and fingerprints every original, analyses how each post evades automated moderation, flags it against the platform’s published rules, and turns each confirmed case into labelled examples and recommendations a platform can use to teach its own systems. A human analyst confirms every case, and his decisions feed back into the system.</p>') + '</div>';
-    h += '<div class="foot"><span>PROJECT SPEAR // DOSSIER</span><span>© ' + new Date().getFullYear() + ' GIPEC AI². Patent Pending. Confidential.</span></div>';
+    h += '<div class="foot"><span>PROJECT SPEAR // DOSSIER</span><span>© ' + new Date().getFullYear() + ' GIPEC AI2 LLC · Project SPEAR · Patent Pending · Confidential.</span></div>';
     return h;
   }
 
@@ -187,6 +196,7 @@
     var nDes = (r.designations || []).length, brief = isBrief(r), plat = String(r.platform || '').trim();
     var links = (r.links || []).filter(function (u) { return /^https?:\/\//.test(u); });
     var h = '';
+    h += brandBar(brief ? 'Intelligence Brief' : 'Analyst Report');
     h += '<span class="tag">RESTRICTED // ' + (brief ? 'INTELLIGENCE BRIEF' : 'ANALYST REPORT') + '</span><h1>PROJECT SPEAR</h1>';
     h += E('title', esc(r.title || 'Analyst Report'), 'p', 'sub');
     h += '<div class="meta"><div class="k">Account</div>' + E('account', esc(r.account || 'Not recorded')) +
@@ -242,7 +252,7 @@
       '<div>Images</div><div>' + ev.length + ' archived original' + (ev.length === 1 ? '' : 's') + ev.map(function (e, i) { return e.sha256 ? '<br><span class="note">Image ' + (i + 1) + ' SHA-256: ' + esc(e.sha256) + '</span>' : ''; }).join('') + '</div>' +
       '<div>Report written</div><div>' + esc(new Date(r.written_at || Date.now()).toLocaleString()) + (r.model ? ' · ' + esc(r.model) : '') + '</div></div>';
     h += '<div class="appx"><h2>Appendix — About Project SPEAR</h2>' + E('appx', '<p>Project SPEAR (GIPEC AI²) is a human-in-the-loop threat-intelligence system for coordinated harmful content. Every image and video frame is read by a vision model, checked against an analyst-maintained codebook of coded terms, numbers, slogans and symbols, and scored with the senior analyst’s confirmed indicators. Screenshots of the same post are read together, so text split across frames is rebuilt. A human analyst confirms every case, and decisions feed back into the system.</p><p>Every original is archived permanently with a SHA-256 fingerprint, so the record survives even when a post is removed, and takedowns are tracked over time. Cases are packaged as analyst reports and evidence files that a platform’s trust-and-safety team, a regulator or a partner can act on — for example as notices under the EU Digital Services Act, where very large platforms must assess and mitigate systemic risks and act on notices without undue delay.</p>') + '</div>';
-    h += '<div class="foot"><span>PROJECT SPEAR // ANALYST REPORT</span><span>© ' + new Date().getFullYear() + ' GIPEC AI². Patent Pending. Confidential.</span></div>';
+    h += '<div class="foot"><span>PROJECT SPEAR // ANALYST REPORT</span><span>© ' + new Date().getFullYear() + ' GIPEC AI2 LLC · Project SPEAR · Patent Pending · Confidential.</span></div>';
     return h;
   }
 
