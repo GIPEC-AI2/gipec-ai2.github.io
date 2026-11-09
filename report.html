@@ -248,7 +248,7 @@ function askPaint(){
   }
   const ims=askImgs();$('askIm').innerHTML=ims.slice(0,6).map(s=>'<img alt="post" src="'+esc(s)+'">').join('');$('askIm').style.display=ims.length?'flex':'none';
   const log=askLog();
-  $('askLog').innerHTML=(log.length?'':'<p class="hint">Talk to SPEAR the way you talk to Gemini. Ask what something is, ask why Meta missed it, or tell it what it got wrong. Answers come back in seconds. When an answer belongs in the report, press <b>Put this in the dossier</b>.</p>')+
+  $('askLog').innerHTML=(log.length?'':'<p class="hint">Talk to SPEAR the way you talk to Gemini. Ask what something is, ask why Meta missed it, or tell it what it got wrong. Answers come back in seconds. When an answer belongs in the report, press <b>Put this in the dossier</b>.</p><p class="hint" style="border:1.5px solid #c27a00;background:#fff6e0;color:#5a3a00;border-radius:8px;padding:8px 10px"><b>⚠ Caution: surveillance is restricted on this system.</b> Ask about the content. SPEAR will not track, profile or identify the people who see, like, follow or comment on it.</p>')+
     log.map((x,i)=>x.who==='you'?'<div class="m y">'+esc(x.t)+'</div>':
       x.kind==='update'?'<div class="m u">'+esc(x.t)+'</div>':
       '<div class="m s"><b style="color:#1a4d37">SPEAR:</b> '+askMd(x.t)+(x.kind==='answer'?'<button type="button" class="ad" data-i="'+i+'">✚ Put this in the dossier</button>':'')+'</div>').join('');
