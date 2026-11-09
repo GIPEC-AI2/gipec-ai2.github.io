@@ -7,6 +7,7 @@
   var CSS = '.sr{color:#1b2533;font:14.5px/1.6 Helvetica,Arial,sans-serif}' +
     '.sr .tag{display:inline-block;font:700 10.5px/1 Helvetica;letter-spacing:1.2px;color:#b42318;border:1.5px solid #b42318;padding:4px 7px;border-radius:3px}' +
     '.sr h1{font-size:26px;color:#0f2a5c;margin:10px 0 2px;letter-spacing:.5px}' +
+    '.sr table.audt{width:100%;border-collapse:collapse;margin:6px 0 12px}.sr table.audt th,.sr table.audt td{border:1px solid #dfe5ee;padding:7px 9px;font-size:13.5px;text-align:left;vertical-align:top}.sr table.audt th{background:#f1f4f9;color:#0f2a5c}.sr .aud{break-inside:avoid}' +
     '.sr .brandbar{display:flex;align-items:center;gap:16px;border-bottom:3px solid #0f2a5c;padding:0 0 12px;margin:0 0 16px}.sr .brandbar img{height:54px;width:auto;display:block}' +
     '.sr .brandbar .bt{margin-left:auto;text-align:right;font:12px/1.45 Helvetica,Arial,sans-serif;color:#5b6678}.sr .brandbar .bt b{display:block;font-size:14px;color:#0f2a5c;letter-spacing:.3px}' +
     '@media (max-width:600px){.sr .brandbar img{height:38px}.sr .brandbar .bt{font-size:10.5px}.sr .brandbar .bt b{font-size:12px}}' +
@@ -60,6 +61,28 @@
 
   function isDossier(r) { return !!r && ((r.extraction || []).length || (r.countermeasures || []).length || (r.submission && r.submission.q1)); }
   /* opts: {edits, imgs:{case_id:dataUrl}, editable, compact, author, teach} */
+  /* "Who is this aimed at?" (Nov 2026): the audience the CONTENT is designed to reach, built from the post
+     alone. SPEAR never profiles, scores or identifies real people (followers, commenters, viewers). */
+  function audienceHtml(r, H) {
+    var a = r.audience || {}, segs = a.aimed_at || [], bt = a.belonging_test || {};
+    if (!segs.length && !a.pathway && !bt.offered) return '';
+    H = H || 'h3';
+    var sc = function (x) { x = String(x || '').toLowerCase(); return x.indexOf('high') === 0 ? '#d23c3c' : x.indexOf('mod') === 0 ? '#c27a00' : '#1f9d55'; };
+    var h = '<section class="aud"><' + H + '>Who is this aimed at?</' + H + '>' +
+      '<p class="note">Built from the content only. SPEAR never profiles, scores or identifies real people — not followers, commenters or viewers.</p>';
+    if (segs.length) h += '<table class="audt"><tr><th>Audience the content is built to reach</th><th>What it offers them</th><th>The hook</th><th>Pull</th></tr>' +
+      segs.map(function (x) { return '<tr><td>' + esc(x.segment) + (x.basis ? ' <span class="note">(' + esc(x.basis) + ')</span>' : '') + '</td><td>' + esc(x.offer) + '</td><td>' + esc(x.hook) + '</td><td><b style="color:' + sc(x.strength) + '">' + esc(x.strength || '—') + '</b></td></tr>'; }).join('') + '</table>';
+    if (bt.offered || bt.conditions || bt.agency) h += '<div class="lab">Belonging test</div><ul class="dl">' +
+      (bt.offered ? '<li><b>What is offered:</b> ' + esc(bt.offered) + '</li>' : '') +
+      (bt.conditions ? '<li><b>What acceptance requires:</b> ' + esc(bt.conditions) + '</li>' : '') +
+      (bt.agency ? '<li><b>What happens to the reader’s own choice:</b> ' + esc(bt.agency) + '</li>' : '') + '</ul>';
+    if (a.pathway) h += '<p><span class="lab">Next step it invites:</span> ' + esc(a.pathway) + '</p>';
+    if (a.minors) h += '<p><span class="lab">Built to appeal to under-18s?</span> ' + esc(a.minors) + '</p>';
+    if ((a.protective || []).length) h += '<div class="lab">Prevention ideas — parents, schools, community groups, platforms</div><ul class="dl">' +
+      a.protective.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>';
+    if (a.unknown) h += '<p class="note"><span class="lab">Not established by the post:</span> ' + esc(a.unknown) + '</p>';
+    return h + '</section>';
+  }
   function render(r, opts) { return isDossier(r) ? renderDossier(r, opts) : renderLegacy(r, opts); }
 
   /* GIPEC AI2 letterhead at the top of every report (logo served from the same site so the PDF can draw it). */
@@ -160,6 +183,7 @@
       if ((pc.signals || []).length) h += '<div class="lab">Real-world signals in the post</div>' + li(pc.signals, function (x) { return '<li>' + esc(x) + '</li>'; });
       if ((pc.proportional_steps || []).length) h += '<div class="lab">Sensible next steps</div>' + li(pc.proportional_steps, function (x) { return '<li>' + esc(x) + '</li>'; });
     }
+    h += audienceHtml(r, 'h3');
     h += '<p><span class="lab">Recommended action:</span> ' + E('rec', esc(r.recommended_action || '—'), 'span') + '</p></section>';
 
     /* 5 TEACH */
@@ -240,6 +264,7 @@
       if (cp.length) h += '<h3>Danger to other platforms</h3>' + E('xplat', '<ol class="n">' + items(cp, function (c) { return '<li><b>' + esc(c.platform) + ':</b> ' + esc(c.risk) + (c.policy ? ' <span class="note">Rule it breaks there: ' + esc(c.policy) + '</span>' : '') + '</li>'; }) + '</ol>');
       h += '</section>';
     }
+    h += audienceHtml(r, 'h2');
     h += learnHtml(r, opts);
     if (nDes) h += '<h2>Designation check</h2>' + items(r.designations, function (d, i) {
       return E('des' + i, '<h3 style="margin-top:0">' + esc(d.question || ('Is ' + d.entity + ' designated?')) + '<span class="conf ' + conf(d.confidence) + '">' + esc(d.confidence || 'not confirmed') + '</span></h3><p>' + esc(d.answer) + '</p>' +
