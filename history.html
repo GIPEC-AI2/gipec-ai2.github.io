@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Project SPEAR — Upload history</title>
+<link rel="icon" href="icon-192.png">
+<style>
+:root{--ink:#0f1d33;--mute:#5b6678;--line:#e3e8ef;--bg:#f5f7fb;--navy:#0f2a5c;--green:#2f7d5b;--red:#b42318;--amber:#b7791f}
+*{box-sizing:border-box}
+body{margin:0;background:#fff;color:var(--ink);font:16px/1.5 Inter,system-ui,"Segoe UI",Arial,sans-serif}
+main{max-width:1180px;margin:0 auto;padding:22px 22px 60px}
+h1{font-size:28px;margin:4px 0 2px;color:var(--navy)}
+.sub{color:var(--mute);font-size:15.5px;margin:0 0 16px}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:12px}
+.bar input[type=search]{flex:1;min-width:260px;font:17px Inter,system-ui,Arial,sans-serif;padding:12px 14px;border:2px solid #c9d6f3;border-radius:10px}
+.bar select{font:15px Inter,system-ui,Arial,sans-serif;padding:11px 10px;border:1px solid #c9d6f3;border-radius:10px;background:#fff}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0 4px}
+.chip{font:600 14.5px Inter,system-ui,Arial,sans-serif;border:1.5px solid #c9d6f3;background:#fff;color:var(--navy);border-radius:20px;padding:7px 14px;cursor:pointer}
+.chip.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.count{color:var(--mute);font-size:15px;margin:8px 0 14px}
+.row{display:grid;grid-template-columns:150px 1fr auto;gap:16px;align-items:start;border:1px solid var(--line);border-left:6px solid var(--c,#8a94a3);border-radius:12px;padding:14px;margin:0 0 12px;background:#fff}
+.ph{width:150px;height:150px;border-radius:8px;background:#eef2f7 center/cover no-repeat;display:flex;align-items:center;justify-content:center;color:#8a94a3;font-size:13px;text-align:center;overflow:hidden}
+.ph img{width:100%;height:100%;object-fit:cover;display:block}
+.t1{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:15px}
+.cat{font:800 13px Inter,system-ui,Arial,sans-serif;letter-spacing:.4px;text-transform:uppercase;color:#fff;background:var(--c,#8a94a3);border-radius:6px;padding:4px 8px}
+.score{font-weight:800;color:var(--navy)}
+.st{font:700 12.5px Inter,system-ui,Arial,sans-serif;border-radius:6px;padding:3px 8px;background:#eef2f7;color:var(--mute)}
+.st.open{background:#e8f5ee;color:#1a4d37}.st.archived{background:#eef2ff;color:#1f3d8a}.st.removed{background:#fdecea;color:#8a1c12}
+.acct{font-weight:700;font-size:16.5px;margin:6px 0 2px;word-break:break-all}
+.when{color:var(--mute);font-size:14px}
+.desc{font-size:15px;margin:6px 0 0;color:#273246}
+.meta{font-size:13.5px;color:var(--mute);margin-top:6px}
+.meta a{color:#1f5bb0}
+.acts{display:flex;flex-direction:column;gap:8px;min-width:190px}
+.btn{font:700 15px Inter,system-ui,Arial,sans-serif;border:0;border-radius:9px;padding:11px 14px;cursor:pointer;text-align:left;text-decoration:none;display:block}
+.btn.doss{background:var(--green);color:#fff}.btn.sec{background:#fff;color:var(--navy);border:1.5px solid #c9d6f3}
+.btn.back{background:#fff;color:#1a4d37;border:1.5px solid var(--green)}
+.btn:disabled{opacity:.55;cursor:default}
+.empty,.msg{border:1px dashed #c9d6f3;border-radius:12px;padding:26px;text-align:center;color:var(--mute);font-size:16px}
+.more{display:block;margin:10px auto;font:700 15px Inter,system-ui,Arial,sans-serif;background:#fff;border:1.5px solid #c9d6f3;color:var(--navy);border-radius:10px;padding:11px 20px;cursor:pointer}
+details.pics{margin-top:30px;border:1px solid var(--line);border-radius:12px;padding:12px 16px;background:var(--bg)}
+details.pics summary{cursor:pointer;font:800 18px Inter,system-ui,Arial,sans-serif;color:var(--navy)}
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px;margin-top:12px}
+.pc{background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px}
+.pc .ph{width:100%;height:170px}
+.pc .when{margin:6px 0}
+.pc .btn{font-size:14px;padding:9px 10px;margin-top:6px}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--ink);color:#fff;border-radius:10px;padding:12px 18px;font-weight:600;z-index:999;display:none}
+@media (max-width:900px){main{padding-top:58px}}
+@media (max-width:760px){.row{grid-template-columns:96px 1fr}.ph{width:96px;height:96px}.acts{grid-column:1/-1;flex-direction:row;flex-wrap:wrap;min-width:0}.acts .btn{flex:1 1 140px;text-align:center}}
+</style>
+</head>
+<body>
+<main>
+  <h1>🕘 Upload history</h1>
+  <p class="sub">Everything you have put into SPEAR — cases in the queue, archived groups, and cases taken out of the queue. Nothing here is ever deleted. Search by account, word, link or category.</p>
+  <div class="bar">
+    <input type="search" id="q" placeholder="Search: @account, a word, a link, Al-Furqan, WANGHAF…" autocomplete="off">
+    <select id="days" title="Period"><option value="0">All time</option><option value="7">Last 7 days</option><option value="30">Last 30 days</option><option value="90">Last 90 days</option></select>
+    <select id="cat" title="Category"><option value="">All categories</option></select>
+  </div>
+  <div class="chips" id="chips">
+    <button class="chip on" data-s="all">Everything</button><button class="chip" data-s="open">In the queue</button><button class="chip" data-s="archived">Archived</button><button class="chip" data-s="removed">Taken out of the queue</button>
+  </div>
+  <div class="count" id="count"></div>
+  <div id="list"><div class="msg">Loading your history…</div></div>
+  <button class="more" id="more" style="display:none">Show more</button>
+  <details class="pics" id="pics">
+    <summary>🖼 Other saved pictures <span class="when" id="picsN"></span></summary>
+    <p class="sub" style="margin:8px 0 0">Pictures SPEAR kept from your uploads that are not attached to a case (for example, uploads from before cases were saved on the server). Open one to write a SPEAR Dossier from it.</p>
+    <div class="pgrid" id="pgrid"></div>
+  </details>
+</main>
+<div class="toast" id="toast"></div>
+<script>
+/* Upload history: a searchable list of every case ever saved on the server (GET /api/history), with
+   the picture, the reading, the dossiers written for it, and one-click actions. Pictures load on
+   demand with the device's key; nothing is stored in this page. */
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let API='https://project-spear-backend.onrender.com',KEY='';
+try{API=(localStorage.getItem('spear_api')||API).replace(/\/$/,'');KEY=localStorage.getItem('spear_key')||''}catch(e){}
+const H=x=>Object.assign({'X-Spear-Key':KEY},x||{});
+const CATCOLOR={isis_terrorism:'#0A0A0A',propaganda:'#7C3AED',recruitment:'#D9480F',glorification:'#B7791F',incitement:'#B42318',financing:'#0F766E',operational_planning:'#1D4ED8',domestic_terrorism:'#9B1C1C',antisemitism:'#5B21B6',hate_speech:'#9D174D',narcotics:'#047857',counterfeit_meds:'#B45309',public_safety_threat:'#BE123C',child_safety:'#701A75',self_harm_promotion:'#7C2D12',inauthentic_ai:'#0891B2',situational_awareness:'#1D4ED8',benign:'#5A6472'};
+const STATE={open:'In the queue',archived:'Archived',removed:'Taken out of the queue'};
+let S={q:'',days:0,cat:'',state:'all',offset:0},ITEMS=[],TOTAL=0,timer=null;
+const catName=c=>String(c||'not scored').replace(/_/g,' ');
+function toast(t){const e=$('toast');e.textContent=t;e.style.display='block';clearTimeout(e._t);e._t=setTimeout(()=>e.style.display='none',3200)}
+function when(s){if(!s)return '';const d=new Date(String(s).replace(' ','T'));return isNaN(d)?esc(s):d.toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'})+' · '+d.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'})}
+
+async function load(append){
+  if(!KEY){$('list').innerHTML='<div class="msg"><b>This browser isn’t connected to SPEAR yet.</b><br>Open your Project SPEAR setup link once on this device, then come back.</div>';$('count').textContent='';return}
+  if(!append){S.offset=0;$('list').innerHTML='<div class="msg">Searching…</div>'}
+  const p=new URLSearchParams({q:S.q,days:S.days,category:S.cat,state:S.state,limit:60,offset:S.offset});
+  let j=null,last='';
+  for(let a=0;a<4&&!j;a++){
+    try{const r=await fetch(API+'/api/history?'+p,{headers:H()});if(r.ok){j=await r.json();break}last='error '+r.status;if(r.status===401){last='This device’s key was refused — open the setup link again.';break}}
+    catch(e){last='Waking the server…'}
+    if(!append)$('list').innerHTML='<div class="msg">'+esc(last)+' (trying again)</div>';await new Promise(r=>setTimeout(r,6000));
+  }
+  if(!j){$('list').innerHTML='<div class="msg"><b>History did not load.</b><br>'+esc(last)+'<br><br><button class="more" onclick="load()">Try again</button></div>';return}
+  TOTAL=j.total;ITEMS=append?ITEMS.concat(j.items):j.items;S.offset=ITEMS.length;
+  fillCats(j.by_category);draw();
+}
+function fillCats(by){const sel=$('cat');if(sel.options.length>1||!by)return;
+  Object.keys(by).filter(c=>c&&c!=='unscored').forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=catName(c)+' ('+by[c]+')';sel.appendChild(o)})}
+function draw(){
+  const filt=S.q||S.cat||S.days||S.state!=='all';
+  $('count').innerHTML='<b>'+TOTAL+'</b> '+(TOTAL===1?'case':'cases')+(filt?' found':' in your history')+(ITEMS.length<TOTAL?' · showing '+ITEMS.length:'');
+  $('more').style.display=ITEMS.length<TOTAL?'block':'none';
+  if(!ITEMS.length){$('list').innerHTML='<div class="empty">Nothing found'+(S.q?' for “'+esc(S.q)+'”':'')+'. Try another word, or choose “All time”.</div>';return}
+  $('list').innerHTML=ITEMS.map(row).join('');
+  watchThumbs();
+}
+function row(it){
+  const c=CATCOLOR[it.category]||'#8a94a3',d=(it.dossiers||[])[0];
+  const pic=it.child_safety?'<div class="ph">Routed to NCMEC<br>not shown</div>':(it.has_picture?'<div class="ph" data-thumb="'+esc(it.id)+'">loading…</div>':'<div class="ph">No picture<br>saved</div>');
+  const url=/^https?:\/\//.test(it.url||'')?'<a href="'+esc(it.url)+'" target="_blank" rel="noopener noreferrer">open the post ↗</a>':'';
+  const meta=[it.platform||it.source_app,it.batch?'group “'+esc(it.batch)+'”':'',it.status&&it.status!=='Pending'?esc(it.status):'',url,(it.dossiers||[]).length>1?(it.dossiers.length+' dossiers'):''].filter(Boolean).join(' · ');
+  return '<div class="row" style="--c:'+c+'">'+pic+
+    '<div><div class="t1"><span class="cat">'+esc(catName(it.category))+'</span>'+(it.score!=null?'<span class="score">'+esc(it.score)+'/10</span>':'')+
+    '<span class="st '+it.state+'">'+STATE[it.state]+'</span></div>'+
+    '<div class="acct">'+esc(it.poster||it.name||'(no account recorded)')+'</div><div class="when">'+when(it.when)+(it.name&&it.poster?' · '+esc(it.name):'')+'</div>'+
+    (it.desc?'<div class="desc">'+esc(it.desc)+'</div>':'')+(it.notes?'<div class="desc"><b>Your note:</b> '+esc(it.notes)+'</div>':'')+
+    (meta?'<div class="meta">'+meta+'</div>':'')+'</div>'+
+    '<div class="acts">'+(it.child_safety?'':'<a class="btn doss" href="'+(d?'report.html?id='+encodeURIComponent(d.id):'report.html?cases='+encodeURIComponent(it.id))+'" target="_blank">📄 '+(d?'Open SPEAR Dossier':'Write SPEAR Dossier')+'</a>')+
+    (it.has_picture?'<button class="btn sec" data-dl="'+esc(it.id)+'">⬇ Download picture</button>':'')+
+    (it.state!=='open'?'<button class="btn back" data-back="'+esc(it.id)+'">↩ Back to the queue</button>':'')+'</div></div>';
+}
+/* pictures load only when they scroll into view */
+let IO=null;const URLS={};
+function watchThumbs(){if(IO)IO.disconnect();IO=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){IO.unobserve(e.target);thumb(e.target)}}),{rootMargin:'300px'});
+  document.querySelectorAll('[data-thumb],[data-pthumb]').forEach(el=>IO.observe(el))}
+async function thumb(el){const id=el.dataset.thumb,sha=el.dataset.pthumb;const k=id||('p:'+sha);
+  try{if(!URLS[k]){const r=await fetch(API+(id?'/api/history/thumb/'+encodeURIComponent(id):'/api/history/picture/'+sha+'?size=thumb'),{headers:H()});if(!r.ok)throw 0;URLS[k]=URL.createObjectURL(await r.blob())}
+    el.innerHTML='<img alt="" src="'+URLS[k]+'">'}catch(e){el.textContent='picture unavailable'}}
+async function download(id){toast('Downloading…');
+  try{let r=await fetch(API+'/api/evidence/'+encodeURIComponent(id),{headers:H()});
+    if(!r.ok)r=await fetch(API+'/api/history/thumb/'+encodeURIComponent(id),{headers:H()});if(!r.ok)throw new Error(r.status);
+    const b=await r.blob(),it=ITEMS.find(x=>x.id===id)||{};const ext=(b.type.split('/')[1]||'jpg').replace('jpeg','jpg');
+    const name=('SPEAR_'+String(it.poster||it.name||id).replace(/^@/,'').replace(/[^A-Za-z0-9._-]+/g,'_')).slice(0,60)+'.'+ext;
+    const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},3000)}
+  catch(e){toast('The picture could not be downloaded')}}
+async function back(id,btn){btn.disabled=true;btn.textContent='Putting it back…';
+  try{const r=await fetch(API+'/api/history/'+encodeURIComponent(id)+'/restore',{method:'POST',headers:H()});if(!r.ok)throw new Error(r.status);
+    const it=ITEMS.find(x=>x.id===id);if(it){it.state='open';delete it.batch}draw();toast('Back in the queue — it shows on every device within a minute')}
+  catch(e){btn.disabled=false;btn.textContent='↩ Back to the queue';toast('Could not put it back — try again')}}
+$('list').addEventListener('click',e=>{const d=e.target.closest('[data-dl]'),b=e.target.closest('[data-back]');if(d)download(d.dataset.dl);if(b)back(b.dataset.back,b)});
+$('q').addEventListener('input',()=>{clearTimeout(timer);timer=setTimeout(()=>{S.q=$('q').value.trim();load()},350)});
+$('days').onchange=()=>{S.days=+$('days').value;load()};
+$('cat').onchange=()=>{S.cat=$('cat').value;load()};
+$('chips').addEventListener('click',e=>{const c=e.target.closest('.chip');if(!c)return;document.querySelectorAll('.chip').forEach(x=>x.classList.toggle('on',x===c));S.state=c.dataset.s;load()});
+$('more').onclick=()=>load(true);
+/* other saved pictures: loaded when the section is opened */
+let picsDone=false;
+$('pics').addEventListener('toggle',async()=>{if(!$('pics').open||picsDone||!KEY)return;picsDone=true;$('pgrid').innerHTML='<div class="msg">Loading pictures…</div>';
+  try{const r=await fetch(API+'/api/history/pictures',{headers:H()});if(!r.ok)throw new Error(r.status);const j=await r.json();
+    $('picsN').textContent='('+j.total+')';
+    $('pgrid').innerHTML=j.items.length?j.items.map(p=>'<div class="pc"><div class="ph" data-pthumb="'+esc(p.sha)+'">loading…</div><div class="when">Saved '+when(p.first_seen)+(p.times_seen>1?' · uploaded '+p.times_seen+' times':'')+'</div>'+
+      '<a class="btn doss" href="report.html?sha='+esc(p.sha)+'" target="_blank">📄 Write SPEAR Dossier</a><button class="btn sec" data-pdl="'+esc(p.sha)+'">⬇ Download</button></div>').join(''):'<div class="msg">No other pictures — every saved picture belongs to a case above.</div>';
+    watchThumbs()}catch(e){picsDone=false;$('pgrid').innerHTML='<div class="msg">Pictures did not load — close and open this section again.</div>'}});
+$('pgrid').addEventListener('click',async e=>{const b=e.target.closest('[data-pdl]');if(!b)return;toast('Downloading…');
+  try{const r=await fetch(API+'/api/history/picture/'+b.dataset.pdl,{headers:H()});if(!r.ok)throw 0;const bl=await r.blob();const a=document.createElement('a');a.href=URL.createObjectURL(bl);a.download='SPEAR_picture_'+b.dataset.pdl.slice(0,10)+'.'+((bl.type.split('/')[1]||'jpg').replace('jpeg','jpg'));document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},3000)}catch(e){toast('The picture could not be downloaded')}});
+try{const q=new URLSearchParams(location.search).get('q');if(q){$('q').value=q;S.q=q}}catch(e){}
+load();
+</script>
+<script id="spear-nav">
+/* The Project SPEAR control panel: the same left-hand menu on every page, same colours as the
+   Operational dashboard, so Eric can go from any page to any other in one click. */
+(function(){
+  if(document.getElementById('spside'))return;
+  var P=location.pathname.split('/').pop()||'index.html';
+  var here=/history\.html$/.test(P)?'history':/brand\.html$/.test(P)?'brand':/(report|brief)\.html$/.test(P)?'reports':'analysis';
+  var G='#2f7d5b',O='#c96a12',B='#1f5bb0',N='#0f2a5c',PU='#6a3fb5',M='#9c2a62';
+  var items=[];try{items=JSON.parse(localStorage.getItem('spear_items')||'[]')||[]}catch(e){}
+  var live=items.filter(function(i){return !i.archived});
+  var cnt={all:live.filter(function(i){return !i.status||i.status==='Pending'}).length,approved:live.filter(function(i){return i.status==='Confirmed'}).length,
+    specialist:live.filter(function(i){return i.status==='Escalated'}).length,reported:live.filter(function(i){return i.reportedAt}).length,archive:items.filter(function(i){return i.archived}).length};
+  function a(k,href,ic,label,c,n){return '<a class="sn'+(k===here?' on':'')+'" href="'+href+'" style="--c:'+c+'"><span class="ic">'+ic+'</span><span class="tx">'+label+'</span>'+(n?'<span class="ct">'+n+'</span>':'')+'</a>'}
+  function g(t,c){return '<div class="sg"'+(c?' style="--c:'+c+'"':'')+'>'+(c?'<i></i>':'')+t+'</div>'}
+  var html='<div class="sb"><a href="ops.html#ops" style="color:inherit;text-decoration:none">Project Spear</a><small>CONTENT MODERATION PLATFORM</small></div>'+
+    g('Dashboards')+a('ops','ops.html#ops','▦','Operational view',G)+a('exec','ops.html#exec','↗','Executive view',O)+
+    g('Case management',B)+a('analysis','./','✳','Agent analysis',N)+a('brand','brand.html','◆','Brand safety',PU)+
+    a('all','ops.html#all','☰','All open cases',B,cnt.all)+a('approved','ops.html#approved','✓','Human approved',B,cnt.approved)+
+    a('specialist','ops.html#specialist','◷','Specialist queue',B,cnt.specialist)+a('reported','ops.html#reported','▤','Reported to Meta',B,cnt.reported)+
+    a('takedown','ops.html#takedown','⤓','Takedowns',B)+a('meta','ops.html#meta','ⓜ','Meta files',B)+a('archive','ops.html#archive','🗂','Archive',B,cnt.archive)+a('history','history.html','🕘','Upload history',B)+
+    g('Business',G)+a('licenses','licenses.html','🔑','Customers &amp; licenses',G)+a('trendsw','trends.html','📣','Trends Watch',G)+g('Agent management',M)+a('cost','ops.html#cost','$','Cost analysis',M)+a('console','ops.html#console','⌘','Agent console',M)+a('memory','ops.html#memory','◈','Agent memory',M)+
+    '<details class="sw"><summary>'+g('Analyst workspace',N)+'</summary>'+
+    a('x','./#capture','⊕','Capture &amp; analyze',N)+a('x','./#tab=ai','✦','AI chat',N)+a('x','./#tab=log','▣','Log',N)+a('x','./#tab=cb','✎','Codebook &amp; teach',N)+a('slurs','slurs.html','⬆','Upload new slurs',N)+a('x','./#tab=lib','▥','Library',N)+a('x','./#tab=hunt','◎','Active Hunt',N)+'</details>';
+  var css='#spside{position:fixed;left:0;top:0;bottom:0;width:224px;background:#f5f7fb;border-right:1px solid #e3e8ef;overflow-y:auto;padding:14px 10px 24px;z-index:900;font:14px/1.2 Inter,system-ui,"Segoe UI",Arial,sans-serif;box-sizing:border-box}'+
+    'html body{padding-left:224px!important}'+
+    '#spside .sb{font:800 19px/1.1 Inter,system-ui,Arial,sans-serif;color:#0f1d33;padding:2px 8px 14px}#spside .sb small{display:block;font:600 9.5px/1.4 ui-monospace,Menlo,monospace;letter-spacing:1.6px;color:#6b7785;margin-top:3px}'+
+    '#spside .sg{display:flex;align-items:center;gap:7px;font:600 10.5px/1 ui-monospace,Menlo,monospace;letter-spacing:1.4px;text-transform:uppercase;color:var(--c,#8a94a3);margin:16px 8px 6px}#spside .sg i{width:8px;height:8px;border-radius:2px;background:var(--c)}'+
+    '#spside a.sn{display:flex;align-items:center;gap:10px;padding:8px 10px;margin:1px 0;border-radius:8px;color:var(--c);text-decoration:none;font-weight:600}'+
+    '#spside a.sn .ic{width:18px;text-align:center;font-weight:700}#spside a.sn .ct{margin-left:auto;font:700 11px ui-monospace,Menlo,monospace;color:#6b7785}'+
+    '#spside a.sn:hover{background:#fff}#spside a.sn.on{background:#fff;box-shadow:inset 4px 0 0 var(--c),0 1px 3px rgba(15,42,92,.1);color:var(--c)}'+
+    '#spside details.sw summary{list-style:none;cursor:pointer}#spside details.sw summary::-webkit-details-marker{display:none}#spside details.sw summary .sg::after{content:"▸";margin-left:4px}#spside details.sw[open] summary .sg::after{content:"▾"}'+
+    '#spmenu{display:none;position:fixed;left:10px;top:10px;z-index:901;font:700 13px/1 Inter,Arial,sans-serif;background:#0f1d33;color:#fff;border:0;border-radius:8px;padding:9px 12px;cursor:pointer}'+
+    '@media (max-width:900px){html body{padding-left:0!important}#spside{transform:translateX(-105%);transition:transform .2s;box-shadow:6px 0 24px rgba(0,0,0,.18)}#spside.open{transform:none}#spmenu{display:block}}'+
+    '@media print{#spside,#spmenu{display:none!important}html body{padding-left:0!important}}'+
+    /* the menu now carries these links, so the page headers stay clean */
+    'header a[href="ops.html"],header a[href="brand.html"],.top a[href="ops.html"],.top a[href="./"]{display:none!important}';
+  var st=document.createElement('style');st.id='spside-css';st.textContent=css;document.head.appendChild(st);
+  var n=document.createElement('nav');n.id='spside';n.setAttribute('aria-label','Project SPEAR menu');n.innerHTML=html;
+  document.body.insertBefore(n,document.body.firstChild);
+  var b=document.createElement('button');b.id='spmenu';b.type='button';b.textContent='☰ Menu';b.onclick=function(){n.classList.toggle('open')};document.body.appendChild(b);
+  var old=document.getElementById('spnav');if(old)old.remove();
+})();
+</script>
+
+</body>
+</html>

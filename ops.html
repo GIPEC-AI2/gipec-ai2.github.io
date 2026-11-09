@@ -1825,6 +1825,7 @@ const _rk=renderKpis;renderKpis=function(){const all=ITEMS;ITEMS=all.filter(x=>!
 const ref=document.querySelector('.nav[data-v="meta"]')||document.querySelector('.nav[data-v="takedown"]');
 if(ref&&!document.querySelector('.nav[data-v="archive"]')){ref.insertAdjacentHTML('afterend','<a class="nav" data-v="archive" title="Finished groups — saved, out of the queue"><span class="ic">🗂</span>Archive<span class="ct" id="c-arc"></span></a>');
   const n=document.querySelector('.nav[data-v="archive"]');n.addEventListener('click',()=>go('archive'))}
+{const an=document.querySelector('.nav[data-v="archive"]');if(an&&!document.querySelector('.nav[href="history.html"]'))an.insertAdjacentHTML('afterend','<a class="nav" href="history.html" title="Everything ever uploaded — searchable"><span class="ic">🕘</span>Upload history</a>')}
 // header button: clear (or restore all when looking at the archive)
 $('bcsv').insertAdjacentHTML('beforebegin','<button class="btn" id="barc" style="background:#fff;border:1.5px solid var(--m1,#2f74d0);color:var(--m3,#163f80);font-weight:700">🗂 Clear for new group</button>');
 const barc=$('barc');
