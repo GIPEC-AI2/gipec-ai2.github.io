@@ -59,6 +59,14 @@ details.pics summary{cursor:pointer;font:800 18px Inter,system-ui,Arial,sans-ser
     <input type="search" id="q" placeholder="Search: @account, a word, a link, Al-Furqan, WANGHAF…" autocomplete="off">
     <select id="days" title="Period"><option value="0">All time</option><option value="7">Last 7 days</option><option value="30">Last 30 days</option><option value="90">Last 90 days</option></select>
     <select id="cat" title="Category"><option value="">All categories</option></select>
+    <button class="chip" id="xlsbtn" style="background:#1f7a45;color:#fff;border-color:#1f7a45">📊 Meta files to Excel</button>
+  </div>
+  <div id="xlsbox" style="display:none;margin:10px 0;border:2px solid #1f7a45;border-radius:12px;padding:14px;background:#eef6f1">
+    <b style="font-size:17px;color:#1a4d37">Export your Meta files to Excel</b>
+    <div class="sub" style="margin:4px 0 10px">Every Meta post you have put into SPEAR (Facebook, Instagram, Threads, WhatsApp, Messenger), in your Meta submission columns. Includes archived cases.</div>
+    <select id="xmonth" style="font:16px Inter,system-ui,Arial,sans-serif;padding:10px;border:1px solid #c9d6f3;border-radius:10px"><option>Loading months…</option></select>
+    <button class="btn doss" id="xgo" style="display:inline-block;margin-left:8px">⬇ Download Excel file</button>
+    <span id="xmsg" style="margin-left:10px;color:#1a4d37;font-weight:600"></span>
   </div>
   <div class="chips" id="chips">
     <button class="chip on" data-s="all">Everything</button><button class="chip" data-s="open">In the queue</button><button class="chip" data-s="archived">Archived</button><button class="chip" data-s="removed">Taken out of the queue</button>
@@ -162,6 +170,42 @@ $('pics').addEventListener('toggle',async()=>{if(!$('pics').open||picsDone||!KEY
     watchThumbs()}catch(e){picsDone=false;$('pgrid').innerHTML='<div class="msg">Pictures did not load — close and open this section again.</div>'}});
 $('pgrid').addEventListener('click',async e=>{const b=e.target.closest('[data-pdl]');if(!b)return;toast('Downloading…');
   try{const r=await fetch(API+'/api/history/picture/'+b.dataset.pdl,{headers:H()});if(!r.ok)throw 0;const bl=await r.blob();const a=document.createElement('a');a.href=URL.createObjectURL(bl);a.download='SPEAR_picture_'+b.dataset.pdl.slice(0,10)+'.'+((bl.type.split('/')[1]||'jpg').replace('jpeg','jpg'));document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},3000)}catch(e){toast('The picture could not be downloaded')}});
+
+/* Meta files to Excel: pulls every case from the server (all states), keeps the Meta ones, and writes an
+   .xlsx in the analyst's Meta submission columns: one tab per month, or one month. */
+const META_RX=/facebook|instagram|threads|whatsapp|messenger|\bmeta\b/i;
+let XALL=null;
+const monthKey=it=>{const s=String(it.captured||it.when||'');const d=new Date(s.replace(' ','T'));return isNaN(d)?(s.slice(0,7)||'unknown'):d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')};
+const monthName=k=>/^\d{4}-\d\d$/.test(k)?new Date(k+'-15').toLocaleString('en-US',{month:'long',year:'numeric'}):'Date unknown';
+async function xFetchAll(){
+  if(XALL)return XALL;let all=[],off=0,tot=1;
+  while(off<tot&&off<5000){const p=new URLSearchParams({state:'all',limit:200,offset:off});
+    const r=await fetch(API+'/api/history?'+p,{headers:H()});if(!r.ok)throw new Error('error '+r.status);
+    const j=await r.json();tot=j.total;all=all.concat(j.items);off+=j.items.length;if(!j.items.length)break}
+  XALL=all.filter(it=>!it.child_safety&&META_RX.test([it.source_app,it.platform,it.desc,it.url].map(x=>String(x||'')).join(' ')));return XALL}
+const metaApp=it=>{const s=String(it.source_app||'')+' '+String(it.platform||'');if(META_RX.test(s))return (it.source_app||it.platform);const m=([it.url,it.desc].map(x=>String(x||'')).join(' ').match(/facebook|instagram|threads|whatsapp|messenger/i)||[''])[0];return m?m[0].toUpperCase()+m.slice(1).toLowerCase():''};
+function xLoadLib(){return window.XLSX?Promise.resolve():new Promise((ok,no)=>{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';s.onload=ok;s.onerror=()=>no(new Error('Excel tool did not load'));document.head.appendChild(s)})}
+$('xlsbtn').onclick=async()=>{const box=$('xlsbox');box.style.display=box.style.display==='none'?'block':'none';if(box.style.display==='none')return;
+  $('xmsg').textContent='Loading your Meta files…';
+  try{const m=await xFetchAll();const ks=[...new Set(m.map(monthKey))].sort().reverse();
+    $('xmonth').innerHTML='<option value="all">All months (one tab per month) · '+m.length+' files</option>'+ks.map(k=>'<option value="'+k+'">'+monthName(k)+' · '+m.filter(x=>monthKey(x)===k).length+' files</option>').join('');
+    $('xmsg').textContent=m.length?'':'No Meta files found yet. Set "Where is it from?" to the Meta app when you upload.'}catch(e){$('xmsg').textContent='Could not load: '+e.message}};
+$('xgo').onclick=async()=>{const b=$('xgo');b.disabled=true;$('xmsg').textContent='Building your Excel file…';
+  try{await xLoadLib();const m=await xFetchAll();const pick=$('xmonth').value;
+    const head=['Date Found','Type','Insta/Facebook','User','URL','Notes/context','Your note','Risk (1-10)','Status','Reported to Meta','SPEAR case'];
+    const rowOf=it=>[String(it.captured||it.when||'').slice(0,10),catName(it.category),metaApp(it),it.poster||'',
+      /^https?:/.test(it.url||'')?String(it.url).split(' ')[0]:'',String(it.desc||'').replace(/\s+/g,' ').slice(0,1000),it.notes||'',it.score!=null?Number(it.score):'',
+      STATE[it.state]||it.state||'',it.reportedAt?String(it.reportedAt).slice(0,10):'',it.name||it.id];
+    const wb=XLSX.utils.book_new();const ks=pick==='all'?[...new Set(m.map(monthKey))].sort():[pick];
+    const add=(name,list)=>{const ws=XLSX.utils.aoa_to_sheet([head,...list.sort((a,b)=>String(a.captured||a.when).localeCompare(String(b.captured||b.when))).map(rowOf)]);
+      ws['!cols']=[{wch:11},{wch:18},{wch:14},{wch:24},{wch:40},{wch:60},{wch:30},{wch:10},{wch:18},{wch:14},{wch:16}];
+      XLSX.utils.book_append_sheet(wb,ws,name.slice(0,31))};
+    if(pick==='all')add('All Meta files',m.slice());
+    ks.forEach(k=>add(monthName(k),m.filter(x=>monthKey(x)===k)));
+    XLSX.writeFile(wb,'SPEAR_Meta_files_'+(pick==='all'?'all_months':pick)+'.xlsx');
+    $('xmsg').textContent='Downloaded ✓';}catch(e){$('xmsg').textContent='Could not build the file: '+e.message}
+  b.disabled=false};
+try{if(new URLSearchParams(location.search).get('xls'))setTimeout(()=>$('xlsbtn').click(),300)}catch(e){}
 try{const q=new URLSearchParams(location.search).get('q');if(q){$('q').value=q;S.q=q}}catch(e){}
 load();
 </script>

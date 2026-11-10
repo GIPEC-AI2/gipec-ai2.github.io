@@ -1263,7 +1263,7 @@ function appBars(el,by){const o={};META_APPS.forEach(a=>{if(by[a])o[a]=by[a]});b
   document.querySelectorAll('#'+el+' .bar').forEach(b=>{const n=b.querySelector('.lab').textContent.trim();if(ACOL[n]){b.style.setProperty('--bc',ACOL[n]);b.dataset.painted='1'}})}
 function renderMetaCard(){const on=VIEW==='meta';card.classList.toggle('on',on);if(!on)return;const s=metaStats();
   const mon=new Date().toLocaleString('en-US',{month:'long'});
-  card.innerHTML=`<h3 style="margin-top:0">Meta files loaded by hand</h3>
+  card.innerHTML=`<h3 style="margin-top:0;display:flex;align-items:center;gap:10px;flex-wrap:wrap">Meta files loaded by hand <a href="history.html?xls=1" style="font-size:14px;background:#1f7a45;color:#fff;text-decoration:none;border-radius:8px;padding:7px 12px">📊 All Meta files to Excel</a></h3>
     <div class="mrow"><div class="mbox"><div class="v">${s.month}</div><div class="l">in ${mon}</div></div>
       <div class="mbox"><div class="v">${s.today}</div><div class="l">today</div></div>
       <div class="mbox gray"><div class="v">${s.links}</div><div class="l">Meta links pasted in ${mon}</div></div>
