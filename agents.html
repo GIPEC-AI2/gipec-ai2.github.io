@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Project SPEAR — Agent crew</title>
+<link rel="icon" href="icon-192.png">
+<style>
+:root{--ink:#0f1d33;--mute:#5b6678;--line:#e3e8ef;--bg:#f5f7fb;--navy:#0f2a5c;--green:#2f7d5b;--red:#b42318;--amber:#b7791f;--plum:#9c2a62}
+*{box-sizing:border-box}
+body{margin:0;background:#fff;color:var(--ink);font:16px/1.5 Inter,system-ui,"Segoe UI",Arial,sans-serif}
+main{max-width:1180px;margin:0 auto;padding:22px 22px 60px}
+h1{font-size:28px;margin:4px 0 2px;color:var(--navy)}
+h2{font-size:21px;color:var(--navy);margin:26px 0 10px}
+.sub{color:var(--mute);font-size:16px;margin:0 0 16px;max-width:900px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin:8px 0 18px}
+.tile{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:14px}
+.tile .v{font:800 30px Inter,system-ui,Arial,sans-serif;color:var(--navy)}
+.tile .l{color:var(--mute);font-size:14.5px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px}
+.ag{border:1px solid var(--line);border-left:8px solid var(--c,#8a94a3);border-radius:14px;padding:16px;background:#fff;display:flex;flex-direction:column;gap:8px}
+.ag .top{display:flex;align-items:center;gap:10px}
+.ag .ic{font-size:26px}
+.ag h3{margin:0;font-size:21px;color:var(--navy);flex:1}
+.pill{font:800 13px Inter,system-ui,Arial,sans-serif;letter-spacing:.4px;border-radius:20px;padding:5px 11px;text-transform:uppercase}
+.pill.on{background:#e8f5ee;color:#1a4d37}.pill.off{background:#eef2f7;color:#5b6678}.pill.busy{background:#e8f0ff;color:#1f3d8a}.pill.err{background:#fdecea;color:#8a1c12}
+.does{font-size:16px;color:#273246;margin:0}
+.when{font-size:14.5px;color:var(--mute)}
+.today{display:flex;gap:14px;flex-wrap:wrap;font-size:15px}
+.today b{font-size:18px}
+.last{font-size:14px;color:var(--mute);background:var(--bg);border-radius:8px;padding:8px 10px}
+.acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:auto}
+.btn{font:700 15.5px Inter,system-ui,Arial,sans-serif;border:0;border-radius:10px;padding:11px 16px;cursor:pointer}
+.btn.go{background:var(--green);color:#fff}.btn.stop{background:#fff;color:var(--red);border:1.5px solid #f0b2aa}.btn.sec{background:#fff;color:var(--navy);border:1.5px solid #c9d6f3}
+.btn:disabled{opacity:.55;cursor:default}
+.set{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-end;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:16px}
+.set label{display:flex;flex-direction:column;font-weight:700;color:var(--navy);gap:6px;font-size:15px}
+.set select,.set input{font:17px Inter,system-ui,Arial,sans-serif;padding:10px 12px;border:2px solid #c9d6f3;border-radius:10px;width:200px}
+.note{font-size:14.5px;color:var(--mute);margin-top:8px}
+table{width:100%;border-collapse:collapse;font-size:15px}
+th,td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--mute);font-size:13.5px;text-transform:uppercase;letter-spacing:.4px}
+.s-done{color:#1a4d37;font-weight:700}.s-error{color:#8a1c12;font-weight:700}.s-running{color:#1f3d8a;font-weight:700}.s-skipped{color:#5b6678;font-weight:700}
+pre.dg{white-space:pre-wrap;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:14px;font:15px/1.5 Inter,system-ui,Arial,sans-serif;margin:0}
+.msg{border:1px dashed #c9d6f3;border-radius:12px;padding:22px;text-align:center;color:var(--mute)}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--ink);color:#fff;border-radius:10px;padding:12px 18px;font-weight:600;z-index:999;display:none}
+@media (max-width:900px){main{padding-top:58px}}
+@media (max-width:600px){.grid{grid-template-columns:1fr}.set select,.set input{width:100%}.set label{width:100%}}
+</style>
+</head>
+<body>
+<main>
+  <h1>🤖 Agent crew</h1>
+  <p class="sub">Six AI agents work side by side, each with one job. They prepare the work. <b>You approve it.</b> Nothing is reported to any platform without you.</p>
+  <div class="tiles" id="tiles"></div>
+  <div class="grid" id="grid"><div class="msg">Loading the agents…</div></div>
+
+  <h2>⚙ Settings</h2>
+  <div class="set">
+    <label>Agents writing dossiers at the same time
+      <select id="workers"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></label>
+    <label>Most dossiers per day
+      <input type="number" id="limit" min="1" max="2000" step="1"></label>
+    <button class="btn go" id="saveset">Save settings</button>
+  </div>
+  <div class="note" id="costnote"></div>
+
+  <h2>🕘 Recent work</h2>
+  <div id="jobs"><div class="msg">Loading…</div></div>
+
+  <h2>📰 Latest daily summary</h2>
+  <div id="digest"><div class="msg">Loading…</div></div>
+</main>
+<div class="toast" id="toast"></div>
+<script>
+/* Agent crew: status and controls for SPEAR's agents (GET/POST /api/agents...). Plain words, large
+   buttons, colour codes: green = working, grey = paused, blue = busy right now, red = a problem. */
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let API='https://project-spear-backend.onrender.com',KEY='';
+try{API=(localStorage.getItem('spear_api')||API).replace(/\/$/,'');KEY=localStorage.getItem('spear_key')||''}catch(e){}
+const H=x=>Object.assign({'X-Spear-Key':KEY,'Content-Type':'application/json'},x||{});
+const ICON={hunter:'🎯',collector:'🗂',analyst:'📄',watcher:'👁',teacher:'🎓',reporter:'📰'};
+const COLOR={hunter:'#c96a12',collector:'#1f5bb0',analyst:'#2f7d5b',watcher:'#6a3fb5',teacher:'#9c2a62',reporter:'#0f2a5c'};
+const NAME={hunter:'Hunter',collector:'Collector',analyst:'Analyst',watcher:'Watcher',teacher:'Teacher',reporter:'Reporter'};
+function toast(t){const e=$('toast');e.textContent=t;e.style.display='block';clearTimeout(e._t);e._t=setTimeout(()=>e.style.display='none',3600)}
+function when(s){if(!s)return 'not yet';const d=new Date(String(s).replace(' ','T'));return isNaN(d)?esc(s):d.toLocaleDateString(undefined,{month:'short',day:'numeric'})+' · '+d.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'})}
+async function api(p,o){const r=await fetch(API+p,Object.assign({headers:H()},o||{}));if(!r.ok){let d='';try{d=(await r.json()).detail}catch(e){}throw new Error(d||('Error '+r.status))}return r.json()}
+
+function card(a){
+  const busy=a.busy||(a.today&&a.today.running>0), err=a.last&&a.last.status==='error';
+  const pill=busy?'<span class="pill busy">Working now</span>':err?'<span class="pill err">Needs a look</span>':a.on?'<span class="pill on">On</span>':'<span class="pill off">Paused</span>';
+  const t=a.today||{};
+  const ctl=(a.id==='analyst'||a.id==='reporter')?(a.on?'<button class="btn stop" data-a="'+a.id+'" data-x="pause">⏸ Pause</button>':'<button class="btn go" data-a="'+a.id+'" data-x="resume">▶ Turn on</button>'):'';
+  const run=['analyst','reporter','hunter','watcher'].includes(a.id)?'<button class="btn sec" data-a="'+a.id+'" data-x="run">Run now</button>':'';
+  const link=a.id==='teacher'?'<a class="btn sec" style="text-decoration:none" href="ops.html#memory">Review suggestions</a>':a.id==='collector'?'<a class="btn sec" style="text-decoration:none" href="history.html">Open upload history</a>':'';
+  return '<div class="ag" style="--c:'+COLOR[a.id]+'"><div class="top"><span class="ic">'+ICON[a.id]+'</span><h3>'+esc(a.name)+'</h3>'+pill+'</div>'+
+    '<p class="does">'+esc(a.does)+'</p><div class="when">'+esc(a.every||'')+'</div>'+
+    (a.note?'<div class="when"><b style="color:#273246">'+esc(a.note)+'</b></div>':'')+
+    '<div class="today"><span>Today: <b>'+(t.done||0)+'</b> done</span>'+(t.error?'<span style="color:#8a1c12">'+t.error+' problems</span>':'')+(t.avg_seconds?'<span>about '+Math.round(t.avg_seconds)+' s each</span>':'')+'</div>'+
+    (a.last?'<div class="last">Last: '+when(a.last.at)+' — '+esc(a.last.detail||a.last.status)+'</div>':'')+
+    '<div class="acts">'+ctl+run+link+'</div></div>';
+}
+
+async function load(){
+  try{
+    const s=await api('/api/agents');
+    const an=s.agents.find(a=>a.id==='analyst')||{};
+    const done=s.agents.reduce((n,a)=>n+((a.today||{}).done||0),0);
+    $('tiles').innerHTML=
+      '<div class="tile"><div class="v">'+s.agents.filter(a=>a.on).length+' of '+s.agents.length+'</div><div class="l">Agents on</div></div>'+
+      '<div class="tile"><div class="v">'+((an.today||{}).done||0)+' / '+s.settings.daily_limit+'</div><div class="l">Dossiers written today (daily limit)</div></div>'+
+      '<div class="tile"><div class="v">'+(an.waiting||0)+'</div><div class="l">Cases waiting for a dossier</div></div>'+
+      '<div class="tile"><div class="v">'+(s.ai_mode==='test'?'Test (free)':'Official (paid)')+'</div><div class="l">AI mode</div></div>';
+    $('grid').innerHTML=s.agents.map(card).join('');
+    $('workers').value=String(s.settings.workers);$('limit').value=s.settings.daily_limit;
+    $('costnote').textContent=s.cost_note+' The daily limit is a hard stop: the Analyst will not go over it.';
+  }catch(e){$('grid').innerHTML='<div class="msg">The agents did not load: '+esc(e.message)+'</div>'}
+  try{
+    const j=await api('/api/agents/jobs?n=40'.replace('?','?').replace('=','='));
+    $('jobs').innerHTML=j.jobs.length?'<table><tr><th>When</th><th>Agent</th><th>What happened</th><th>Time</th></tr>'+j.jobs.map(x=>'<tr><td>'+when(x.started_at)+'</td><td>'+ICON[x.agent]+' '+esc(NAME[x.agent]||x.agent)+'</td><td><span class="s-'+esc(x.status)+'">'+esc({done:'Done',error:'Problem',running:'Working',skipped:'Skipped'}[x.status]||x.status)+'</span> — '+esc(x.detail)+'</td><td>'+(x.seconds?Math.round(x.seconds)+' s':'')+'</td></tr>').join('')+'</table>':'<div class="msg">No agent work recorded yet.</div>';
+  }catch(e){$('jobs').innerHTML='<div class="msg">'+esc(e.message)+'</div>'}
+  try{
+    const d=await api('/api/agents/digest');
+    $('digest').innerHTML=d.text?'<div class="when" style="margin-bottom:6px">Written '+when(d.at)+'</div><pre class="dg">'+esc(d.text)+'</pre>':'<div class="msg">The Reporter has not written a summary yet. Press "Run now" on the Reporter to write one.</div>';
+  }catch(e){$('digest').innerHTML='<div class="msg">'+esc(e.message)+'</div>'}
+}
+$('grid').addEventListener('click',async e=>{const b=e.target.closest('[data-a]');if(!b)return;b.disabled=true;
+  try{const r=await api('/api/agents/'+b.dataset.a,{method:'POST',body:JSON.stringify({action:b.dataset.x})});
+    toast(r.note||r.reason||(b.dataset.x==='pause'?'Paused':b.dataset.x==='resume'?'Turned on':'Done'));}catch(x){toast(x.message)}
+  b.disabled=false;load()});
+$('saveset').onclick=async()=>{try{await api('/api/agents/settings',{method:'POST',body:JSON.stringify({workers:+$('workers').value,daily_limit:+$('limit').value})});toast('Settings saved');load()}catch(e){toast(e.message)}};
+load();setInterval(load,30000);
+</script>
+<script id="spear-nav">
+/* The Project SPEAR control panel: the same left-hand menu on every page, same colours as the
+   Operational dashboard, so Eric can go from any page to any other in one click. */
+(function(){
+  if(document.getElementById('spside'))return;
+  var P=location.pathname.split('/').pop()||'index.html';
+  var here=/agents\.html$/.test(P)?'agents':/history\.html$/.test(P)?'history':/brand\.html$/.test(P)?'brand':/(report|brief)\.html$/.test(P)?'reports':'analysis';
+  var G='#2f7d5b',O='#c96a12',B='#1f5bb0',N='#0f2a5c',PU='#6a3fb5',M='#9c2a62';
+  var items=[];try{items=JSON.parse(localStorage.getItem('spear_items')||'[]')||[]}catch(e){}
+  var live=items.filter(function(i){return !i.archived});
+  var cnt={all:live.filter(function(i){return !i.status||i.status==='Pending'}).length,approved:live.filter(function(i){return i.status==='Confirmed'}).length,
+    specialist:live.filter(function(i){return i.status==='Escalated'}).length,reported:live.filter(function(i){return i.reportedAt}).length,archive:items.filter(function(i){return i.archived}).length};
+  function a(k,href,ic,label,c,n){return '<a class="sn'+(k===here?' on':'')+'" href="'+href+'" style="--c:'+c+'"><span class="ic">'+ic+'</span><span class="tx">'+label+'</span>'+(n?'<span class="ct">'+n+'</span>':'')+'</a>'}
+  function g(t,c){return '<div class="sg"'+(c?' style="--c:'+c+'"':'')+'>'+(c?'<i></i>':'')+t+'</div>'}
+  var html='<div class="sb"><a href="ops.html#ops" style="color:inherit;text-decoration:none">Project Spear</a><small>CONTENT MODERATION PLATFORM</small></div>'+
+    g('Dashboards')+a('ops','ops.html#ops','▦','Operational view',G)+a('exec','ops.html#exec','↗','Executive view',O)+
+    g('Case management',B)+a('analysis','./','✳','Agent analysis',N)+a('brand','brand.html','◆','Brand safety',PU)+
+    a('all','ops.html#all','☰','All open cases',B,cnt.all)+a('approved','ops.html#approved','✓','Human approved',B,cnt.approved)+
+    a('specialist','ops.html#specialist','◷','Specialist queue',B,cnt.specialist)+a('reported','ops.html#reported','▤','Reported to Meta',B,cnt.reported)+
+    a('takedown','ops.html#takedown','⤓','Takedowns',B)+a('meta','ops.html#meta','ⓜ','Meta files',B)+a('archive','ops.html#archive','🗂','Archive',B,cnt.archive)+a('history','history.html','🕘','Upload history',B)+
+    g('Business',G)+a('licenses','licenses.html','🔑','Customers &amp; licenses',G)+a('trendsw','trends.html','📣','Trends Watch',G)+g('Agent management',M)+a('cost','ops.html#cost','$','Cost analysis',M)+a('agents','agents.html','🤖','Agent crew',M)+a('console','ops.html#console','⌘','Agent console',M)+a('memory','ops.html#memory','◈','Agent memory',M)+
+    '<details class="sw"><summary>'+g('Analyst workspace',N)+'</summary>'+
+    a('x','./#capture','⊕','Capture &amp; analyze',N)+a('x','./#tab=ai','✦','AI chat',N)+a('x','./#tab=log','▣','Log',N)+a('x','./#tab=cb','✎','Codebook &amp; teach',N)+a('slurs','slurs.html','⬆','Upload new slurs',N)+a('x','./#tab=lib','▥','Library',N)+a('x','./#tab=hunt','◎','Active Hunt',N)+'</details>';
+  var css='#spside{position:fixed;left:0;top:0;bottom:0;width:224px;background:#f5f7fb;border-right:1px solid #e3e8ef;overflow-y:auto;padding:14px 10px 24px;z-index:900;font:14px/1.2 Inter,system-ui,"Segoe UI",Arial,sans-serif;box-sizing:border-box}'+
+    'html body{padding-left:224px!important}'+
+    '#spside .sb{font:800 19px/1.1 Inter,system-ui,Arial,sans-serif;color:#0f1d33;padding:2px 8px 14px}#spside .sb small{display:block;font:600 9.5px/1.4 ui-monospace,Menlo,monospace;letter-spacing:1.6px;color:#6b7785;margin-top:3px}'+
+    '#spside .sg{display:flex;align-items:center;gap:7px;font:600 10.5px/1 ui-monospace,Menlo,monospace;letter-spacing:1.4px;text-transform:uppercase;color:var(--c,#8a94a3);margin:16px 8px 6px}#spside .sg i{width:8px;height:8px;border-radius:2px;background:var(--c)}'+
+    '#spside a.sn{display:flex;align-items:center;gap:10px;padding:8px 10px;margin:1px 0;border-radius:8px;color:var(--c);text-decoration:none;font-weight:600}'+
+    '#spside a.sn .ic{width:18px;text-align:center;font-weight:700}#spside a.sn .ct{margin-left:auto;font:700 11px ui-monospace,Menlo,monospace;color:#6b7785}'+
+    '#spside a.sn:hover{background:#fff}#spside a.sn.on{background:#fff;box-shadow:inset 4px 0 0 var(--c),0 1px 3px rgba(15,42,92,.1);color:var(--c)}'+
+    '#spside details.sw summary{list-style:none;cursor:pointer}#spside details.sw summary::-webkit-details-marker{display:none}#spside details.sw summary .sg::after{content:"▸";margin-left:4px}#spside details.sw[open] summary .sg::after{content:"▾"}'+
+    '#spmenu{display:none;position:fixed;left:10px;top:10px;z-index:901;font:700 13px/1 Inter,Arial,sans-serif;background:#0f1d33;color:#fff;border:0;border-radius:8px;padding:9px 12px;cursor:pointer}'+
+    '@media (max-width:900px){html body{padding-left:0!important}#spside{transform:translateX(-105%);transition:transform .2s;box-shadow:6px 0 24px rgba(0,0,0,.18)}#spside.open{transform:none}#spmenu{display:block}}'+
+    '@media print{#spside,#spmenu{display:none!important}html body{padding-left:0!important}}'+
+    /* the menu now carries these links, so the page headers stay clean */
+    'header a[href="ops.html"],header a[href="brand.html"],.top a[href="ops.html"],.top a[href="./"]{display:none!important}';
+  var st=document.createElement('style');st.id='spside-css';st.textContent=css;document.head.appendChild(st);
+  var n=document.createElement('nav');n.id='spside';n.setAttribute('aria-label','Project SPEAR menu');n.innerHTML=html;
+  document.body.insertBefore(n,document.body.firstChild);
+  var b=document.createElement('button');b.id='spmenu';b.type='button';b.textContent='☰ Menu';b.onclick=function(){n.classList.toggle('open')};document.body.appendChild(b);
+  var old=document.getElementById('spnav');if(old)old.remove();
+})();
+</script>
+
+</body>
+</html>
