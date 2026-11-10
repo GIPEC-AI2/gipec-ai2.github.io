@@ -319,6 +319,7 @@ async function drawTrends() {
   try {
     const [t, m, f] = await Promise.all([api('/api/admin/trends'), api('/api/admin/trends-members'), api('/api/admin/trends-feedback')]);
     S.trends = t.trends; S.members = m.members; S.feedback = f.feedback;
+    try { S.mail = await api('/api/admin/mailing-list'); } catch (e) { S.mail = null; }
   } catch (e) { v.innerHTML = `<div class="empty msg err">${esc(e.message)}</div>`; return; }
   const n = s => S.trends.filter(x => x.status === s).length;
   const list = S.trends.filter(x => S.tfilter === 'members' || S.tfilter === 'feedback' ? false : x.status === S.tfilter);
@@ -331,12 +332,17 @@ async function drawTrends() {
     <div class="tile a"><div class="v">${n('draft')}</div><div class="l">Waiting for your approval</div></div>
     <div class="tile g"><div class="v">${n('published')}</div><div class="l">Published</div></div>
     <div class="tile"><div class="v">${S.ov.trends.members_active}</div><div class="l">Registered members</div></div>
+    <div class="tile g"><div class="v">${S.mail ? S.mail.subscribed : '–'}</div><div class="l">On the mailing list</div></div>
     <div class="tile ${openFb ? 'a' : ''}"><div class="v">${openFb}</div><div class="l">Messages from members</div></div>
   </div>
-  <div class="acts" style="margin-bottom:14px"><button class="btn ok big" id="newt">+ Write a new trend</button></div>
+  <div class="acts" style="margin-bottom:14px"><button class="btn ok big" id="newt">+ Write a new trend</button> <button class="btn big" id="mailcsv">⬇ Download the mailing list</button></div>
   <div class="tabs" id="tf">${[['draft', 'Waiting for approval'], ['published', 'Published'], ['retired', 'Retired'], ['members', 'Members'], ['feedback', 'Messages']].map(([k, l]) => `<button class="tab ${S.tfilter === k ? 'on' : ''}" data-k="${k}">${l}</button>`).join('')}</div>
   <div id="tlist"></div>`;
   v.querySelector('#newt').onclick = () => trendForm();
+  v.querySelector('#mailcsv').onclick = async e => { const b = e.target; b.disabled = true; const old = b.textContent; b.textContent = 'Preparing…';
+    try { const r = await fetch(BASE + '/api/admin/mailing-list.csv', { headers: { 'X-Spear-Key': KEY } }); if (!r.ok) throw new Error('Error ' + r.status);
+      const a = document.createElement('a'); a.href = URL.createObjectURL(await r.blob()); a.download = 'trends_watch_mailing_list.csv'; document.body.appendChild(a); a.click(); a.remove(); }
+    catch (x) { alert('Could not download the list: ' + x.message); } b.disabled = false; b.textContent = old; };
   v.querySelector('#tf').onclick = e => { const b = e.target.closest('[data-k]'); if (b) { S.tfilter = b.dataset.k; drawTrends(); } };
   const box = v.querySelector('#tlist');
   if (S.tfilter === 'members') {

@@ -108,13 +108,14 @@ function welcome(note) {
   <div class="grid2">
     <div class="card">
       <h2>Join free</h2>
-      <p style="margin-top:0">For parents, teachers, community and faith groups, and anyone who wants to recognize these trends early. Free for adults 18 and older.</p>
+      <p style="margin-top:0">For parents, teachers, community and faith groups, and anyone who wants to recognize these trends early. Free for adults 18 and older. <b>Sign up to see the coded words, emoji, numbers and warning signs.</b></p>
       <label for="r_name">Your name</label><input type="text" id="r_name" autocomplete="name">
       <label for="r_email">Your e-mail</label><input type="email" id="r_email" autocomplete="email">
       <label for="r_type">I am</label><select id="r_type">${Object.entries(TYPES).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select>
       <label for="r_org">Organization (optional)</label><input type="text" id="r_org">
       <label class="check"><input type="checkbox" id="r_18"> I am 18 or older.</label>
-      <label class="check"><input type="checkbox" id="r_terms"> I will use Trends Watch only to recognize and report harm, never to harass or target anyone. GIPEC keeps my name, e-mail, organization and the topics I follow to run my account, and does not sell them.</label>
+      <label class="check"><input type="checkbox" id="r_terms"> I will use Trends Watch only to recognize and report harm, never to harass or target anyone. GIPEC keeps my name, e-mail, organization and the topics I follow to run my account and send the e-mail updates below, and does not sell them.</label>
+      <label class="check"><input type="checkbox" id="r_mail"> Send me Trends Watch alerts and GIPEC updates by e-mail. I can unsubscribe at any time.</label>
       <div style="margin-top:16px"><button class="btn ok" id="join">Join Trends Watch</button></div>
       <div class="msg" id="rmsg"></div>
     </div>
@@ -145,11 +146,13 @@ function welcome(note) {
 
 async function join() {
   const g = id => document.getElementById(id), m = g('rmsg');
+  if (!g('r_mail').checked) { m.className = 'msg err'; m.textContent = 'Please agree to receive Trends Watch e-mail updates to join.'; return; }
   m.className = 'msg'; m.textContent = 'Joining…';
   try {
     const r = await api('/api/trends/register', { method: 'POST', noKey: true, body: JSON.stringify({ name: g('r_name').value, email: g('r_email').value, member_type: g('r_type').value,
       organization: g('r_org').value, confirm_18: g('r_18').checked, accept_terms: g('r_terms').checked }) });
     KEY = r.member_key; LS.set('spear_trends_key', KEY);
+    try { await api('/api/trends/mailing', { method: 'POST', body: JSON.stringify({ subscribe: true }) }); } catch (e) { LS.set('spear_mail_pending', '1'); }
     app.innerHTML = `<div class="card new"><h2>Welcome, ${esc(r.name)} ✓</h2>
       <p>This is your personal access key. <b>It is shown only once.</b> It is saved on this device; write it down or keep it in your password manager so you can sign in on another device.</p>
       <div class="keybox">${esc(r.member_key)}</div>
@@ -174,7 +177,8 @@ async function member() {
   <div id="res"><div class="card">Loading…</div></div>
   ${S.me ? `<div class="card"><h2>Topics I follow</h2><p class="hint" style="margin-top:0">New entries in these topics are shown at the top when you visit.</p>
     <div>${cats.map(c => `<label class="check" style="margin:6px 0"><input type="checkbox" class="w" value="${esc(c.name)}" ${(S.me.watch || []).includes(c.name) ? 'checked' : ''}>${esc(c.name)}</label>`).join('')}</div>
-    <button class="btn ok" id="savew" style="margin-top:10px">Save my topics</button><span class="msg" id="wmsg"></span></div>` : ''}`;
+    <button class="btn ok" id="savew" style="margin-top:10px">Save my topics</button><span class="msg" id="wmsg"></span></div>
+  <div class="card"><h2>E-mail updates</h2><label class="check"><input type="checkbox" id="mailon"> Send me Trends Watch alerts and GIPEC updates by e-mail.</label><span class="msg" id="mmsg"></span></div>` : ''}`;
   document.getElementById('out').onclick = () => { if (confirm('Sign out on this device? You will need your access key to come back.')) { LS.set('spear_trends_key', null); KEY = ''; welcome(); } };
   document.getElementById('go').onclick = () => { S.q = document.getElementById('q').value.trim(); search(); };
   document.getElementById('q').onkeydown = e => { if (e.key === 'Enter') { S.q = e.target.value.trim(); search(); } };
@@ -189,6 +193,14 @@ async function member() {
       document.getElementById('newbox').innerHTML = `<div class="card new"><h2>New since your last visit (${nw.length})</h2>${nw.map(t => `<div style="margin:6px 0"><span class="risk ${t.risk}">${RISK[t.risk]}</span> <b>${esc(t.title)}</b> <span class="hint">· ${esc(t.category)}</span></div>`).join('')}</div>`;
     }
     api('/api/trends/me', { method: 'POST', body: JSON.stringify({ seen: true }) }).catch(() => {});
+    (async () => { const cb = document.getElementById('mailon'), mm = document.getElementById('mmsg');
+      try {
+        if (LS.get('spear_mail_pending')) { await api('/api/trends/mailing', { method: 'POST', body: JSON.stringify({ subscribe: true }) }); LS.set('spear_mail_pending', null); }
+        const st = await api('/api/trends/mailing'); cb.checked = !!st.subscribed;
+      } catch (e) { cb.disabled = true; }
+      cb.onchange = async () => { try { await api('/api/trends/mailing', { method: 'POST', body: JSON.stringify({ subscribe: cb.checked }) });
+        mm.className = 'msg okm'; mm.textContent = cb.checked ? ' You are on the list ✓' : ' You are unsubscribed ✓'; } catch (e) { mm.className = 'msg err'; mm.textContent = ' ' + e.message; } };
+    })();
   }
   search();
 }
