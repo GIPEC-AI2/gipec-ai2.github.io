@@ -209,7 +209,7 @@ $('xgo').onclick=async()=>{const b=$('xgo');b.disabled=true;$('xmsg').textConten
         r.alignment={vertical:'top',wrapText:true};
         if(lk.url)r.getCell(6).font={color:{argb:'FF1F5BB0'},underline:true};
         const th=thumbs[it.id];
-        if(th){r.height=120;const id=wb.addImage({base64:th.b64,extension:'jpeg'});ws.addImage(id,{tl:{col:1.05,row:r.number-1+0.05},ext:{width:th.w,height:th.h}})}
+        if(th){r.getCell(2).value='';r.height=120;const id=wb.addImage({base64:th.b64,extension:'jpeg'});ws.addImage(id,{tl:{col:1.05,row:r.number-1+0.05},ext:{width:th.w,height:th.h}})}
       })};
     if(pick==='all')add('All Meta files',m.slice());
     ks.forEach(k=>add(monthName(k),m.filter(x=>monthKey(x)===k)));
