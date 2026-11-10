@@ -63,7 +63,7 @@ details.pics summary{cursor:pointer;font:800 18px Inter,system-ui,Arial,sans-ser
   </div>
   <div id="xlsbox" style="display:none;margin:10px 0;border:2px solid #1f7a45;border-radius:12px;padding:14px;background:#eef6f1">
     <b style="font-size:17px;color:#1a4d37">Export your Meta files to Excel</b>
-    <div class="sub" style="margin:4px 0 10px">Every Meta post you have put into SPEAR (Facebook, Instagram, Threads, WhatsApp, Messenger), in your Meta submission columns. Includes archived cases.</div>
+    <div class="sub" style="margin:4px 0 10px">Every Meta post you have put into SPEAR (Facebook, Instagram, Threads, WhatsApp, Messenger), in your Meta submission columns, with the picture you captured and a live link. Includes archived cases.</div>
     <select id="xmonth" style="font:16px Inter,system-ui,Arial,sans-serif;padding:10px;border:1px solid #c9d6f3;border-radius:10px"><option>Loading months…</option></select>
     <button class="btn doss" id="xgo" style="display:inline-block;margin-left:8px">⬇ Download Excel file</button>
     <span id="xmsg" style="margin-left:10px;color:#1a4d37;font-weight:600"></span>
@@ -191,20 +191,46 @@ $('xlsbtn').onclick=async()=>{const box=$('xlsbox');box.style.display=box.style.
     $('xmonth').innerHTML='<option value="all">All months (one tab per month) · '+m.length+' files</option>'+ks.map(k=>'<option value="'+k+'">'+monthName(k)+' · '+m.filter(x=>monthKey(x)===k).length+' files</option>').join('');
     $('xmsg').textContent=m.length?'':'No Meta files found yet. Set "Where is it from?" to the Meta app when you upload.'}catch(e){$('xmsg').textContent='Could not load: '+e.message}};
 $('xgo').onclick=async()=>{const b=$('xgo');b.disabled=true;$('xmsg').textContent='Building your Excel file…';
-  try{await xLoadLib();const m=await xFetchAll();const pick=$('xmonth').value;
-    const head=['Date Found','Type','Insta/Facebook','User','URL','Notes/context','Your note','Risk (1-10)','Status','Reported to Meta','SPEAR case'];
-    const rowOf=it=>[String(it.captured||it.when||'').slice(0,10),catName(it.category),metaApp(it),it.poster||'',
-      /^https?:/.test(it.url||'')?String(it.url).split(' ')[0]:'',String(it.desc||'').replace(/\s+/g,' ').slice(0,1000),it.notes||'',it.score!=null?Number(it.score):'',
-      STATE[it.state]||it.state||'',it.reportedAt?String(it.reportedAt).slice(0,10):'',it.name||it.id];
-    const wb=XLSX.utils.book_new();const ks=pick==='all'?[...new Set(m.map(monthKey))].sort():[pick];
-    const add=(name,list)=>{const ws=XLSX.utils.aoa_to_sheet([head,...list.sort((a,b)=>String(a.captured||a.when).localeCompare(String(b.captured||b.when))).map(rowOf)]);
-      ws['!cols']=[{wch:11},{wch:18},{wch:14},{wch:24},{wch:40},{wch:60},{wch:30},{wch:10},{wch:18},{wch:14},{wch:16}];
-      XLSX.utils.book_append_sheet(wb,ws,name.slice(0,31))};
+  try{await xLoadExcel();const m=await xFetchAll();const pick=$('xmonth').value;
+    const wb=new ExcelJS.Workbook();wb.creator='GIPEC AI² · Project SPEAR';
+    const ks=pick==='all'?[...new Set(m.map(monthKey))].sort():[pick];
+    const thumbs={};let done=0;const need=m.filter(x=>pick==='all'||monthKey(x)===pick).filter(x=>x.has_picture);
+    const q=need.slice();await Promise.all([0,1,2,3].map(async()=>{while(q.length){const it=q.shift();thumbs[it.id]=await xThumb(it.id);done++;$('xmsg').textContent='Adding pictures… '+done+' of '+need.length}}));
+    const add=(name,list)=>{const ws=wb.addWorksheet(name.slice(0,31),{views:[{state:'frozen',ySplit:1}]});
+      ws.columns=[{header:'Date Found',width:12},{header:'Picture (as captured)',width:24},{header:'Type',width:18},{header:'Insta/Facebook',width:14},{header:'User',width:22},
+        {header:'Live link',width:38},{header:'Link type',width:22},{header:'Notes/context',width:60},{header:'Your note',width:28},{header:'Risk (1-10)',width:10},
+        {header:'Status',width:16},{header:'Reported to Meta',width:14},{header:'SPEAR case',width:18}];
+      const h=ws.getRow(1);h.font={bold:true,color:{argb:'FFFFFFFF'}};h.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF0F2A5C'}};h.alignment={vertical:'middle',wrapText:true};h.height=30;
+      list.sort((a,b)=>String(a.captured||a.when).localeCompare(String(b.captured||b.when))).forEach((it,n)=>{
+        const lk=xLink(it);
+        const r=ws.addRow([String(it.captured||it.when||'').slice(0,10),it.has_picture?'':'No picture saved',catName(it.category),metaApp(it),it.poster||'',
+          lk.url?{text:lk.url,hyperlink:lk.url}:'',lk.kind,String(it.desc||'').replace(/\s+/g,' ').slice(0,1500),it.notes||'',
+          it.score!=null&&!isNaN(+it.score)?+it.score:(it.score||''),STATE[it.state]||it.state||'',it.reportedAt?String(it.reportedAt).slice(0,10):'',it.name||it.id]);
+        r.alignment={vertical:'top',wrapText:true};
+        if(lk.url)r.getCell(6).font={color:{argb:'FF1F5BB0'},underline:true};
+        const th=thumbs[it.id];
+        if(th){r.height=120;const id=wb.addImage({base64:th.b64,extension:'jpeg'});ws.addImage(id,{tl:{col:1.05,row:r.number-1+0.05},ext:{width:th.w,height:th.h}})}
+      })};
     if(pick==='all')add('All Meta files',m.slice());
     ks.forEach(k=>add(monthName(k),m.filter(x=>monthKey(x)===k)));
-    XLSX.writeFile(wb,'SPEAR_Meta_files_'+(pick==='all'?'all_months':pick)+'.xlsx');
-    $('xmsg').textContent='Downloaded ✓';}catch(e){$('xmsg').textContent='Could not build the file: '+e.message}
+    const buf=await wb.xlsx.writeBuffer();const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));
+    a.download='SPEAR_Meta_files_'+(pick==='all'?'all_months':pick)+'.xlsx';document.body.appendChild(a);a.click();a.remove();
+    $('xmsg').textContent='Downloaded ✓ ('+need.length+' pictures included)';}catch(e){$('xmsg').textContent='Could not build the file: '+e.message}
   b.disabled=false};
+function xLoadExcel(){return window.ExcelJS?Promise.resolve():new Promise((ok,no)=>{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js';s.onload=ok;s.onerror=()=>no(new Error('Excel tool did not load'));document.head.appendChild(s)})}
+async function xThumb(id){try{const r=await fetch(API+'/api/history/thumb/'+encodeURIComponent(id),{headers:H()});if(!r.ok)return null;
+  const bm=await createImageBitmap(await r.blob());const s=Math.min(1,150/bm.height,170/bm.width);const w=Math.max(1,Math.round(bm.width*s)),h=Math.max(1,Math.round(bm.height*s));
+  const c=document.createElement('canvas');c.width=w*2;c.height=h*2;const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);g.drawImage(bm,0,0,c.width,c.height);
+  return {b64:c.toDataURL('image/jpeg',0.85),w,h}}catch(e){return null}}
+function xLink(it){const u=String(it.url||'').split(' ')[0];if(/^https?:\/\//.test(u))return {url:u,kind:'Post link'};
+  const app=metaApp(it).toLowerCase();
+  let hd=String(it.poster||'').trim(),kind='Account page';
+  if(!/^@?[A-Za-z0-9._]{2,30}$/.test(hd)||/unknown/i.test(hd)){const mm=String(it.desc||'').match(/(?:by|account|user|from|profile)\s+(?:user\s+|account\s+)?['"‘“]@?([A-Za-z0-9._]{3,30})['"’”]/i);hd=mm?mm[1]:'';kind='Account page (read from picture)'}
+  hd=hd.replace(/^@/,'');if(!hd)return {url:'',kind:'No link captured: see picture'};
+  if(app.startsWith('facebook'))return {url:'https://www.facebook.com/'+hd,kind};
+  if(app.startsWith('threads'))return {url:'https://www.threads.net/@'+hd,kind};
+  if(app.startsWith('instagram'))return {url:'https://www.instagram.com/'+hd+'/',kind};
+  return {url:'',kind:'No link captured: see picture'}}
 try{if(new URLSearchParams(location.search).get('xls'))setTimeout(()=>$('xlsbtn').click(),300)}catch(e){}
 try{const q=new URLSearchParams(location.search).get('q');if(q){$('q').value=q;S.q=q}}catch(e){}
 load();
